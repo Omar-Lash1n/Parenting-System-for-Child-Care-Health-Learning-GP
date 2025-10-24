@@ -5,6 +5,12 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ajial.API", "Ajial.API\Ajial.API.csproj", "{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ajial.Domain", "Ajial.Domain\Ajial.Domain.csproj", "{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ajial.Application", "Ajial.Application\Ajial.Application.csproj", "{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ajial.Infrastructure", "Ajial.Infrastructure\Ajial.Infrastructure.csproj", "{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +33,42 @@ Global
 		{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}.Release|x64.Build.0 = Release|Any CPU
 		{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}.Release|x86.ActiveCfg = Release|Any CPU
 		{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}.Release|x86.Build.0 = Release|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Debug|x64.Build.0 = Debug|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Debug|x86.Build.0 = Debug|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Release|x64.ActiveCfg = Release|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Release|x64.Build.0 = Release|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Release|x86.ActiveCfg = Release|Any CPU
+		{EEA9CEB4-514E-4CED-9114-D36A1B23A73C}.Release|x86.Build.0 = Release|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Debug|x64.Build.0 = Debug|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Debug|x86.Build.0 = Debug|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Release|x64.ActiveCfg = Release|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Release|x64.Build.0 = Release|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Release|x86.ActiveCfg = Release|Any CPU
+		{44F1F168-6B38-4272-BCC6-8D9383F6AB5A}.Release|x86.Build.0 = Release|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Debug|x64.Build.0 = Debug|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Debug|x86.Build.0 = Debug|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Release|x64.ActiveCfg = Release|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Release|x64.Build.0 = Release|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Release|x86.ActiveCfg = Release|Any CPU
+		{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

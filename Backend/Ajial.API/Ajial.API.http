@@ -1,6 +1,0 @@
-@Ajial.API_HostAddress = http://localhost:5087
-
-GET {{Ajial.API_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
