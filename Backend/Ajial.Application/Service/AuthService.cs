@@ -1,5 +1,7 @@
 ﻿using Ajial.Application.DTOs.Auth;
+using Ajial.Application.DTOs.Common;
 using Ajial.Application.Interfaces;
+using Ajial.Application.Validators;
 using Ajial.Domain.Entities;
 using Ajlal.Application.Interfaces;
 
@@ -103,6 +105,100 @@ public class AuthService : IAuthService
         {
             await _unitOfWork.RollbackTransactionAsync();
             throw;
+        }
+    }
+    
+     public async Task<ApiResponse<LoginResponseDto>> LoginParentAsync(LoginRequestDto request)
+    {
+        try
+        {
+            // Step 1: Validate input
+            var validator = new LoginRequestValidator();
+            var (isValid, errors) = validator.Validate(request);
+
+            if (!isValid)
+            {
+                return ApiResponse<LoginResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    errors
+                );
+            }
+
+            // Step 2: Find user by username
+            var user = await _unitOfWork.Users.GetFirstOrDefaultAsync(
+                u => u.Username == request.Username.Trim()
+            );
+
+            if (user == null)
+            {
+                return ApiResponse<LoginResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    new List<string> { "اسم المستخدم أو كلمة المرور غير صحيحة" }
+                );
+            }
+
+            // Step 3: Verify password
+            bool isPasswordValid = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
+
+            if (!isPasswordValid)
+            {
+                return ApiResponse<LoginResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    new List<string> { "اسم المستخدم أو كلمة المرور غير صحيحة" }
+                );
+            }
+
+            // Step 4: Check if user is a parent
+            var parent = await _unitOfWork.Parents.GetFirstOrDefaultAsync(
+                p => p.UserId == user.Id
+            );
+
+            if (parent == null)
+            {
+                return ApiResponse<LoginResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    new List<string> { "المستخدم ليس ولي أمر" }
+                );
+            }
+
+            // Step 5: Get city information
+            var city = await _unitOfWork.Cities.GetByIdAsync(parent.CityId);
+
+            if (city == null)
+            {
+                return ApiResponse<LoginResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    new List<string> { "بيانات المدينة غير موجودة" }
+                );
+            }
+
+            // Step 6: Create response
+            var response = new LoginResponseDto
+            {
+                UserId = user.Id,
+                ParentId = parent.Id,
+                FullName = user.FullName,
+                Username = user.Username,
+                Email = user.Email,
+                Gender = parent.Gender,
+                CityName = city.Name,
+                CityNameAr = city.NameAr,
+                DateOfBirth = parent.DateOfBirth,
+                Message = "تم تسجيل الدخول بنجاح",
+                LoginAt = DateTime.UtcNow
+            };
+
+            return ApiResponse<LoginResponseDto>.SuccessResponse(
+                response,
+                "تم تسجيل الدخول بنجاح"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<LoginResponseDto>.FailureResponse(
+                "حدث خطأ أثناء تسجيل الدخول",
+                new List<string> { ex.Message }
+            );
         }
     }
 }

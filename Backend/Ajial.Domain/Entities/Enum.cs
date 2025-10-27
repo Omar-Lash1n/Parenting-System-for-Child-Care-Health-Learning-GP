@@ -3,13 +3,13 @@
 public enum UserType
 {
     Parent = 1,
-    Teacher = 2,
-    Admin = 3
+    Doctor = 2,
+    Child = 3
 }
 
 public enum ParentGender
 {
     Father = 1,  // أب
     Mother = 2,  // أم
-    Other = 3    // مربي
+    Educator  = 3    // مربي
 }

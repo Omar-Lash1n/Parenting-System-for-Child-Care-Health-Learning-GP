@@ -63,4 +63,48 @@ public class AuthController : ControllerBase
                 "حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة مرة أخرى"));
         }
     }
+    
+    [HttpPost("login/parent")]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponseDto>), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> LoginParent([FromBody] LoginRequestDto request)
+    {
+        try
+        {
+            // Log login attempt (don't log password!)
+            _logger.LogInformation("Login attempt for username: {Username}", request.Username);
+
+            var result = await _authService.LoginParentAsync(request);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("Login failed for username: {Username}. Errors: {Errors}", 
+                    request.Username, 
+                    string.Join(", ", result.Errors));
+
+                // Return 401 for authentication failures
+                if (result.Errors.Any(e => e.Contains("اسم المستخدم أو كلمة المرور غير صحيحة")))
+                {
+                    return Unauthorized(result);
+                }
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("Login successful for username: {Username}, UserId: {UserId}", 
+                request.Username, 
+                result.Data?.UserId);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in LoginParent endpoint for username: {Username}", request.Username);
+            return StatusCode(500, ApiResponse<LoginResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+            ));
+        }
+    }
 }
