@@ -1730,6 +1730,7 @@
         "framework": ".NETCoreApp,Version=v9.0",
         "dependencies": {
           "Ajial.Domain": "1.0.0",
+          "Microsoft.EntityFrameworkCore": "9.0.0",
           "System.ComponentModel.Annotations": "5.0.0"
         },
         "compile": {
@@ -5428,7 +5429,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

@@ -22,6 +22,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Dependency Injection
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IParentService, ParentService>();  // ✅ NEW: Add this line
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
 
 // CORS Configuration
@@ -37,12 +38,36 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Run migrations automatically on startup
+using (var scope = app.Services.CreateScope())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        
+        if (context.Database.GetPendingMigrations().Any())
+        {
+            Console.WriteLine("🔄 Applying pending migrations...");
+            context.Database.Migrate();
+            Console.WriteLine("✅ Migrations applied successfully!");
+        }
+        else
+        {
+            Console.WriteLine("✅ Database is up to date!");
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "❌ An error occurred while migrating the database.");
+        throw;
+    }
 }
+
+// Configure the HTTP request pipeline
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
