@@ -14,6 +14,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<User> Users { get; }
     public IRepository<Parent> Parents { get; }
     public IRepository<City> Cities { get; }
+    public IRepository<PasswordResetToken> PasswordResetTokens { get; }  // ✅ NEW
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -21,6 +22,8 @@ public class UnitOfWork : IUnitOfWork
         Users = new Repository<User>(context);
         Parents = new Repository<Parent>(context);
         Cities = new Repository<City>(context);
+        PasswordResetTokens = new Repository<PasswordResetToken>(_context);  // ✅ NEW
+
     }
 
     public async Task<int> SaveChangesAsync()

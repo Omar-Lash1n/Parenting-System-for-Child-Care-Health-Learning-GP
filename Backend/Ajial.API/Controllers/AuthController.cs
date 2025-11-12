@@ -106,5 +106,87 @@ public class AuthController : ControllerBase
                 new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
             ));
         }
+        
+        
+        
+        
     }
+    
+    
+    
+
+// Add these methods to AuthController
+
+/// <summary>
+/// طلب إعادة تعيين كلمة المرور (إرسال رمز عبر البريد الإلكتروني)
+/// </summary>
+[HttpPost("forgot-password")]
+[ProducesResponseType(typeof(ApiResponse<ForgotPasswordResponseDto>), StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(ApiResponse<ForgotPasswordResponseDto>), StatusCodes.Status400BadRequest)]
+public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
+{
+    try
+    {
+        _logger.LogInformation("Password reset requested for email: {Email}", request.Email);
+
+        var result = await _authService.ForgotPasswordAsync(request);
+
+        if (!result.Success)
+        {
+            _logger.LogWarning("Password reset request failed for email: {Email}. Errors: {Errors}",
+                request.Email,
+                string.Join(", ", result.Errors));
+
+            return BadRequest(result);
+        }
+
+        _logger.LogInformation("Password reset email sent to: {Email}", request.Email);
+
+        return Ok(result);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error in ForgotPassword endpoint for email: {Email}", request.Email);
+        return StatusCode(500, ApiResponse<ForgotPasswordResponseDto>.FailureResponse(
+            "حدث خطأ في الخادم",
+            new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+        ));
+    }
+}
+
+/// <summary>
+/// إعادة تعيين كلمة المرور باستخدام الرمز
+/// </summary>
+[HttpPost("reset-password")]
+[ProducesResponseType(typeof(ApiResponse<ResetPasswordResponseDto>), StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(ApiResponse<ResetPasswordResponseDto>), StatusCodes.Status400BadRequest)]
+public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request)
+{
+    try
+    {
+        _logger.LogInformation("Password reset attempt with token");
+
+        var result = await _authService.ResetPasswordAsync(request);
+
+        if (!result.Success)
+        {
+            _logger.LogWarning("Password reset failed. Errors: {Errors}",
+                string.Join(", ", result.Errors));
+
+            return BadRequest(result);
+        }
+
+        _logger.LogInformation("Password reset successful for user");
+
+        return Ok(result);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error in ResetPassword endpoint");
+        return StatusCode(500, ApiResponse<ResetPasswordResponseDto>.FailureResponse(
+            "حدث خطأ في الخادم",
+            new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+        ));
+    }
+}
 }

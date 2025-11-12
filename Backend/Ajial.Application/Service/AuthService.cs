@@ -4,19 +4,273 @@ using Ajial.Application.Interfaces;
 using Ajial.Application.Validators;
 using Ajial.Domain.Entities;
 using Ajlal.Application.Interfaces;
-
+using Ajial.Domain.Entities;
+using System.Security.Cryptography;
 namespace Ajial.Application.Services;
 
 public class AuthService : IAuthService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IEmailService _emailService;  // ✅ NEW
 
-    public AuthService(IUnitOfWork unitOfWork, IPasswordHasher passwordHasher)
+    
+    
+    public async Task<ApiResponse<ForgotPasswordResponseDto>> ForgotPasswordAsync(
+    ForgotPasswordRequestDto request)
+{
+    try
     {
-        _unitOfWork = unitOfWork;
-        _passwordHasher = passwordHasher;
+        // الخطوة 1: التحقق من صحة البيانات
+        var validator = new ForgotPasswordRequestValidator();
+        var (isValid, errors) = validator.Validate(request);
+
+        if (!isValid)
+        {
+            return ApiResponse<ForgotPasswordResponseDto>.FailureResponse(
+                "فشل في معالجة الطلب",
+                errors
+            );
+        }
+
+        // الخطوة 2: البحث عن المستخدم
+        var user = await _unitOfWork.Users.GetFirstOrDefaultAsync(
+            u => u.Email == request.Email.Trim().ToLower()
+        );
+
+        // ملاحظة أمنية: نرجع نفس الرسالة سواء وُجد المستخدم أم لا
+        // لمنع الكشف عن البريد الإلكتروني المسجل
+        if (user == null)
+        {
+            // نرجع نجاح ولكن لا نرسل إيميل
+            return ApiResponse<ForgotPasswordResponseDto>.SuccessResponse(
+                new ForgotPasswordResponseDto
+                {
+                    Message = "إذا كان البريد الإلكتروني مسجلاً، ستصلك رسالة لإعادة تعيين كلمة المرور",
+                    Email = request.Email,
+                    RequestedAt = DateTime.UtcNow
+                },
+                "تم معالجة الطلب بنجاح"
+            );
+        }
+
+        // الخطوة 3: التحقق من أن المستخدم ولي أمر
+        var parent = await _unitOfWork.Parents.GetFirstOrDefaultAsync(
+            p => p.UserId == user.Id
+        );
+
+        if (parent == null)
+        {
+            return ApiResponse<ForgotPasswordResponseDto>.SuccessResponse(
+                new ForgotPasswordResponseDto
+                {
+                    Message = "إذا كان البريد الإلكتروني مسجلاً، ستصلك رسالة لإعادة تعيين كلمة المرور",
+                    Email = request.Email,
+                    RequestedAt = DateTime.UtcNow
+                },
+                "تم معالجة الطلب بنجاح"
+            );
+        }
+
+        // الخطوة 4: إلغاء جميع الرموز السابقة غير المستخدمة
+        var existingTokens = await _unitOfWork.PasswordResetTokens
+            .GetAllAsync();
+        
+        var userExistingTokens = existingTokens
+            .Where(t => t.UserId == user.Id && !t.IsUsed)
+            .ToList();
+
+        foreach (var token in userExistingTokens)
+        {
+            token.IsUsed = true;
+            token.UsedAt = DateTime.UtcNow;
+            await _unitOfWork.PasswordResetTokens.UpdateAsync(token);
+        }
+
+        // الخطوة 5: إنشاء رمز إعادة تعيين جديد (6 أرقام)
+        string resetToken = GenerateNumericToken(6);
+
+        // الخطوة 6: حفظ الرمز في قاعدة البيانات
+        var passwordResetToken = new PasswordResetToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Token = resetToken,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30), // صالح لمدة 30 دقيقة
+            IsUsed = false
+        };
+
+        await _unitOfWork.PasswordResetTokens.AddAsync(passwordResetToken);
+        await _unitOfWork.SaveChangesAsync();
+
+        // الخطوة 7: إرسال الإيميل
+        try
+        {
+            await _emailService.SendPasswordResetEmailAsync(
+                user.Email,
+                resetToken,
+                user.FullName
+            );
+        }
+        catch (Exception emailEx)
+        {
+            // فشل إرسال الإيميل
+            return ApiResponse<ForgotPasswordResponseDto>.FailureResponse(
+                "فشل في إرسال البريد الإلكتروني",
+                new List<string> { "حدث خطأ أثناء إرسال رسالة إعادة التعيين. يرجى المحاولة لاحقاً." }
+            );
+        }
+
+        // الخطوة 8: إرجاع الاستجابة
+        var response = new ForgotPasswordResponseDto
+        {
+            Message = "تم إرسال رمز إعادة التعيين إلى بريدك الإلكتروني",
+            Email = user.Email,
+            RequestedAt = DateTime.UtcNow
+        };
+
+        return ApiResponse<ForgotPasswordResponseDto>.SuccessResponse(
+            response,
+            "تم إرسال رمز إعادة التعيين بنجاح"
+        );
     }
+    catch (Exception ex)
+    {
+        return ApiResponse<ForgotPasswordResponseDto>.FailureResponse(
+            "حدث خطأ أثناء معالجة الطلب",
+            new List<string> { ex.Message }
+        );
+    }
+}
+
+// ============================================
+// إعادة تعيين كلمة المرور
+// ============================================
+public async Task<ApiResponse<ResetPasswordResponseDto>> ResetPasswordAsync(
+    ResetPasswordRequestDto request)
+{
+    try
+    {
+        // الخطوة 1: التحقق من صحة البيانات
+        var validator = new ResetPasswordRequestValidator();
+        var (isValid, errors) = validator.Validate(request);
+
+        if (!isValid)
+        {
+            return ApiResponse<ResetPasswordResponseDto>.FailureResponse(
+                "فشل في إعادة تعيين كلمة المرور",
+                errors
+            );
+        }
+
+        // الخطوة 2: البحث عن الرمز
+        var resetToken = await _unitOfWork.PasswordResetTokens.GetFirstOrDefaultAsync(
+            t => t.Token == request.Token.Trim()
+        );
+
+        if (resetToken == null)
+        {
+            return ApiResponse<ResetPasswordResponseDto>.FailureResponse(
+                "فشل في إعادة تعيين كلمة المرور",
+                new List<string> { "رمز إعادة التعيين غير صحيح" }
+            );
+        }
+
+        // الخطوة 3: التحقق من أن الرمز لم يُستخدم
+        if (resetToken.IsUsed)
+        {
+            return ApiResponse<ResetPasswordResponseDto>.FailureResponse(
+                "فشل في إعادة تعيين كلمة المرور",
+                new List<string> { "تم استخدام هذا الرمز مسبقاً" }
+            );
+        }
+
+        // الخطوة 4: التحقق من أن الرمز لم ينتهِ
+        if (resetToken.ExpiresAt < DateTime.UtcNow)
+        {
+            return ApiResponse<ResetPasswordResponseDto>.FailureResponse(
+                "فشل في إعادة تعيين كلمة المرور",
+                new List<string> { "انتهت صلاحية رمز إعادة التعيين. يرجى طلب رمز جديد" }
+            );
+        }
+
+        // الخطوة 5: جلب المستخدم
+        var user = await _unitOfWork.Users.GetByIdAsync(resetToken.UserId);
+
+        if (user == null)
+        {
+            return ApiResponse<ResetPasswordResponseDto>.FailureResponse(
+                "فشل في إعادة تعيين كلمة المرور",
+                new List<string> { "المستخدم غير موجود" }
+            );
+        }
+
+        // الخطوة 6: تشفير كلمة المرور الجديدة
+        string newPasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+
+        // الخطوة 7: تحديث كلمة المرور
+        user.PasswordHash = newPasswordHash;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.Users.UpdateAsync(user);
+
+        // الخطوة 8: تعليم الرمز كمُستخدم
+        resetToken.IsUsed = true;
+        resetToken.UsedAt = DateTime.UtcNow;
+        await _unitOfWork.PasswordResetTokens.UpdateAsync(resetToken);
+
+        // الخطوة 9: حفظ التغييرات
+        await _unitOfWork.SaveChangesAsync();
+
+        // الخطوة 10: إرجاع الاستجابة
+        var response = new ResetPasswordResponseDto
+        {
+            Message = "تم إعادة تعيين كلمة المرور بنجاح",
+            Email = user.Email,
+            ResetAt = DateTime.UtcNow
+        };
+
+        return ApiResponse<ResetPasswordResponseDto>.SuccessResponse(
+            response,
+            "تم إعادة تعيين كلمة المرور بنجاح"
+        );
+    }
+    catch (Exception ex)
+    {
+        return ApiResponse<ResetPasswordResponseDto>.FailureResponse(
+            "حدث خطأ أثناء إعادة تعيين كلمة المرور",
+            new List<string> { ex.Message }
+        );
+    }
+}
+
+// ============================================
+// دالة مساعدة: توليد رمز رقمي عشوائي
+// ============================================
+private string GenerateNumericToken(int length)
+{
+    var random = new Random();
+    var token = string.Empty;
+    
+    for (int i = 0; i < length; i++)
+    {
+        token += random.Next(0, 10).ToString();
+    }
+    
+    return token;
+}
+    
+    
+    
+public AuthService(
+    IUnitOfWork unitOfWork, 
+    IPasswordHasher passwordHasher,
+    IEmailService emailService)  // ✅ NEW
+{
+    _unitOfWork = unitOfWork;
+    _passwordHasher = passwordHasher;
+    _emailService = emailService;  // ✅ NEW
+}
 
     public async Task<RegisterParentResponse> RegisterParentAsync(RegisterParentRequest request)
     {

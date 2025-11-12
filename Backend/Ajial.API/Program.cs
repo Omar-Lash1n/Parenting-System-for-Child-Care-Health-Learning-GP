@@ -22,9 +22,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Dependency Injection
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IParentService, ParentService>();  // ✅ NEW: Add this line
+builder.Services.AddScoped<IParentService, ParentService>();
+builder.Services.AddScoped<IEmailService, EmailService>();  // ✅ NEW
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
-
 // CORS Configuration
 builder.Services.AddCors(options =>
 {
