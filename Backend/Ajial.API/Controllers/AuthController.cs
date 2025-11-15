@@ -155,6 +155,44 @@ public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest
 }
 
 /// <summary>
+/// التحقق من صحة رمز OTP (6 أرقام) دون تغيير كلمة المرور
+/// </summary>
+[HttpPost("verify-otp")]
+[ProducesResponseType(typeof(ApiResponse<VerifyOtpResponseDto>), StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(ApiResponse<VerifyOtpResponseDto>), StatusCodes.Status400BadRequest)]
+public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto request)
+{
+    try
+    {
+        _logger.LogInformation("OTP verification attempt for token: {Token}", 
+            request.Token?.Substring(0, 2) + "****"); // Log only first 2 digits for security
+
+        var result = await _authService.VerifyOtpAsync(request);
+
+        if (!result.Success)
+        {
+            _logger.LogWarning("OTP verification failed. Errors: {Errors}",
+                string.Join(", ", result.Errors));
+
+            return BadRequest(result);
+        }
+
+        _logger.LogInformation("OTP verification successful");
+
+        return Ok(result);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error in VerifyOtp endpoint");
+        return StatusCode(500, ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+            "حدث خطأ في الخادم",
+            new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+        ));
+    }
+}
+
+
+/// <summary>
 /// إعادة تعيين كلمة المرور باستخدام الرمز
 /// </summary>
 [HttpPost("reset-password")]

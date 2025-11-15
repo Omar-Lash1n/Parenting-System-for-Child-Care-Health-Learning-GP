@@ -263,6 +263,104 @@ public class AuthService : IAuthService
             );
         }
     }
+    
+    // Add this method to your AuthService class
+
+/// <summary>
+/// التحقق من صحة رمز OTP دون تغيير كلمة المرور
+/// </summary>
+public async Task<ApiResponse<VerifyOtpResponseDto>> VerifyOtpAsync(VerifyOtpRequestDto request)
+{
+    try
+    {
+        // الخطوة 1: التحقق من صحة البيانات
+        var validator = new VerifyOtpRequestValidator();
+        var (isValid, errors) = validator.Validate(request);
+
+        if (!isValid)
+        {
+            return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                "فشل في التحقق من الرمز",
+                errors
+            );
+        }
+
+        // الخطوة 2: البحث عن الرمز في قاعدة البيانات
+        var resetToken = await _unitOfWork.PasswordResetTokens.GetFirstOrDefaultAsync(
+            t => t.Token == request.Token.Trim()
+        );
+
+        if (resetToken == null)
+        {
+            return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                "فشل في التحقق من الرمز",
+                new List<string> { "الرمز غير صحيح" }
+            );
+        }
+
+        // الخطوة 3: التحقق من أن الرمز لم يُستخدم
+        if (resetToken.IsUsed)
+        {
+            return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                "فشل في التحقق من الرمز",
+                new List<string> { "تم استخدام هذا الرمز مسبقاً" }
+            );
+        }
+
+        // الخطوة 4: التحقق من أن الرمز لم ينتهِ
+        if (resetToken.ExpiresAt < DateTime.UtcNow)
+        {
+            return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                "فشل في التحقق من الرمز",
+                new List<string> { "انتهت صلاحية الرمز. يرجى طلب رمز جديد" }
+            );
+        }
+
+        // الخطوة 5: التحقق من وجود المستخدم
+        var user = await _unitOfWork.Users.GetByIdAsync(resetToken.UserId);
+
+        if (user == null)
+        {
+            return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                "فشل في التحقق من الرمز",
+                new List<string> { "المستخدم غير موجود" }
+            );
+        }
+
+        // الخطوة 6: التحقق من أن المستخدم ولي أمر
+        var parent = await _unitOfWork.Parents.GetFirstOrDefaultAsync(
+            p => p.UserId == user.Id
+        );
+
+        if (parent == null)
+        {
+            return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                "فشل في التحقق من الرمز",
+                new List<string> { "المستخدم ليس ولي أمر" }
+            );
+        }
+
+        // الخطوة 7: الرمز صحيح - إرجاع استجابة نجاح
+        var response = new VerifyOtpResponseDto
+        {
+            IsValid = true,
+            Message = "الرمز صحيح. يمكنك الآن تغيير كلمة المرور",
+            VerifiedAt = DateTime.UtcNow
+        };
+
+        return ApiResponse<VerifyOtpResponseDto>.SuccessResponse(
+            response,
+            "تم التحقق من الرمز بنجاح"
+        );
+    }
+    catch (Exception ex)
+    {
+        return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+            "حدث خطأ أثناء التحقق من الرمز",
+            new List<string> { ex.Message }
+        );
+    }
+}
 
     public async Task<ApiResponse<ResetPasswordResponseDto>> ResetPasswordAsync(
         ResetPasswordRequestDto request)
