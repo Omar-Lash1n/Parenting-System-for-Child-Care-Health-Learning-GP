@@ -1,10 +1,10 @@
 ﻿using Ajial.Application.DTOs.Auth;
 using Ajial.Application.DTOs.Common;
-using Ajial.Application.Interfaces;
 using Ajlal.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Ajlal.API.Controllers;
+namespace Ajial.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
