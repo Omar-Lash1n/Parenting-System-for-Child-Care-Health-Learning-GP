@@ -44,6 +44,10 @@ dependencies:
 
   pinput: ^4.0.0
 
+  dio: ^5.1.0 # أو أحدث رقم متاح
+
+  flutter_secure_storage: ^8.0.0 # أو أحدث
+
   # 3. عشان الـ Calendar يظهر بالعربي
   flutter_localizations:
     sdk: flutter
@@ -51,6 +55,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  confetti: ^0.7.0 # أضف هذا السطر
+  animated_text_kit: ^4.2.2 # تحقق من أحدث إصدار
+  flutter_svg: ^2.0.10+1 # تحقق من أحدث إصدار
 
   # ... (flutter_lints section) ...
   flutter_lints: ^5.0.0

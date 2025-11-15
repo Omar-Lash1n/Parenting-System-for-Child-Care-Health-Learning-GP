@@ -1,19 +1,31 @@
-// --- login.dart ---
+// --- login.dart (Updated with 700ms Fade Transition) ---
 
 import 'package:flutter/material.dart';
 import 'package:flutter_application/homepage/homepage.dart';
 import 'package:flutter_application/signup-login-pages/forgetpassword.dart';
 import 'package:flutter_application/signup-login-pages/signup.dart';
 
-// import 'package:ajial/signup_screen.dart'; // كمثال لصفحة التسجيل
-// import 'package:ajial/home_screen.dart'; // كمثال للصفحة الرئيسية
-// import 'package:ajial/forgot_password_screen.dart'; // كمثال لصفحة نسيت كلمة المرور
-
 // --- Global Constants ---
-// اللون الأساسي للمشروع
 const Color kPrimaryColor = Color(0xFFBF092F);
-// اسم الخط الأساسي
 const String kFontFamily = 'IBM Plex Sans Arabic';
+
+// --- تعديل: إضافة كلاس مساعد لتأثير التلاشي (للانتقالات الأخرى) ---
+// (هذا هو الكلاس البسيط الذي استخدمناه سابقاً)
+class FadePageRoute<T> extends PageRouteBuilder<T> {
+  final Widget child;
+  FadePageRoute({required this.child})
+      : super(
+          pageBuilder: (context, animation, secondaryAnimation) => child,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 300), // سرعة تلاشي عادية
+        );
+}
+// --- نهاية الإضافة ---
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -23,19 +35,32 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // مفتاح الفورم للـ Validation
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers لمتابعة النص في الحقول
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // متغير لإدارة إظهار/إخفاء كلمة المرور
   bool _isPasswordVisible = false;
+  bool _isUsernameValid = false;
+
+  bool _validateUsername(String value) {
+    return value.isNotEmpty && !value.contains(' ');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameController.addListener(() {
+      if (mounted) {
+        setState(() {
+          _isUsernameValid = _validateUsername(_usernameController.text);
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
-    // التخلص من الـ Controllers
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -43,178 +68,219 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// دالة للـ Validation والـ Submit
   void _submitForm() {
-    // عمل validate للفورم
     if (_formKey.currentState!.validate()) {
-      // --- هنا يتم إرسال البيانات للـ Backend للتحقق ---
       print('Form is valid and ready to login!');
-      print('Username: ${_usernameController.text}');
-      print('Password: ${_passwordController.text}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('جاري تسجيل الدخول...')),
+      );
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('جاري تسجيل الدخول...')));
-
-      // --- *** مكان الانتقال للصفحة الرئيسية بعد تسجيل الدخول *** ---
-      // شيل الكومنت وحط اسم الصفحة اللي عاوز تروحها (زي HomeScreen مثلاً)
-
+      // --- *** بداية التعديل المطلوب *** ---
+      // تم استبدال MaterialPageRoute بالكود المخصص من OnboardingScreen
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        PageRouteBuilder(
+          // 1. الصفحة المستهدفة هي HomeScreen
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const HomeScreen(),
+          
+          // 2. نفس تأثير التلاشي من ملف Onboarding
+          transitionsBuilder:
+              (context, animation, secondaryAnimation, child) {
+            const begin = 0.0;
+            const end = 1.0;
+            const curve = Curves.ease;
+
+            var tween = Tween(
+              begin: begin,
+              end: end,
+            ).chain(CurveTween(curve: curve));
+
+            return FadeTransition(
+              opacity: animation.drive(tween),
+              child: child,
+            );
+          },
+          
+          // 3. نفس مدة الانتقال (700ms)
+          transitionDuration: const Duration(
+            milliseconds: 700,
+          ),
+        ),
       );
+      // --- *** نهاية التعديل المطلوب *** ---
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24.0,
-              vertical: 20.0,
+        // (هيكل الصفحة بالـ Column والـ Expanded كما هو)
+        child: Column(
+          children: [
+            // --- 1. المحتوى القابل للـ Scroll ---
+            Expanded(
+              child: SingleChildScrollView(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 600,
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth > 600 ? 40.0 : 24.0,
+                        vertical: 20.0,
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            SizedBox(height: screenHeight * 0.03),
+                            Center(
+                              child: Image.asset(
+                                'images/main-logo.png',
+                                width: screenHeight * 0.15,
+                                height: screenHeight * 0.15,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Icon(
+                                  Icons.group,
+                                  size: screenHeight * 0.15,
+                                  color: kPrimaryColor,
+                                ),
+                              ),
+                            ),
+                            const Center(
+                              child: Text(
+                                'تسجيل الدخول',
+                                style: TextStyle(
+                                  fontFamily: kFontFamily,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Center(
+                              child: Text(
+                                'سجل الدخول لتستمر في رحلتك',
+                                style: TextStyle(
+                                  fontFamily: kFontFamily,
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            SizedBox(height: screenHeight * 0.04),
+                            _buildLabel('اسم المستخدم *'),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _usernameController,
+                              decoration: _buildInputDecoration(
+                                hintText: 'اكتب اسم المستخدم بدون مسافات...',
+                                suffixIcon: _usernameController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.close,
+                                            color: Colors.grey),
+                                        onPressed: () =>
+                                            _usernameController.clear(),
+                                      )
+                                    : null,
+                                borderColor:
+                                    _isUsernameValid ? Colors.green : null,
+                                focusedBorderColor:
+                                    _isUsernameValid ? Colors.green : null,
+                              ),
+                              keyboardType: TextInputType.text,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'اسم المستخدم مطلوب';
+                                }
+                                if (value.contains(' ')) {
+                                  return 'اسم المستخدم لا يحتوي على مسافات';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            _buildLabel('كلمة المرور *'),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: !_isPasswordVisible,
+                              decoration: _buildInputDecoration(
+                                hintText: 'كلمة المرور',
+                                prefixIcon: IconButton(
+                                  padding: const EdgeInsets.only(left: 15),
+                                  icon: Icon(
+                                    _isPasswordVisible
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: Colors.grey,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isPasswordVisible = !_isPasswordVisible;
+                                    });
+                                  },
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'كلمة المرور مطلوبة';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () {
+                                  // --- (هنا يمكنك استخدام التأثير البسيط) ---
+                                  Navigator.push(
+                                    context,
+                                    FadePageRoute(
+                                      child: const ForgotPasswordScreen(),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'نسيت كلمة المرور؟',
+                                  style: TextStyle(
+                                    fontFamily: kFontFamily,
+                                    color: kPrimaryColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-            child: Form(
-              key: _formKey,
-              // تفعيل الـ validation بمجرد الكتابة
-              autovalidateMode: AutovalidateMode.onUserInteraction,
+            
+            // --- 2. الأزرار الثابتة في الأسفل (كما هي) ---
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
               child: Column(
-                // محاذاة كل شيء لليمين (العناوين)
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const SizedBox(height: 40),
-                  // --- اللوجو ---
-                  Center(
-                    child: Image.asset(
-                      'images/main-logo.png', // لينك الصورة المؤقت
-                      width: 120,
-                      height: 120,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.group,
-                        size: 120,
-                        color: kPrimaryColor,
-                      ),
-                    ),
-                  ),
-                  // const SizedBox(height: 6),
-
-                  // --- العناوين ---
-                  const Center(
-                    child: Text(
-                      'تسجيل الدخول',
-                      style: TextStyle(
-                        fontFamily: kFontFamily,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      'سجل الدخول لتستمر في رحلتك',
-                      style: TextStyle(
-                        fontFamily: kFontFamily,
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // --- حقل اسم المستخدم ---
-                  _buildLabel('اسم المستخدم *'),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _usernameController,
-                    decoration: _buildInputDecoration(
-                      hintText: 'اكتب اسم المستخدم بدون مسافات...',
-                    ),
-                    keyboardType: TextInputType.text,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'اسم المستخدم مطلوب';
-                      }
-                      if (value.contains(' ')) {
-                        return 'اسم المستخدم لا يحتوي على مسافات';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-
-                  // --- حقل كلمة المرور ---
-                  _buildLabel('كلمة المرور *'),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText:
-                        !_isPasswordVisible, // للتحكم في إظهار/إخفاء النص
-                    decoration: _buildInputDecoration(
-                      hintText: 'كلمة المرور',
-                      // أيقونة العين (في البداية حسب التصميم)
-                      prefixIcon: IconButton(
-                        padding: EdgeInsets.only(left: 15),
-                        icon: Icon(
-                          _isPasswordVisible
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                          color: Colors.grey,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isPasswordVisible = !_isPasswordVisible;
-                          });
-                        },
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'كلمة المرور مطلوبة';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  // --- رابط "نسيت كلمة المرور؟" ---
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        // --- *** مكان الانتقال لصفحة نسيت كلمة المرور *** ---
-                        // شيل الكومنت وحط اسم صفحة استعادة كلمة المرور
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ForgotPasswordScreen(),
-                          ),
-                        );
-
-                        print('Navigate to Forgot Password');
-                      },
-                      child: const Text(
-                        'نسيت كلمة المرور؟',
-                        style: TextStyle(
-                          fontFamily: kFontFamily,
-                          color: kPrimaryColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // --- زر "تسجيل الدخول" ---
                   ElevatedButton(
-                    onPressed: _submitForm, // دالة الـ Submit
+                    onPressed: _submitForm,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kPrimaryColor,
-                      minimumSize: const Size(double.infinity, 50), // عرض كامل
+                      minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(50),
                       ),
@@ -230,23 +296,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-
-                  // --- رابط "انشاء حساب جديد" ---
+                  const SizedBox(height: 16),
                   Center(
                     child: TextButton(
                       onPressed: () {
-                        // --- *** مكان الانتقال لصفحة انشاء حساب جديد *** ---
-                        // شيل الكومنت وحط اسم صفحة التسجيل (SignUpScreen)
-
+                        // --- (هنا يمكنك استخدام التأثير البسيط) ---
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => const SignUpScreen(),
-                          ),
+                          FadePageRoute(child: const SignUpScreen()),
                         );
-
-                        print('Navigate to Sign Up Screen');
                       },
                       child: RichText(
                         text: const TextSpan(
@@ -271,30 +329,54 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
                 ],
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  /// دالة لإنشاء الـ Label فوق كل حقل
+  /// (دالة _buildLabel مع النجمة الحمراء كما هي)
   Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontFamily: kFontFamily,
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Colors.black,
-      ),
-    );
+    if (text.endsWith(' *')) {
+      final String label = text.substring(0, text.length - 2);
+      final String asterisk = ' *';
+      return RichText(
+        text: TextSpan(
+          style: const TextStyle(
+            fontFamily: kFontFamily,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.black,
+          ),
+          children: [
+            TextSpan(text: label),
+            TextSpan(
+              text: asterisk,
+              style: const TextStyle(
+                color: kPrimaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Text(
+        text,
+        style: const TextStyle(
+          fontFamily: kFontFamily,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Colors.black,
+        ),
+      );
+    }
   }
 
-  /// دالة لتوحيد شكل الـ InputDecoration (مستخدمة من الكود السابق)
+  /// (دالة _buildInputDecoration مع التركيز الأسود كما هي)
   InputDecoration _buildInputDecoration({
     required String hintText,
     Widget? prefixIcon,
@@ -304,9 +386,8 @@ class _LoginScreenState extends State<LoginScreen> {
     Color? errorColor,
   }) {
     final defaultBorderColor = borderColor ?? Colors.grey[400]!;
-    final defaultFocusedBorderColor = focusedBorderColor ?? kPrimaryColor;
+    final defaultFocusedBorderColor = focusedBorderColor ?? Colors.black;
     final defaultErrorBorderColor = errorColor ?? kPrimaryColor;
-
     return InputDecoration(
       hintText: hintText,
       hintStyle: const TextStyle(fontFamily: kFontFamily, color: Colors.grey),

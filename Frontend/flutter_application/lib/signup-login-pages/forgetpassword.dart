@@ -1,8 +1,7 @@
-// --- forgetpassword.dart ---
+// --- forgetpassword.dart (Updated with New Back Button Style) ---
 
 import 'package:flutter/material.dart';
 import 'package:flutter_application/signup-login-pages/verifyemail.dart';
-// import 'package:ajial/login_screen.dart'; // كمثال
 
 // --- Global Constants ---
 const Color kPrimaryColor = Color(0xFFBF092F);
@@ -19,10 +18,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
-  // --- تعديل: متغير لمتابعة حالة الإيميل (للحد الأخضر) ---
   bool _isEmailValid = false;
 
-  // --- تعديل: دالة للتحقق من الإيميل ---
   bool _validateEmail(String value) {
     if (value.isEmpty) return false;
     return RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value);
@@ -31,7 +28,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   void initState() {
     super.initState();
-    // --- تعديل: مراقبة حقل الإيميل لزر X والحد الأخضر ---
     _emailController.addListener(() {
       if (mounted) {
         setState(() {
@@ -47,184 +43,235 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  /// دالة للـ Validation والـ Submit
+  /// دالة للـ Validation والـ Submit (كما هي)
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
-      // --- هنا يتم إرسال الإيميل للـ Backend ---
       print('Sending password reset email to: ${_emailController.text}');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('جاري إرسال رابط استعادة كلمة المرور...')),
       );
-
-      // --- *** مكان الانتقال لصفحة (ادخال الكود) أو (اعادة التعيين) *** ---
-      // شيل الكومنت وحط اسم الصفحة اللي عاوز تروحها
-
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => VerifyEmailScreen(email: _emailController.text),
-        ), // كمثال
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // --- تعديل: تعريف ألوان الزر الجديد ---
+    // (يمكنك نقلها للـ Global Constants إذا أردت)
+    final Color mainRed = kPrimaryColor;
+    final Color lightPink = kPrimaryColor.withOpacity(0.1); // لون وردي فاتح
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24.0,
-              vertical: 20.0,
-            ),
-            child: Form(
-              key: _formKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: Column(
-                children: [
-                  // --- أيقونة الرجوع المطلوبة ---
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.arrow_forward,
-                        color: kPrimaryColor,
-                        size: 30,
-                      ),
-                      onPressed: () {
-                        // --- لوجيك الرجوع للصفحة السابقة ---
-                        Navigator.pop(context);
-                      },
+        child: Column(
+          children: [
+            // --- 1. المحتوى القابل للـ Scroll ---
+            Expanded(
+              child: SingleChildScrollView(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 600,
                     ),
-                  ),
-                  const SizedBox(height: 30),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth > 600 ? 40.0 : 24.0,
+                        vertical: 20.0,
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            // --- تعديل: تم استبدال زر الرجوع القديم بالجديد ---
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: lightPink, // <-- اللون الجديد
+                                  shape: BoxShape.circle,
+                                ),
+                                child: IconButton(
+                                  icon: Icon(
+                                    Icons.arrow_forward, // <-- أيقونة الرجوع لليمين (RTL)
+                                    color: mainRed, // <-- اللون الجديد
+                                    size: 24,
+                                  ),
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ),
+                            ),
+                            // --- نهاية التعديل ---
 
-                  // --- اللوجو ---
-                  Center(
-                    child: Image.asset(
-                      'images/main-logo.png',
-                      width: 120,
-                      height: 120,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.group,
-                        size: 120,
-                        color: kPrimaryColor,
-                      ),
-                    ),
-                  ),
-                  // const SizedBox(height: 16),
+                            SizedBox(height: screenHeight * 0.03),
 
-                  // --- العناوين ---
-                  const Center(
-                    child: Text(
-                      'نسيت كلمة المرور!',
-                      style: TextStyle(
-                        fontFamily: kFontFamily,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      'من فضلك ادخل البيانات بعناية',
-                      style: TextStyle(
-                        fontFamily: kFontFamily,
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
+                            // --- اللوجو ---
+                            Center(
+                              child: Image.asset(
+                                'images/main-logo.png',
+                                width: screenHeight * 0.15,
+                                height: screenHeight * 0.15,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Icon(
+                                  Icons.group,
+                                  size: screenHeight * 0.15,
+                                  color: kPrimaryColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
 
-                  // --- حقل البريد الالكتروني ---
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: _buildLabel('البريد الالكتروني *'),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _emailController,
-                    // --- تعديل: إجباري LTR ---
-                    textDirection: TextDirection.ltr,
-                    textAlign: TextAlign.left,
-                    decoration: _buildInputDecoration(
-                      hintText: 'اكتب بريدك الالكتروني هنا...',
-                      // --- تعديل: زر X للمسح ---
-                      suffixIcon: _emailController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.close, color: Colors.grey),
-                              onPressed: () => _emailController.clear(),
-                            )
-                          : null,
-                      // --- تعديل: لوجيك الحد الأخضر ---
-                      borderColor: _isEmailValid ? Colors.green : null,
-                      focusedBorderColor: _isEmailValid
-                          ? Colors.green
-                          : kPrimaryColor,
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'البريد الالكتروني مطلوب';
-                      }
-                      if (!_validateEmail(value)) {
-                        return 'صيغة بريد الكتروني غير صحيحة';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 270),
+                            // --- العناوين ---
+                            const Center(
+                              child: Text(
+                                'نسيت كلمة المرور!',
+                                style: TextStyle(
+                                  fontFamily: kFontFamily,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Center(
+                              child: Text(
+                                'من فضلك ادخل البيانات بعناية',
+                                style: TextStyle(
+                                  fontFamily: kFontFamily,
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            SizedBox(height: screenHeight * 0.04),
 
-                  // --- زر "تأكيد" ---
-                  ElevatedButton(
-                    onPressed: _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimaryColor,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text(
-                      'تأكيد',
-                      style: TextStyle(
-                        fontFamily: kFontFamily,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                            // --- حقل البريد الالكتروني ---
+                            _buildLabel('البريد الالكتروني *'),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _emailController,
+                              decoration: _buildInputDecoration(
+                                hintText: 'اكتب بريدك الالكتروني هنا...',
+                                suffixIcon: _emailController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.close,
+                                            color: Colors.grey),
+                                        onPressed: () =>
+                                            _emailController.clear(),
+                                      )
+                                    : null,
+                                borderColor:
+                                    _isEmailValid ? Colors.green : null,
+                                focusedBorderColor:
+                                    _isEmailValid ? Colors.green : null,
+                              ),
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'البريد الالكتروني مطلوب';
+                                }
+                                if (!_validateEmail(value)) {
+                                  return 'صيغة بريد الكتروني غير صحيحة';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
+            
+            // --- 2. الزر الثابت في الأسفل ---
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+              child: ElevatedButton(
+                onPressed: _submitForm,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimaryColor,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text(
+                  'تأكيد',
+                  style: TextStyle(
+                    fontFamily: kFontFamily,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  /// دالة لإنشاء الـ Label فوق كل حقل
+  /// (دالة _buildLabel مع النجمة الحمراء كما هي)
   Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontFamily: kFontFamily,
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Colors.black,
-      ),
-    );
+    if (text.endsWith(' *')) {
+      final String label = text.substring(0, text.length - 2);
+      final String asterisk = ' *';
+      return RichText(
+        text: TextSpan(
+          style: const TextStyle(
+            fontFamily: kFontFamily,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.black,
+          ),
+          children: [
+            TextSpan(text: label),
+            TextSpan(
+              text: asterisk,
+              style: const TextStyle(
+                color: kPrimaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Text(
+        text,
+        style: const TextStyle(
+          fontFamily: kFontFamily,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Colors.black,
+        ),
+      );
+    }
   }
 
-  /// دالة لتوحيد شكل الـ InputDecoration (مستخدمة من الكود السابق)
+  /// (دالة _buildInputDecoration مع التركيز الأسود كما هي)
   InputDecoration _buildInputDecoration({
     required String hintText,
     Widget? prefixIcon,
@@ -234,9 +281,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     Color? errorColor,
   }) {
     final defaultBorderColor = borderColor ?? Colors.grey[400]!;
-    final defaultFocusedBorderColor = focusedBorderColor ?? kPrimaryColor;
+    final defaultFocusedBorderColor = focusedBorderColor ?? Colors.black;
     final defaultErrorBorderColor = errorColor ?? kPrimaryColor;
-
     return InputDecoration(
       hintText: hintText,
       hintStyle: const TextStyle(fontFamily: kFontFamily, color: Colors.grey),

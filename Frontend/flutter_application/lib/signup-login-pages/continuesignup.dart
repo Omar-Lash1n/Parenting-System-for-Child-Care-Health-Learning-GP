@@ -1,420 +1,511 @@
-// // --- continuesignup.dart ---
+// --- data_entry_page.dart (Updated with Sticky Buttons & Fade Transition) ---
 
-// import 'package:flutter/material.dart';
-// import 'package:flutter_application/signup-login-pages/login.dart';
-// import 'package:dropdown_search/dropdown_search.dart';
-// import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_application/signup-login-pages/login.dart';
+import 'package:intl/intl.dart'; // لتنسيق التاريخ
 
-// // --- Global Constants ---
-// const Color kPrimaryColor = Color(0xFFBF092F);
-// const String kFontFamily = 'IBM Plex Sans Arabic';
+// --- Global Constants ---
+const Color kPrimaryColor = Color(0xFFC7002B);
+const Color kMainRed = Color(0xFFBF092F);
+const Color kFontBlack = Colors.black;
+const String kFontFamily = 'IBM Plex Sans Arabic';
+const String kLogoImagePath = 'images/logo-primary-color.png'; // (افترض أنه 'images/main-logo.png' ليطابق الصفحات الأخرى)
 
-// // --- شاشة متابعة التسجيل ---
-// class ContinueSignUpScreen extends StatefulWidget {
-//   const ContinueSignUpScreen({Key? key}) : super(key: key);
+// --- تعديل: إضافة كلاس مساعد لتأثير التلاشي ---
+class FadePageRoute<T> extends PageRouteBuilder<T> {
+  final Widget child;
+  FadePageRoute({required this.child})
+      : super(
+          pageBuilder: (context, animation, secondaryAnimation) => child,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 300), // سرعة تلاشي عادية
+        );
+}
+// --- نهاية الإضافة ---
 
-//   @override
-//   _ContinueSignUpScreenState createState() => _ContinueSignUpScreenState();
-// }
+class DataEntryPage extends StatefulWidget {
+  const DataEntryPage({super.key});
 
-// class _ContinueSignUpScreenState extends State<ContinueSignUpScreen> {
-//   final _formKey = GlobalKey<FormState>();
-//   final _dobController = TextEditingController(); // لحقل تاريخ الميلاد
+  @override
+  _DataEntryPageState createState() => _DataEntryPageState();
+}
 
-//   String? _selectedCity; // المدينة المختارة
-//   int? _selectedRoleIndex; // الاختيار (0=مربي, 1=أم, 2=أب)
-//   final List<String> _roles = const ['مربي', 'أم', 'أب'];
+class _DataEntryPageState extends State<DataEntryPage> {
+  String? _selectedCity;
+  DateTime? _selectedDateOfBirth;
+  String? _selectedRole; // 'أب', 'أم', 'مربي'
+  
 
-  // // قائمة المدن والمحافظات المصرية
-  // final List<String> _egyptianCities = [
-  //   'القاهرة', 'الجيزة', 'الإسكندرية', 'الدقهلية', 'الشرقية', 'المنوفية',
-  //   'القليوبية', 'البحيرة', 'الغربية', 'بورسعيد', 'دمياط', 'الإسماعيلية',
-  //   'السويس', 'كفر الشيخ', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
-  //   'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'البحر الأحمر', 'الوادي الجديد',
-  //   'مطروح', 'شمال سيناء', 'جنوب سيناء', 'حلوان', '6 أكتوبر', 'المنصورة',
-  //   'طنطا', 'الزقازيق', 'المحلة الكبرى', 'شبرا الخيمة', 'دهب', 'شرم الشيخ',
-  //   'الغردقة', 'العريش', 'رفح', 'الشيخ زويد', 'العاشر من رمضان', 'مدينة السادات'
-  // ];
+  // (قائمة المدن كما هي)
+  final List<String> _cities = [
+    'القاهرة', 'الجيزة', 'الإسكندرية', 'الدقهلية', 'الشرقية', 'المنوفية',
+    'القليوبية', 'البحيرة', 'الغربية', 'بورسعيد', 'دمياط', 'الإسماعماعيلية',
+    'السويس', 'كفر الشيخ', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
+    'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'البحر الأحمر', 'الوادي الجديد',
+    'مطروح', 'شمال سيناء', 'جنوب سيناء', 'حلوان', '6 أكتوبر', 'المنصورة',
+    'طنطا', 'الزقازيق', 'المحلة الكبرى', 'شبرا الخيمة', 'دهب', 'شرم الشيخ',
+    'الغردقة', 'العريش', 'رفح', 'الشيخ زويد', 'العاشر من رمضان', 'مدينة السادات'
+  ];
 
-//   @override
-//   void dispose() {
-//     _dobController.dispose();
-//     super.dispose();
-//   }
+  /// دالة عرض منتقي التاريخ (Date Picker) (كما هي)
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDateOfBirth ?? DateTime(DateTime.now().year - 20),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      locale: const Locale('ar'),
+      builder: (BuildContext context, Widget? child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: ColorScheme.light(
+              primary: kMainRed,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+            dialogBackgroundColor: Colors.white,
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != _selectedDateOfBirth) {
+      setState(() {
+        _selectedDateOfBirth = picked;
+      });
+    }
+  }
 
-//   /// دالة لإظهار منتقي التاريخ (Calendar Picker)
-//   Future<void> _pickDate() async {
-//     DateTime? pickedDate = await showDatePicker(
-//       context: context,
-//       initialDate: DateTime.now(), // تاريخ اليوم
-//       firstDate: DateTime(1920), // أقدم تاريخ ميلاد ممكن
-//       lastDate: DateTime.now(), // لا يمكن اختيار تاريخ في المستقبل
-//       locale: const Locale('ar'), // تفعيل اللغة العربية للـ Picker
-//       builder: (context, child) {
-//         // ستايل للـ Picker عشان يمشي مع لون التطبيق
-//         return Theme(
-//           data: Theme.of(context).copyWith(
-//             colorScheme: const ColorScheme.light(
-//               primary: kPrimaryColor, // لون الهيدر واليوم المختار
-//               onPrimary: Colors.white,
-//               onSurface: Colors.black,
-//             ),
-//             textButtonTheme: TextButtonThemeData(
-//               style: TextButton.styleFrom(
-//                 foregroundColor: kPrimaryColor, // لون أزرار (OK/Cancel)
-//               ),
-//             ),
-//           ),
-//           child: child!,
-//         );
-//       },
-//     );
+  /// دالة لمعالجة البيانات (مع تعديل الانتقال)
+  void _submitForm() {
+    if (_selectedCity == null ||
+        _selectedDateOfBirth == null ||
+        _selectedRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'الرجاء تعبئة جميع الحقول المطلوبة',
+            style: TextStyle(fontFamily: kFontFamily),
+          ),
+          backgroundColor: kMainRed,
+        ),
+      );
+      return;
+    }
 
-//     if (pickedDate != null) {
-//       // تنسيق التاريخ بالشكل المطلوب (yyyy/MM/dd)
-//       String formattedDate = DateFormat('yyyy/MM/dd').format(pickedDate);
-//       setState(() {
-//         _dobController.text = formattedDate; // وضع التاريخ في الحقل
-//       });
-//     }
-//   }
+    print('Form Submitted!');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'تم انشاء الحساب بنجاح!',
+          style: TextStyle(fontFamily: kFontFamily),
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
 
-//   /// دالة للـ Validation والـ Submit
-//   void _submitForm() {
-//     // التحقق من أن المستخدم اختار دور (أب/أم/مربي)
-//     if (_selectedRoleIndex == null) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         const SnackBar(
-//           content: Text('الرجاء تحديد "من أنت؟" أولاً',
-//               style: TextStyle(fontFamily: kFontFamily)),
-//           backgroundColor: kPrimaryColor,
-//         ),
-//       );
-//       return; // أوقف التنفيذ
-//     }
+    // --- تعديل: استخدام FadePageRoute للانتقال ---
+    Navigator.pushReplacement(
+      context,
+      FadePageRoute(child: const LoginScreen()),
+    );
+  }
 
-//     // التحقق من باقي الفورم (المدينة وتاريخ الميلاد)
-//     if (_formKey.currentState!.validate()) {
-//       // --- هنا يتم إرسال البيانات للـ Backend ---
-//       print('Form is valid!');
-//       print('City: $_selectedCity');
-//       print('Date of Birth: ${_dobController.text}');
-//       print('Role: ${_roles[_selectedRoleIndex!]}');
+  @override
+  Widget build(BuildContext context) {
+    // --- تعديل: جلب أبعاد الشاشة للاستجابة ---
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
 
-//       // --- *** مكان الانتقال للصفحة التالية بعد انشاء الحساب *** ---
-//       // شيل الكومنت وحط اسم الصفحة اللي عاوز تروحها
-//       /*
-//       Navigator.pushReplacement(
-//         context,
-//         MaterialPageRoute(builder: (context) => const HomeScreen()), 
-//       );
-//       */
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         const SnackBar(
-//           content: Text('تم انشاء الحساب بنجاح!',
-//               style: TextStyle(fontFamily: kFontFamily)),
-//           backgroundColor: Colors.green,
-//         ),
-//       );
-//     }
-//   }
+    // (الثوابت كما هي)
+    const double mainButtonHeight = 55.0;
+    const double fieldAndRoleButtonHeight = 50.0;
+    const double mainBorderRadius = 50.0; // <-- تعديل ليتطابق (50)
+    const double fieldBorderRadius = 50.0; // <-- تعديل ليتطابق (50)
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       body: SafeArea(
-//         child: SingleChildScrollView(
-//           child: Padding(
-//             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-//             child: Form(
-//               key: _formKey,
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.end,
-//                 children: [
-//                   const SizedBox(height: 40),
-//                   // --- اللوجو ---
-//                   Center(
-//                     child: Image.asset(
-//                       'images/main-logo.png',
-//                       width: 80,
-//                       height: 80,
-//                       errorBuilder: (context, error, stackTrace) =>
-//                           const Icon(Icons.group, size: 80, color: kPrimaryColor),
-//                     ),
-//                   ),
-//                   const SizedBox(height: 16),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        toolbarHeight: 0,
+        automaticallyImplyLeading: false, // (إخفاء سهم الرجوع الافتراضي)
+      ),
+      // --- تعديل: استخدام Column لتقسيم الشاشة (محتوى + أزرار) ---
+      body: SafeArea(
+        child: Column(
+          children: [
+            // --- 1. المحتوى القابل للـ Scroll ---
+            Expanded(
+              child: SingleChildScrollView(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 600, // لدعم التابلت
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth > 600 ? 40.0 : 24.0, // بادنج متجاوب
+                        vertical: 20.0,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          // --- اللوجو والعنوان ---
+                          SizedBox(height: screenHeight * 0.02), // (مسافة أقل)
+                          Center(
+                            child: Image.asset(
+                              'images/main-logo.png', // <-- (توحيد المسار)
+                              height: screenHeight * 0.15, // (حجم متجاوب)
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildHeaderLabel(
+                            'تابع ادخال البيانات',
+                            fontSize: 26, // (حجم موحد)
+                            fontWeight: FontWeight.bold,
+                          ),
+                          const SizedBox(height: 4), // (مسافة أقل)
+                          _buildHeaderLabel(
+                            'من فضلك ادخل البيانات بعناية',
+                            fontSize: 16, // (حجم موحد)
+                            color: Colors.grey[600],
+                          ),
+                          SizedBox(height: screenHeight * 0.04), // (مسافة متجاوبة)
 
-//                   // --- العناوين ---
-//                   const Center(
-//                     child: Text(
-//                       'تابع ادخال البيانات',
-//                       style: TextStyle(
-//                         fontFamily: kFontFamily,
-//                         fontSize: 26,
-//                         fontWeight: FontWeight.bold,
-//                       ),
-//                       textAlign: TextAlign.center,
-//                     ),
-//                   ),
-//                   const SizedBox(height: 8),
-//                   Center(
-//                     child: Text(
-//                       'من فضلك ادخل البيانات بعناية',
-//                       style: TextStyle(
-//                         fontFamily: kFontFamily,
-//                         fontSize: 16,
-//                         color: Colors.grey[600],
-//                       ),
-//                       textAlign: TextAlign.center,
-//                     ),
-//                   ),
-//                   const SizedBox(height: 40),
+                          // --- 1. حقل اختيار المدينة ---
+                          _buildFieldLabel('المدينة *'), // (تمت إضافة النجمة)
+                          const SizedBox(height: 8),
+                          Container(
+                            height: fieldAndRoleButtonHeight,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16.0),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                  color: Colors.grey.shade400, width: 1.5),
+                              borderRadius:
+                                  BorderRadius.circular(fieldBorderRadius),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                hint: Text(
+                                  'اختر مدينتك من القائمة',
+                                  style: TextStyle(
+                                    fontFamily: kFontFamily,
+                                    color: Colors.grey.shade600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                value: _selectedCity,
+                                icon: const Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: Colors.grey,
+                                ),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    _selectedCity = newValue;
+                                  });
+                                },
+                                items: _cities.map<DropdownMenuItem<String>>(
+                                    (String value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        value,
+                                        style: const TextStyle(
+                                          fontFamily: kFontFamily,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
 
-//                   // --- حقل المدينة (Dropdown قابل للبحث) ---
-//                   _buildLabel('المدينة *'),
-//                   const SizedBox(height: 8),
-//                   DropdownSearch<String>(
-//                     mode: Mode.MODAL, // يفتح في شاشة جديدة
-//                     showSearchBox: true, // تفعيل صندوق البحث
-//                     items: _egyptianCities, // قائمة المدن
-//                     // ستايل الـ Dropdown عشان يطابق الـ TextFormField
-//                     dropdownSearchDecoration: _buildInputDecoration(
-//                       hintText: 'اختر مدينتك من القائمة',
-//                       // الأيقونة اللي بتظهر (السهم)
-//                       suffixIcon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-//                     ),
-//                     // ستايل صندوق البحث داخل الـ Modal
-//                     searchFieldProps: TextFieldProps(
-//                       textDirection: TextDirection.rtl, // الكتابة عربي
-//                       decoration: _buildInputDecoration(
-//                         hintText: 'ابحث عن مدينتك...',
-//                         prefixIcon: const Icon(Icons.search, color: kPrimaryColor),
-//                       ),
-//                       style: const TextStyle(fontFamily: kFontFamily),
-//                     ),
-//                     // ستايل الـ Modal
-//                     modalSheetProps: ModalSheetProps(
-//                       shape: RoundedRectangleBorder(
-//                         borderRadius: BorderRadius.circular(20),
-//                       ),
-//                     ),
-//                     onChanged: (value) {
-//                       setState(() {
-//                         _selectedCity = value;
-//                       });
-//                     },
-//                     validator: (value) {
-//                       if (value == null) {
-//                         return 'الرجاء اختيار مدينتك';
-//                       }
-//                       return null;
-//                     },
-//                     // لضمان أن الـ hint يظهر من اليمين
-//                     popupProps: PopupProps.modal(
-//                       itemBuilder: (context, item, isSelected) {
-//                         return ListTile(
-//                           title: Text(item,
-//                               style: const TextStyle(fontFamily: kFontFamily),
-//                               textAlign: TextAlign.right),
-//                         );
-//                       },
-//                     ),
-//                   ),
-//                   const SizedBox(height: 20),
+                          // --- 2. حقل تاريخ الميلاد ---
+                          _buildFieldLabel('تاريخ الميلاد *'), // (تمت إضافة النجمة)
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: () => _selectDate(context),
+                            child: Container(
+                              height: fieldAndRoleButtonHeight,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16.0),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                    color: Colors.grey.shade400, width: 1.5),
+                                borderRadius:
+                                    BorderRadius.circular(fieldBorderRadius),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end, // (لضمان المحاذاة يميناً)
+                                children: <Widget>[
+                                  Text(
+                                    _selectedDateOfBirth == null
+                                        ? 'اضغط لإدخال تاريخ الميلاد'
+                                        : DateFormat('yyyy/MM/dd')
+                                            .format(_selectedDateOfBirth!),
+                                    style: TextStyle(
+                                      fontFamily: kFontFamily,
+                                      fontSize: 15,
+                                      color: _selectedDateOfBirth == null
+                                          ? Colors.grey.shade600
+                                          : kFontBlack,
+                                    ),
+                                  ),
+                                  const Spacer(), // (لدفع الأيقونة لليسار)
+                                  const Icon(
+                                    Icons.calendar_today_outlined,
+                                    color: Colors.grey,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
 
-//                   // --- حقل تاريخ الميلاد (Picker) ---
-//                   _buildLabel('تاريخ الميلاد *'),
-//                   const SizedBox(height: 8),
-//                   TextFormField(
-//                     controller: _dobController,
-//                     readOnly: true, // يمنع الكتابة اليدوية
-//                     decoration: _buildInputDecoration(
-//                       hintText: 'اضغط لادخال تاريخ الميلاد',
-//                       // أيقونة الـ Calendar
-//                       prefixIcon: const Icon(Icons.calendar_today_outlined, color: Colors.grey),
-//                     ),
-//                     onTap: _pickDate, // فتح الـ Picker عند الضغط
-//                     validator: (value) {
-//                       if (value == null || value.isEmpty) {
-//                         return 'تاريخ الميلاد مطلوب';
-//                       }
-//                       return null;
-//                     },
-//                   ),
-//                   const SizedBox(height: 20),
+                          // --- 3. حقول اختيار الدور (أب، أم، مربي) ---
+                          _buildFieldLabel('من أنت؟ *'), // (تمت إضافة النجمة)
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: <Widget>[
+                              _buildRoleButton(
+                                  'مربي', fieldAndRoleButtonHeight, fieldBorderRadius),
+                              const SizedBox(width: 10),
+                              _buildRoleButton(
+                                  'أم', fieldAndRoleButtonHeight, fieldBorderRadius),
+                              const SizedBox(width: 10),
+                              _buildRoleButton(
+                                  'أب', fieldAndRoleButtonHeight, fieldBorderRadius),
+                            ].reversed.toList(), // (للحفاظ على الترتيب أب، أم، مربي)
+                          ),
+                          
+                          // --- تعديل: تم حذف الأزرار من هنا ---
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            
+            // --- 2. الأزرار الثابتة في الأسفل ---
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+              child: Column(
+                children: [
+                  // --- 4. زر إنشاء حساب جديد ---
+                  SizedBox(
+                    height: mainButtonHeight,
+                    child: ElevatedButton(
+                      onPressed: _submitForm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kMainRed,
+                        minimumSize: const Size(double.infinity, 50), // (للتأكيد)
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(mainBorderRadius),
+                        ),
+                      ),
+                      child: const Text(
+                        'انشاء حساب جديد',
+                        style: TextStyle(
+                          fontFamily: kFontFamily,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
 
-//                   // --- اختيارات "من أنت؟" ---
-//                   _buildLabel('من أنت؟ *'),
-//                   const SizedBox(height: 8),
-//                   Center(
-//                     child: ToggleButtons(
-//                       // قائمة الاختيارات
-//                       children: _roles.map((role) {
-//                         return Padding(
-//                           // زيادة المساحة الأفقية لكل زر
-//                           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-//                           child: Text(
-//                             role,
-//                             style: const TextStyle(
-//                               fontFamily: kFontFamily,
-//                               fontSize: 16,
-//                               fontWeight: FontWeight.w600,
-//                             ),
-                            
-//                           ),
-//                         );
-//                       }).toList(),
-//                       // قائمة الـ boolean لتحديد المختار
-//                       isSelected: List<bool>.generate(
-//                           3, (index) => index == _selectedRoleIndex),
-//                       onPressed: (int index) {
-//                         setState(() {
-//                           _selectedRoleIndex = index; // تحديث الاختيار
-//                         });
-//                       },
-//                       // --- ستايل مطابقة الصورة ---
-//                       color: Colors.black, // لون النص غير المختار
-//                       selectedColor: kPrimaryColor, // لون النص المختار (أحمر)
-//                       fillColor: kPrimaryColor.withOpacity(0.1), // الخلفية الحمراء الفاتحة
-//                       borderColor: Colors.grey[400], // لون الحد غير المختار
-//                       selectedBorderColor: kPrimaryColor, // لون الحد المختار (أحمر)
-//                       borderRadius: BorderRadius.circular(12),
-//                       borderWidth: 1.5,
-//                       selectedBorderWidth: 2.0,
-//                       constraints: const BoxConstraints(minHeight: 50.0),
-//                     ),
-//                   ),
-//                   const SizedBox(height: 32),
+                  // --- 5. زر السابق ---
+                  SizedBox(
+                    height: mainButtonHeight,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side:
+                            const BorderSide(color: Colors.black12, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(mainBorderRadius),
+                        ),
+                        minimumSize: const Size(double.infinity, 50), // (للتأكيد)
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          // --- تعديل: أيقونة السهم لليمين (RTL Back) ---
+                          const Icon(
+                            Icons.arrow_forward,
+                            color: kFontBlack,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'السابق',
+                            style: TextStyle(
+                              fontFamily: kFontFamily,
+                              fontSize: 18,
+                              color: kFontBlack,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16), // (مسافة موحدة)
 
-//                   // --- زر "انشاء حساب جديد" ---
-//                   ElevatedButton(
-//                     onPressed: _submitForm, // دالة الـ Submit
-//                     style: ElevatedButton.styleFrom(
-//                       backgroundColor: kPrimaryColor,
-//                       minimumSize: const Size(double.infinity, 50),
-//                       shape: RoundedRectangleBorder(
-//                         borderRadius: BorderRadius.circular(12),
-//                       ),
-//                       padding: const EdgeInsets.symmetric(vertical: 14),
-//                     ),
-//                     child: const Text(
-//                       'انشاء حساب جديد',
-//                       style: TextStyle(
-//                         fontFamily: kFontFamily,
-//                         fontSize: 18,
-//                         fontWeight: FontWeight.bold,
-//                         color: Colors.white,
-//                       ),
-//                     ),
-//                   ),
-//                   const SizedBox(height: 24),
+                  // --- 6. رابط تسجيل الدخول ---
+                  Center(
+                    child: TextButton( // (تم تحويله لـ TextButton ليكون قابلاً للضغط)
+                      onPressed: () {
+                        // --- تعديل: إضافة انتقال بالتلاشي ---
+                        Navigator.push(
+                          context,
+                          FadePageRoute(child: const LoginScreen()),
+                        );
+                      },
+                      child: RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          style: TextStyle(
+                            fontFamily: kFontFamily,
+                            fontSize: 15,
+                            color: Colors.grey[700],
+                          ),
+                          children: <TextSpan>[
+                            const TextSpan(text: 'لديك حساب بالفعل؟ '),
+                            TextSpan(
+                              text: 'تسجيل الدخول',
+                              style: TextStyle(
+                                color: kMainRed,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline, // (إضافة خط)
+                                decorationColor: kMainRed,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-//                   // --- رابط "تسجيل الدخول" ---
-//                   Center(
-//                     child: TextButton(
-//                       onPressed: () {
-//                         // --- *** مكان الانتقال لصفحة تسجيل الدخول *** ---
-//                         // شيل الكومنت وحط اسم صفحة تسجيل الدخول
-                        
-//                         Navigator.pushAndRemoveUntil(
-//                           context,
-//                           MaterialPageRoute(builder: (context) => const LoginScreen()),
-//                           (Route<dynamic> route) => false, // احذف كل الصفحات اللي قبل
-//                         );
-                        
-//                         print('Navigate to Login Screen');
-//                       },
-//                       child: RichText(
-//                         text: const TextSpan(
-//                           style: TextStyle(
-//                               fontFamily: kFontFamily,
-//                               fontSize: 15,
-//                               color: Colors.black87),
-//                           children: [
-//                             TextSpan(text: 'لديك حساب بالفعل؟ '),
-//                             TextSpan(
-//                               text: 'تسجيل الدخول',
-//                               style: TextStyle(
-//                                 color: kPrimaryColor,
-//                                 fontWeight: FontWeight.bold,
-//                                 decoration: TextDecoration.underline,
-//                                 decorationColor: kPrimaryColor,
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                       ),
-//                     ),
-//                   ),
-//                   const SizedBox(height: 20),
-//                 ],
-//               ),
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
+  /// دالة لبناء زر الاختيار (أب/أم/مربي)
+  Widget _buildRoleButton(String role, double height, double radius) {
+    bool isSelected = _selectedRole == role;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedRole = role;
+          });
+        },
+        child: Container(
+          height: height,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            // --- تعديل: لون خلفية موحد (مطابق للصورة) ---
+            color: isSelected ? kMainRed.withOpacity(0.1) : Colors.white,
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(
+              color: isSelected ? kMainRed : Colors.grey.shade400,
+              width: isSelected ? 2.0 : 1.5,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              role,
+              style: TextStyle(
+                fontFamily: kFontFamily,
+                fontSize: 16,
+                // --- تعديل: لون نص موحد (مطابق للصورة) ---
+                color: isSelected ? kMainRed : kFontBlack,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-//   /// دالة لإنشاء الـ Label فوق كل حقل
-//   Widget _buildLabel(String text) {
-//     return Text(
-//       text,
-//       style: const TextStyle(
-//         fontFamily: kFontFamily,
-//         fontSize: 16,
-//         fontWeight: FontWeight.w500,
-//         color: Colors.black,
-//       ),
-//     );
-//   }
+  /// دالة لبناء Labeles العناوين الرئيسية والفرعية
+  Widget _buildHeaderLabel(
+    String text, {
+    double fontSize = 16,
+    FontWeight fontWeight = FontWeight.normal,
+    Color? color,
+  }) {
+    return Align(
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontFamily: kFontFamily,
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          color: color ?? kFontBlack,
+        ),
+      ),
+    );
+  }
 
-//   /// دالة لتوحيد شكل الـ InputDecoration (مستخدمة من الكود السابق)
-//   InputDecoration _buildInputDecoration({
-//     required String hintText,
-//     Widget? prefixIcon,
-//     Widget? suffixIcon,
-//   }) {
-//     final defaultBorderColor = Colors.grey[400]!;
-//     final defaultFocusedBorderColor = kPrimaryColor;
-//     final defaultErrorBorderColor = kPrimaryColor;
+  // --- تعديل: الدالة الجديدة لـ Label مع النجمة الحمراء ---
+  /// دالة لبناء Labeles فوق الحقول
+  Widget _buildFieldLabel(String text) {
+    // (هنا نفترض أن كل الحقول مطلوبة)
+    final String label = text;
+    final String asterisk = ' *';
 
-//     return InputDecoration(
-//       hintText: hintText,
-//       hintStyle: const TextStyle(fontFamily: kFontFamily, color: Colors.grey),
-//       prefixIcon: prefixIcon,
-//       suffixIcon: suffixIcon,
-//       hintTextDirection: TextDirection.rtl,
-//       prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-//       filled: true,
-//       fillColor: Colors.white,
-//       contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-//       border: OutlineInputBorder(
-//         borderRadius: BorderRadius.circular(12),
-//         borderSide: BorderSide(color: defaultBorderColor),
-//       ),
-//       enabledBorder: OutlineInputBorder(
-//         borderRadius: BorderRadius.circular(12),
-//         borderSide: BorderSide(color: defaultBorderColor, width: 1.5),
-//       ),
-//       focusedBorder: OutlineInputBorder(
-//         borderRadius: BorderRadius.circular(12),
-//         borderSide: BorderSide(color: defaultFocusedBorderColor, width: 2.0),
-//       ),
-//       errorBorder: OutlineInputBorder(
-//         borderRadius: BorderRadius.circular(12),
-//         borderSide: BorderSide(color: defaultErrorBorderColor, width: 1.5),
-//       ),
-//       focusedErrorBorder: OutlineInputBorder(
-//         borderRadius: BorderRadius.circular(12),
-//         borderSide: BorderSide(color: defaultErrorBorderColor, width: 2.0),
-//       ),
-//       errorStyle: const TextStyle(
-//         fontFamily: kFontFamily,
-//         color: kPrimaryColor,
-//         fontWeight: FontWeight.w500,
-//       ),
-//     );
-//   }
-// }
+    return Align(
+      alignment: Alignment.centerRight,
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(
+            fontFamily: kFontFamily,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: kFontBlack,
+          ),
+          children: [
+            TextSpan(text: label),
+            TextSpan(
+              text: asterisk,
+              style: const TextStyle(
+                color: kMainRed,
+                fontSize: 18, // (تكبير النجمة قليلاً)
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
