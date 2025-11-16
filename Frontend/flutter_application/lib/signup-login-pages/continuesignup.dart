@@ -1,35 +1,49 @@
 // --- data_entry_page.dart (Updated with Sticky Buttons & Fade Transition) ---
-
 import 'package:flutter/material.dart';
 import 'package:flutter_application/signup-login-pages/login.dart';
 import 'package:intl/intl.dart'; // لتنسيق التاريخ
+import 'package:flutter_application/api/auth_service.dart'; // (تأكد أن المسار صحيح)
 
 // --- Global Constants ---
 const Color kPrimaryColor = Color(0xFFC7002B);
 const Color kMainRed = Color(0xFFBF092F);
 const Color kFontBlack = Colors.black;
 const String kFontFamily = 'IBM Plex Sans Arabic';
-const String kLogoImagePath = 'images/logo-primary-color.png'; // (افترض أنه 'images/main-logo.png' ليطابق الصفحات الأخرى)
+const String kLogoImagePath =
+    'images/logo-primary-color.png'; // (افترض أنه 'images/main-logo.png' ليطابق الصفحات الأخرى)
 
 // --- تعديل: إضافة كلاس مساعد لتأثير التلاشي ---
 class FadePageRoute<T> extends PageRouteBuilder<T> {
   final Widget child;
   FadePageRoute({required this.child})
-      : super(
-          pageBuilder: (context, animation, secondaryAnimation) => child,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 300), // سرعة تلاشي عادية
-        );
+    : super(
+        pageBuilder: (context, animation, secondaryAnimation) => child,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(
+          milliseconds: 300,
+        ), // سرعة تلاشي عادية
+      );
 }
 // --- نهاية الإضافة ---
 
 class DataEntryPage extends StatefulWidget {
-  const DataEntryPage({super.key});
+  // --- *** بداية التعديل المطلوب *** ---
+  // (إضافة متغيرات لاستقبال البيانات من signup.dart)
+  final String fullName;
+  final String username;
+  final String email;
+  final String password;
+
+  const DataEntryPage({
+    super.key,
+    required this.fullName,
+    required this.username,
+    required this.email,
+    required this.password,
+  });
+  // --- *** نهاية التعديل المطلوب *** ---
 
   @override
   _DataEntryPageState createState() => _DataEntryPageState();
@@ -39,18 +53,33 @@ class _DataEntryPageState extends State<DataEntryPage> {
   String? _selectedCity;
   DateTime? _selectedDateOfBirth;
   String? _selectedRole; // 'أب', 'أم', 'مربي'
-  
 
-  // (قائمة المدن كما هي)
-  final List<String> _cities = [
-    'القاهرة', 'الجيزة', 'الإسكندرية', 'الدقهلية', 'الشرقية', 'المنوفية',
-    'القليوبية', 'البحيرة', 'الغربية', 'بورسعيد', 'دمياط', 'الإسماعماعيلية',
-    'السويس', 'كفر الشيخ', 'الفيوم', 'بني سويف', 'المنيا', 'أسيوط',
-    'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'البحر الأحمر', 'الوادي الجديد',
-    'مطروح', 'شمال سيناء', 'جنوب سيناء', 'حلوان', '6 أكتوبر', 'المنصورة',
-    'طنطا', 'الزقازيق', 'المحلة الكبرى', 'شبرا الخيمة', 'دهب', 'شرم الشيخ',
-    'الغردقة', 'العريش', 'رفح', 'الشيخ زويد', 'العاشر من رمضان', 'مدينة السادات'
+  final AuthService _authService = AuthService(); // (للاتصال بالـ API)
+  bool _isLoading = false; // (لإظهار علامة التحميل)
+
+  final List<Map<String, dynamic>> _cities = [
+    {"id": 1, "nameAr": "القاهرة"},
+    {"id": 2, "nameAr": "الإسكندرية"},
+    {"id": 3, "nameAr": "الجيزة"},
+    {"id": 4, "nameAr": "شبرا الخيمة"},
+    {"id": 5, "nameAr": "بورسعيد"},
+    // (يمكنك إضافة باقي المدن بنفس الطريقة عندما يوفرها الـ Backend)
   ];
+
+  int? _selectedCityId;
+
+  // --- *** بداية التعديل المطلوب *** ---
+  /// دالة لتحويل الدور (Role) إلى رقم (Gender ID)
+  int _getGenderId(String? role) {
+    if (role == 'أب') {
+      return 1; // (حسب الـ PDF صفحة 10 و 14) [cite: 186, 231, 413]
+    } else if (role == 'أم') {
+      return 2; // (حسب الـ PDF صفحة 10 و 14) [cite: 187, 241, 413]
+    }
+    // (ملاحظة: "مربي" غير موجود في API التسجيل الحالي)
+    return 0; // قيمة افتراضية
+  }
+  // --- *** نهاية التعديل المطلوب *** ---
 
   /// دالة عرض منتقي التاريخ (Date Picker) (كما هي)
   Future<void> _selectDate(BuildContext context) async {
@@ -82,9 +111,13 @@ class _DataEntryPageState extends State<DataEntryPage> {
     }
   }
 
-  /// دالة لمعالجة البيانات (مع تعديل الانتقال)
-  void _submitForm() {
-    if (_selectedCity == null ||
+  // --- (داخل كلاس _DataEntryPageState) ---
+
+  // --- *** بداية التعديل المطلوب *** ---
+  /// دالة لمعالجة البيانات (مربوطة بالـ API)
+  Future<void> _submitForm() async {
+    // 1. التحقق من الحقول الحالية
+    if (_selectedCityId == null || // (تم التغيير إلى _selectedCityId)
         _selectedDateOfBirth == null ||
         _selectedRole == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -99,23 +132,76 @@ class _DataEntryPageState extends State<DataEntryPage> {
       return;
     }
 
-    print('Form Submitted!');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'تم انشاء الحساب بنجاح!',
-          style: TextStyle(fontFamily: kFontFamily),
-        ),
-        backgroundColor: Colors.green,
-      ),
-    );
+    // 2. إظهار التحميل
+    setState(() {
+      _isLoading = true;
+    });
 
-    // --- تعديل: استخدام FadePageRoute للانتقال ---
-    Navigator.pushReplacement(
-      context,
-      FadePageRoute(child: const LoginScreen()),
-    );
+    try {
+      // 3. استدعاء الخدمة (Service)
+      final String? error = await _authService.registerParent(
+        // (بيانات من الصفحة الأولى)
+        fullName: widget.fullName,
+        username: widget.username,
+        email: widget.email,
+        password: widget.password,
+        // (بيانات من الصفحة الحالية)
+        cityId: _selectedCityId!,
+        dateOfBirth: DateFormat(
+          'yyyy-MM-dd',
+        ).format(_selectedDateOfBirth!), // (صيغة YYYY-MM-DD المطلوبة)
+        gender: _getGenderId(_selectedRole),
+      );
+
+      // 4. التعامل مع الرد
+      if (error == null) {
+        // --- نجاح ---
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'تم انشاء الحساب بنجاح!',
+              style: TextStyle(fontFamily: kFontFamily),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          FadePageRoute(child: const LoginScreen()),
+        );
+      } else {
+        // --- خطأ من السيرفر ---
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'حدث خطأ: $error',
+              style: TextStyle(fontFamily: kFontFamily),
+            ),
+            backgroundColor: kMainRed,
+          ),
+        );
+      }
+    } catch (e) {
+      // --- خطأ غير متوقع ---
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'حدث خطأ غير معروف: $e',
+            style: TextStyle(fontFamily: kFontFamily),
+          ),
+          backgroundColor: kMainRed,
+        ),
+      );
+    } finally {
+      // 5. إخفاء التحميل
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
+  // --- *** نهاية التعديل المطلوب *** ---
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +237,9 @@ class _DataEntryPageState extends State<DataEntryPage> {
                     ),
                     child: Padding(
                       padding: EdgeInsets.symmetric(
-                        horizontal: screenWidth > 600 ? 40.0 : 24.0, // بادنج متجاوب
+                        horizontal: screenWidth > 600
+                            ? 40.0
+                            : 24.0, // بادنج متجاوب
                         vertical: 20.0,
                       ),
                       child: Column(
@@ -177,23 +265,32 @@ class _DataEntryPageState extends State<DataEntryPage> {
                             fontSize: 16, // (حجم موحد)
                             color: Colors.grey[600],
                           ),
-                          SizedBox(height: screenHeight * 0.04), // (مسافة متجاوبة)
-
+                          SizedBox(
+                            height: screenHeight * 0.04,
+                          ), // (مسافة متجاوبة)
                           // --- 1. حقل اختيار المدينة ---
                           _buildFieldLabel('المدينة *'), // (تمت إضافة النجمة)
                           const SizedBox(height: 8),
+                          // --- (داخل دالة build، مكان Container حقل المدينة) ---
+
+                          // --- *** بداية التعديل المطلوب *** ---
                           Container(
                             height: fieldAndRoleButtonHeight,
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                            ),
                             decoration: BoxDecoration(
                               border: Border.all(
-                                  color: Colors.grey.shade400, width: 1.5),
-                              borderRadius:
-                                  BorderRadius.circular(fieldBorderRadius),
+                                color: Colors.grey.shade400,
+                                width: 1.5,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                fieldBorderRadius,
+                              ),
                             ),
                             child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
+                              child: DropdownButton<int>(
+                                // (تم تغيير النوع إلى int)
                                 isExpanded: true,
                                 hint: Text(
                                   'اختر مدينتك من القائمة',
@@ -203,24 +300,28 @@ class _DataEntryPageState extends State<DataEntryPage> {
                                     fontSize: 14,
                                   ),
                                 ),
-                                value: _selectedCity,
+                                value:
+                                    _selectedCityId, // (استخدام متغير الـ ID)
                                 icon: const Icon(
                                   Icons.keyboard_arrow_down,
                                   color: Colors.grey,
                                 ),
-                                onChanged: (String? newValue) {
+                                onChanged: (int? newValue) {
+                                  // (استقبال الـ ID)
                                   setState(() {
-                                    _selectedCity = newValue;
+                                    _selectedCityId = newValue;
                                   });
                                 },
-                                items: _cities.map<DropdownMenuItem<String>>(
-                                    (String value) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
+                                // (بناء القائمة من الـ Map الجديد)
+                                items: _cities.map<DropdownMenuItem<int>>((
+                                  Map<String, dynamic> city,
+                                ) {
+                                  return DropdownMenuItem<int>(
+                                    value: city['id'] as int,
                                     child: Align(
                                       alignment: Alignment.centerRight,
                                       child: Text(
-                                        value,
+                                        city['nameAr'] as String,
                                         style: const TextStyle(
                                           fontFamily: kFontFamily,
                                           fontSize: 15,
@@ -232,31 +333,40 @@ class _DataEntryPageState extends State<DataEntryPage> {
                               ),
                             ),
                           ),
+                          // --- *** نهاية التعديل المطلوب *** ---
                           const SizedBox(height: 20),
 
                           // --- 2. حقل تاريخ الميلاد ---
-                          _buildFieldLabel('تاريخ الميلاد *'), // (تمت إضافة النجمة)
+                          _buildFieldLabel(
+                            'تاريخ الميلاد *',
+                          ), // (تمت إضافة النجمة)
                           const SizedBox(height: 8),
                           GestureDetector(
                             onTap: () => _selectDate(context),
                             child: Container(
                               height: fieldAndRoleButtonHeight,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16.0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                              ),
                               decoration: BoxDecoration(
                                 border: Border.all(
-                                    color: Colors.grey.shade400, width: 1.5),
-                                borderRadius:
-                                    BorderRadius.circular(fieldBorderRadius),
+                                  color: Colors.grey.shade400,
+                                  width: 1.5,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  fieldBorderRadius,
+                                ),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end, // (لضمان المحاذاة يميناً)
+                                mainAxisAlignment: MainAxisAlignment
+                                    .end, // (لضمان المحاذاة يميناً)
                                 children: <Widget>[
                                   Text(
                                     _selectedDateOfBirth == null
                                         ? 'اضغط لإدخال تاريخ الميلاد'
-                                        : DateFormat('yyyy/MM/dd')
-                                            .format(_selectedDateOfBirth!),
+                                        : DateFormat(
+                                            'yyyy/MM/dd',
+                                          ).format(_selectedDateOfBirth!),
                                     style: TextStyle(
                                       fontFamily: kFontFamily,
                                       fontSize: 15,
@@ -279,20 +389,28 @@ class _DataEntryPageState extends State<DataEntryPage> {
                           // --- 3. حقول اختيار الدور (أب، أم، مربي) ---
                           _buildFieldLabel('من أنت؟ *'), // (تمت إضافة النجمة)
                           const SizedBox(height: 8),
+                          // --- (داخل دالة build، مكان Row أزرار الدور) ---
+
+                          // --- *** بداية التعديل المطلوب *** ---
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: <Widget>[
+                              // (تم حذف زر "مربي" مؤقتاً)
                               _buildRoleButton(
-                                  'مربي', fieldAndRoleButtonHeight, fieldBorderRadius),
+                                'أم',
+                                fieldAndRoleButtonHeight,
+                                mainBorderRadius,
+                              ),
                               const SizedBox(width: 10),
                               _buildRoleButton(
-                                  'أم', fieldAndRoleButtonHeight, fieldBorderRadius),
-                              const SizedBox(width: 10),
-                              _buildRoleButton(
-                                  'أب', fieldAndRoleButtonHeight, fieldBorderRadius),
-                            ].reversed.toList(), // (للحفاظ على الترتيب أب، أم، مربي)
+                                'أب',
+                                fieldAndRoleButtonHeight,
+                                mainBorderRadius,
+                              ),
+                            ].reversed.toList(),
                           ),
-                          
+                          // --- *** نهاية التعديل المطلوب *** ---,
+
                           // --- تعديل: تم حذف الأزرار من هنا ---
                         ],
                       ),
@@ -301,7 +419,7 @@ class _DataEntryPageState extends State<DataEntryPage> {
                 ),
               ),
             ),
-            
+
             // --- 2. الأزرار الثابتة في الأسفل ---
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
@@ -310,25 +428,37 @@ class _DataEntryPageState extends State<DataEntryPage> {
                   // --- 4. زر إنشاء حساب جديد ---
                   SizedBox(
                     height: mainButtonHeight,
-                    child: ElevatedButton(
-                      onPressed: _submitForm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kMainRed,
-                        minimumSize: const Size(double.infinity, 50), // (للتأكيد)
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(mainBorderRadius),
-                        ),
-                      ),
-                      child: const Text(
-                        'انشاء حساب جديد',
-                        style: TextStyle(
-                          fontFamily: kFontFamily,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                    // --- *** بداية التعديل المطلوب *** ---
+                    child: _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(color: kMainRed),
+                          )
+                        : ElevatedButton(
+                            onPressed: _submitForm, // (تم ربطه بالدالة الجديدة)
+                            // (باقي الستايل كما هو)
+                            // --- *** نهاية التعديل المطلوب *** ---
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kMainRed,
+                              minimumSize: const Size(
+                                double.infinity,
+                                50,
+                              ), // (للتأكيد)
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  mainBorderRadius,
+                                ),
+                              ),
+                            ),
+                            child: const Text(
+                              'انشاء حساب جديد',
+                              style: TextStyle(
+                                fontFamily: kFontFamily,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                   ),
                   const SizedBox(height: 15),
 
@@ -336,16 +466,26 @@ class _DataEntryPageState extends State<DataEntryPage> {
                   SizedBox(
                     height: mainButtonHeight,
                     child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                      // --- *** بداية التعديل المطلوب *** ---
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              // (تعطيل أثناء التحميل)
+                              Navigator.pop(context);
+                            },
+                      // --- *** نهاية التعديل المطلوب *** ---
                       style: OutlinedButton.styleFrom(
-                        side:
-                            const BorderSide(color: Colors.black12, width: 1.5),
+                        side: const BorderSide(
+                          color: Colors.black12,
+                          width: 1.5,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(mainBorderRadius),
                         ),
-                        minimumSize: const Size(double.infinity, 50), // (للتأكيد)
+                        minimumSize: const Size(
+                          double.infinity,
+                          50,
+                        ), // (للتأكيد)
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -371,17 +511,20 @@ class _DataEntryPageState extends State<DataEntryPage> {
                     ),
                   ),
                   const SizedBox(height: 16), // (مسافة موحدة)
-
                   // --- 6. رابط تسجيل الدخول ---
                   Center(
-                    child: TextButton( // (تم تحويله لـ TextButton ليكون قابلاً للضغط)
-                      onPressed: () {
-                        // --- تعديل: إضافة انتقال بالتلاشي ---
-                        Navigator.push(
-                          context,
-                          FadePageRoute(child: const LoginScreen()),
-                        );
-                      },
+                    child: TextButton(
+                      // --- *** بداية التعديل المطلوب *** ---
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              // (تعطيل أثناء التحميل)
+                              Navigator.push(
+                                context,
+                                FadePageRoute(child: const LoginScreen()),
+                              );
+                            },
+                      // --- *** نهاية التعديل المطلوب *** ---
                       child: RichText(
                         textAlign: TextAlign.center,
                         text: TextSpan(
@@ -397,7 +540,8 @@ class _DataEntryPageState extends State<DataEntryPage> {
                               style: TextStyle(
                                 color: kMainRed,
                                 fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline, // (إضافة خط)
+                                decoration:
+                                    TextDecoration.underline, // (إضافة خط)
                                 decorationColor: kMainRed,
                               ),
                             ),

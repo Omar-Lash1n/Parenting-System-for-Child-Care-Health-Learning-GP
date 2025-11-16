@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application/signup-login-pages/continuesignup.dart';
+// (تأكد من أن هذه المسارات صحيحة)
+import 'package:flutter_application/signup-login-pages/continuesignup.dart'; 
 import 'package:flutter_application/signup-login-pages/signup.dart';
 import 'package:flutter_application/splash_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // ✅ must come before SharedPreferences
-  runApp(AjialApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const AjialApp());
 }
 
 class AjialApp extends StatelessWidget {
@@ -23,21 +24,25 @@ class AjialApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [Locale('en', ''), Locale('ar', '')],
+      locale: const Locale('ar'), // (هذا يضبط الاتجاه RTL للتطبيق كله)
 
       theme: ThemeData(
-        // ⬅️ الإعداد صحيح: تعيين الخط الافتراضي لـ IBM Plex Sans Arabic
-        fontFamily: 'IBM Plex Sans Arabic',
+        fontFamily: 'IBM Plex Sans Arabic', // (ممتاز، هذا صحيح)
         primarySwatch: Colors.red,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
 
-      // 3. تشغيل الصفحة وتحديد الاتجاه الافتراضي RTL
-      home: const Directionality(
-        textDirection: TextDirection.rtl,
-        child: DataEntryPage(), // ⬅️ الإعداد صحيح: استخدام DataEntryPage
-      ),
+      // --- *** بداية التعديل المطلوب *** ---
+      // (تم حذف الخاصية 'home:' بالكامل لأنها تتعارض مع 'initialRoute')
+      // --- *** نهاية التعديل المطلوب *** ---
+
       initialRoute: '/splash',
-      routes: {'/splash': (context) => SplashScreen()},
+      routes: {
+        '/splash': (context) => SplashScreen(),
+        // (يمكنك إضافة باقي الصفحات هنا إذا أردت استخدام التنقل بالأسماء)
+        // '/login': (context) => const LoginScreen(),
+        // '/signup': (context) => const SignUpScreen(),
+      },
     );
   }
 }
