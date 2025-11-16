@@ -15,4 +15,6 @@ public class LoginResponseDto
     public DateTime DateOfBirth { get; set; }
     public string Message { get; set; } = "تم تسجيل الدخول بنجاح";
     public DateTime LoginAt { get; set; } = DateTime.UtcNow;
+    // ✅ NEW: JWT Token
+    public string Token { get; set; } = string.Empty;
 }

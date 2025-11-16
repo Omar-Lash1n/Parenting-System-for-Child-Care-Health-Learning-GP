@@ -2,11 +2,26 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_application/signup-login-pages/verifyemail.dart';
-
+import 'package:flutter_application/api/auth_service.dart'; // (تأكد من المسار)
 // --- Global Constants ---
 const Color kPrimaryColor = Color(0xFFBF092F);
 const String kFontFamily = 'IBM Plex Sans Arabic';
 
+class FadePageRoute<T> extends PageRouteBuilder<T> {
+  final Widget child;
+  FadePageRoute({required this.child})
+      : super(
+          pageBuilder: (context, animation, secondaryAnimation) => child,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        );
+}
+// --- نهاية الإضافة ---
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({Key? key}) : super(key: key);
 
@@ -19,6 +34,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
 
   bool _isEmailValid = false;
+
+  // --- تعديل: إضافة متغيرات الـ API ---
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
+  // --- نهاية التعديل ---
 
   bool _validateEmail(String value) {
     if (value.isEmpty) return false;
@@ -43,35 +63,76 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  /// دالة للـ Validation والـ Submit (كما هي)
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      print('Sending password reset email to: ${_emailController.text}');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('جاري إرسال رابط استعادة كلمة المرور...')),
+ /// دالة للـ Validation والـ Submit (تم تعديلها بالكامل)
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) {
+      return; // لا تكمل إذا كان الإيميل غير صالح
+    }
+
+    // 1. إظهار التحميل
+    setState(() { _isLoading = true; });
+
+    try {
+      // 2. استدعاء الخدمة
+      final (bool success, String message) = await _authService.forgotPassword(
+        email: _emailController.text,
       );
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => VerifyEmailScreen(email: _emailController.text),
+
+      // 3. التعامل مع الرد
+      if (success) {
+        // --- نجاح ---
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message, style: TextStyle(fontFamily: kFontFamily)),
+            backgroundColor: Colors.green, // (أخضر للنجاح)
+          ),
+        );
+        
+        // (الانتقال لصفحة إدخال الرمز)
+        Navigator.push(
+          context,
+          FadePageRoute(
+            child: VerifyEmailScreen(email: _emailController.text),
+          ),
+        );
+      } else {
+        // --- خطأ من السيرفر (مثل: الإيميل غير موجود) ---
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message, style: TextStyle(fontFamily: kFontFamily)),
+            backgroundColor: kPrimaryColor, // (أحمر للفشل)
+          ),
+        );
+      }
+    } catch (e) {
+      // --- خطأ غير متوقع ---
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('حدث خطأ: $e', style: TextStyle(fontFamily: kFontFamily)),
+          backgroundColor: kPrimaryColor,
         ),
       );
+    } finally {
+      // 4. إخفاء التحميل
+      if (mounted) {
+        setState(() { _isLoading = false; });
+      }
     }
   }
+  // --- نهاية لوجيك الـ API ---
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // --- تعديل: تعريف ألوان الزر الجديد ---
-    // (يمكنك نقلها للـ Global Constants إذا أردت)
     final Color mainRed = kPrimaryColor;
-    final Color lightPink = kPrimaryColor.withOpacity(0.1); // لون وردي فاتح
+    final Color lightPink = kPrimaryColor.withOpacity(0.1);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
+        // (الهيكل بالـ Column والـ Expanded كما هو)
         child: Column(
           children: [
             // --- 1. المحتوى القابل للـ Scroll ---
@@ -93,23 +154,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            // --- تعديل: تم استبدال زر الرجوع القديم بالجديد ---
+                            // --- زر الرجوع (معطل أثناء التحميل) ---
                             Align(
                               alignment: Alignment.topRight,
                               child: Container(
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: lightPink, // <-- اللون الجديد
+                                  color: lightPink,
                                   shape: BoxShape.circle,
                                 ),
                                 child: IconButton(
-                                  icon: Icon(
-                                    Icons.arrow_forward, // <-- أيقونة الرجوع لليمين (RTL)
-                                    color: mainRed, // <-- اللون الجديد
+                                  icon: const Icon(
+                                    Icons.arrow_forward,
+                                    color: kPrimaryColor,
                                     size: 24,
                                   ),
-                                  onPressed: () {
+                                  onPressed: _isLoading ? null : () {
                                     Navigator.pop(context);
                                   },
                                   padding: EdgeInsets.zero,
@@ -117,11 +178,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 ),
                               ),
                             ),
-                            // --- نهاية التعديل ---
-
                             SizedBox(height: screenHeight * 0.03),
 
-                            // --- اللوجو ---
+                            // --- اللوجو (كما هو) ---
                             Center(
                               child: Image.asset(
                                 'images/main-logo.png',
@@ -137,7 +196,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             ),
                             const SizedBox(height: 8),
 
-                            // --- العناوين ---
+                            // --- العناوين (كما هي) ---
                             const Center(
                               child: Text(
                                 'نسيت كلمة المرور!',
@@ -168,6 +227,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             const SizedBox(height: 8),
                             TextFormField(
                               controller: _emailController,
+                              enabled: !_isLoading, // (تعطيل أثناء التحميل)
                               decoration: _buildInputDecoration(
                                 hintText: 'اكتب بريدك الالكتروني هنا...',
                                 suffixIcon: _emailController.text.isNotEmpty
@@ -206,25 +266,31 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             // --- 2. الزر الثابت في الأسفل ---
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-              child: ElevatedButton(
-                onPressed: _submitForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryColor,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(50),
+              // --- تعديل: إظهار التحميل أو الزر ---
+              child: SizedBox(
+                height: 55, // (للحفاظ على الارتفاع)
+                child: _isLoading 
+                  ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
+                  : ElevatedButton(
+                    onPressed: _submitForm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimaryColor,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text(
+                      'تأكيد',
+                      style: TextStyle(
+                        fontFamily: kFontFamily,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: const Text(
-                  'تأكيد',
-                  style: TextStyle(
-                    fontFamily: kFontFamily,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
               ),
             ),
           ],

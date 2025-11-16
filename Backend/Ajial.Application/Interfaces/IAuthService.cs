@@ -9,5 +9,14 @@ public interface IAuthService
     Task<ApiResponse<LoginResponseDto>> LoginParentAsync(LoginRequestDto request);
     
     Task<ApiResponse<ForgotPasswordResponseDto>> ForgotPasswordAsync(ForgotPasswordRequestDto request);
+    
+    
+    
+    Task<ApiResponse<VerifyOtpResponseDto>> VerifyOtpAsync(VerifyOtpRequestDto request);
+    
+    
+    
+    
+    
     Task<ApiResponse<ResetPasswordResponseDto>> ResetPasswordAsync(ResetPasswordRequestDto request);
 }

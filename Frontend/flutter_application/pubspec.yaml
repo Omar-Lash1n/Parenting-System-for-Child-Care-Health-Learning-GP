@@ -51,6 +51,8 @@ dependencies:
   # 3. عشان الـ Calendar يظهر بالعربي
   flutter_localizations:
     sdk: flutter
+  http: ^1.6.0
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:

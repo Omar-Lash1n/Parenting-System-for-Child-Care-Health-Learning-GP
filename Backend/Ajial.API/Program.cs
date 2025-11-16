@@ -1,10 +1,13 @@
+using System.Text;
 using Ajial.Application.Interfaces;
 using Ajial.Application.Services;
 using Ajial.Infrastructure.Data;
 using Ajial.Infrastructure.Repositories;
 using Ajial.Infrastructure.Services;
 using Ajlal.Application.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,8 +26,34 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IParentService, ParentService>();
-builder.Services.AddScoped<IEmailService, EmailService>();  // ✅ NEW
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();  // ✅ NEW
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
+
+// ✅ JWT Authentication Configuration
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"];
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
+        ClockSkew = TimeSpan.Zero // Remove default 5 minute tolerance
+    };
+});
+
 // CORS Configuration
 builder.Services.AddCors(options =>
 {
@@ -71,7 +100,11 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+
+// ✅ Add Authentication & Authorization middleware (ORDER MATTERS!)
+app.UseAuthentication();  // ✅ NEW: Must come before UseAuthorization
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
