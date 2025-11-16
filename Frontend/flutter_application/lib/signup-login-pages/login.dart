@@ -1,29 +1,27 @@
-// --- login.dart (Updated with 700ms Fade Transition) ---
+// --- login.dart (Updated with API Connection & Sticky Buttons) ---
 
 import 'package:flutter/material.dart';
 import 'package:flutter_application/homepage/homepage.dart';
 import 'package:flutter_application/signup-login-pages/forgetpassword.dart';
 import 'package:flutter_application/signup-login-pages/signup.dart';
 
-// --- Global Constants ---
+// --- 1. إضافة import لخدمة الـ API ---
+import 'package:flutter_application/api/auth_service.dart'; // (تأكد من المسار)
+
+// --- (Global Constants & FadePageRoute Helper Class ... كما هي) ---
 const Color kPrimaryColor = Color(0xFFBF092F);
 const String kFontFamily = 'IBM Plex Sans Arabic';
 
-// --- تعديل: إضافة كلاس مساعد لتأثير التلاشي (للانتقالات الأخرى) ---
-// (هذا هو الكلاس البسيط الذي استخدمناه سابقاً)
 class FadePageRoute<T> extends PageRouteBuilder<T> {
   final Widget child;
   FadePageRoute({required this.child})
-      : super(
-          pageBuilder: (context, animation, secondaryAnimation) => child,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 300), // سرعة تلاشي عادية
-        );
+    : super(
+        pageBuilder: (context, animation, secondaryAnimation) => child,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      );
 }
 // --- نهاية الإضافة ---
 
@@ -42,6 +40,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isPasswordVisible = false;
   bool _isUsernameValid = false;
+
+  // --- 2. إضافة متغيرات الـ API ---
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
+  // --- نهاية التعديل ---
 
   bool _validateUsername(String value) {
     return value.isNotEmpty && !value.contains(' ');
@@ -66,48 +69,90 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// دالة للـ Validation والـ Submit
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      print('Form is valid and ready to login!');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('جاري تسجيل الدخول...')),
-      );
+  /// 3. دالة للـ Validation والـ Submit (مربوطة بالـ API)
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) {
+      return; // إذا كانت الحقول غير صالحة، لا تكمل
+    }
 
-      // --- *** بداية التعديل المطلوب *** ---
-      // تم استبدال MaterialPageRoute بالكود المخصص من OnboardingScreen
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          // 1. الصفحة المستهدفة هي HomeScreen
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const HomeScreen(),
-          
-          // 2. نفس تأثير التلاشي من ملف Onboarding
-          transitionsBuilder:
-              (context, animation, secondaryAnimation, child) {
-            const begin = 0.0;
-            const end = 1.0;
-            const curve = Curves.ease;
+    setState(() {
+      _isLoading = true;
+    });
 
-            var tween = Tween(
-              begin: begin,
-              end: end,
-            ).chain(CurveTween(curve: curve));
+    try {
+      // استدعاء الخدمة
+      final (String? token, String? errorMessage) = await _authService
+          .loginParent(
+            username: _usernameController.text,
+            password: _passwordController.text,
+          );
 
-            return FadeTransition(
-              opacity: animation.drive(tween),
-              child: child,
-            );
-          },
-          
-          // 3. نفس مدة الانتقال (700ms)
-          transitionDuration: const Duration(
-            milliseconds: 700,
+      // التعامل مع الرد
+      if (token != null) {
+        // --- نجاح ---
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'تم تسجيل الدخول بنجاح!',
+              style: TextStyle(fontFamily: kFontFamily),
+            ),
+            backgroundColor: Colors.green,
           ),
+        );
+
+        // الانتقال إلى الهوم (بتأثير التلاشي 700ms)
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                HomeScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  const begin = 0.0;
+                  const end = 1.0;
+                  const curve = Curves.ease;
+                  var tween = Tween(
+                    begin: begin,
+                    end: end,
+                  ).chain(CurveTween(curve: curve));
+                  return FadeTransition(
+                    opacity: animation.drive(tween),
+                    child: child,
+                  );
+                },
+            transitionDuration: const Duration(milliseconds: 700),
+          ),
+        );
+      } else {
+        // --- خطأ من السيرفر ---
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              errorMessage ?? 'بيانات الدخول غير صحيحة',
+              style: TextStyle(fontFamily: kFontFamily),
+            ),
+            backgroundColor: kPrimaryColor,
+          ),
+        );
+      }
+    } catch (e) {
+      // --- خطأ غير متوقع ---
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'حدث خطأ: $e',
+            style: TextStyle(fontFamily: kFontFamily),
+          ),
+          backgroundColor: kPrimaryColor,
         ),
       );
-      // --- *** نهاية التعديل المطلوب *** ---
+    } finally {
+      // إخفاء التحميل (حتى لو فشل)
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -119,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        // (هيكل الصفحة بالـ Column والـ Expanded كما هو)
+        // --- تعديل: استخدام Column لتقسيم الشاشة (محتوى + أزرار) ---
         child: Column(
           children: [
             // --- 1. المحتوى القابل للـ Scroll ---
@@ -127,9 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: SingleChildScrollView(
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 600,
-                    ),
+                    constraints: const BoxConstraints(maxWidth: 600),
                     child: Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: screenWidth > 600 ? 40.0 : 24.0,
@@ -149,10 +192,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 height: screenHeight * 0.15,
                                 errorBuilder: (context, error, stackTrace) =>
                                     Icon(
-                                  Icons.group,
-                                  size: screenHeight * 0.15,
-                                  color: kPrimaryColor,
-                                ),
+                                      Icons.group,
+                                      size: screenHeight * 0.15,
+                                      color: kPrimaryColor,
+                                    ),
                               ),
                             ),
                             const Center(
@@ -183,20 +226,25 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 8),
                             TextFormField(
                               controller: _usernameController,
+                              enabled: !_isLoading, // (تعطيل أثناء التحميل)
                               decoration: _buildInputDecoration(
                                 hintText: 'اكتب اسم المستخدم بدون مسافات...',
                                 suffixIcon: _usernameController.text.isNotEmpty
                                     ? IconButton(
-                                        icon: const Icon(Icons.close,
-                                            color: Colors.grey),
+                                        icon: const Icon(
+                                          Icons.close,
+                                          color: Colors.grey,
+                                        ),
                                         onPressed: () =>
                                             _usernameController.clear(),
                                       )
                                     : null,
-                                borderColor:
-                                    _isUsernameValid ? Colors.green : null,
-                                focusedBorderColor:
-                                    _isUsernameValid ? Colors.green : null,
+                                borderColor: _isUsernameValid
+                                    ? Colors.green
+                                    : null,
+                                focusedBorderColor: _isUsernameValid
+                                    ? Colors.green
+                                    : null,
                               ),
                               keyboardType: TextInputType.text,
                               validator: (value) {
@@ -215,6 +263,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             TextFormField(
                               controller: _passwordController,
                               obscureText: !_isPasswordVisible,
+                              enabled: !_isLoading, // (تعطيل أثناء التحميل)
                               decoration: _buildInputDecoration(
                                 hintText: 'كلمة المرور',
                                 prefixIcon: IconButton(
@@ -236,6 +285,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                 if (value == null || value.isEmpty) {
                                   return 'كلمة المرور مطلوبة';
                                 }
+                                // --- *** بداية التعديل المطلوب *** ---
+                                // (إضافة التحقق من الطول قبل الإرسال للـ API)
+                                if (value.length < 8) {
+                                  return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+                                }
+                                // --- *** نهاية التعديل المطلوب *** ---
                                 return null;
                               },
                             ),
@@ -243,15 +298,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             Align(
                               alignment: Alignment.centerRight,
                               child: TextButton(
-                                onPressed: () {
-                                  // --- (هنا يمكنك استخدام التأثير البسيط) ---
-                                  Navigator.push(
-                                    context,
-                                    FadePageRoute(
-                                      child: const ForgotPasswordScreen(),
-                                    ),
-                                  );
-                                },
+                                onPressed: _isLoading
+                                    ? null
+                                    : () {
+                                        // (تعطيل أثناء التحميل)
+                                        Navigator.push(
+                                          context,
+                                          FadePageRoute(
+                                            child: const ForgotPasswordScreen(),
+                                          ),
+                                        );
+                                      },
                                 child: const Text(
                                   'نسيت كلمة المرور؟',
                                   style: TextStyle(
@@ -270,42 +327,54 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-            
-            // --- 2. الأزرار الثابتة في الأسفل (كما هي) ---
+
+            // --- 2. الأزرار الثابتة في الأسفل ---
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
               child: Column(
                 children: [
-                  ElevatedButton(
-                    onPressed: _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimaryColor,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text(
-                      'تسجيل الدخول',
-                      style: TextStyle(
-                        fontFamily: kFontFamily,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                  // (إظهار التحميل أو الزر)
+                  SizedBox(
+                    height: 55,
+                    child: _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: kPrimaryColor,
+                            ),
+                          )
+                        : ElevatedButton(
+                            onPressed: _submitForm,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kPrimaryColor,
+                              minimumSize: const Size(double.infinity, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(50),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text(
+                              'تسجيل الدخول',
+                              style: TextStyle(
+                                fontFamily: kFontFamily,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                   ),
                   const SizedBox(height: 16),
                   Center(
                     child: TextButton(
-                      onPressed: () {
-                        // --- (هنا يمكنك استخدام التأثير البسيط) ---
-                        Navigator.push(
-                          context,
-                          FadePageRoute(child: const SignUpScreen()),
-                        );
-                      },
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              // (تعطيل أثناء التحميل)
+                              Navigator.push(
+                                context,
+                                FadePageRoute(child: const SignUpScreen()),
+                              );
+                            },
                       child: RichText(
                         text: const TextSpan(
                           style: TextStyle(

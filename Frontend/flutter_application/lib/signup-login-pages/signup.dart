@@ -119,40 +119,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (_has8Chars && _hasNumber && _hasSymbol) {
         print('Form is valid and ready to submit!');
         
-        // --- *** بداية التعديل المطلوب *** ---
-        // تم استبدال MaterialPageRoute بالكود المخصص من OnboardingScreen
-        Navigator.push( // استخدام push بدلاً من pushReplacement هنا للانتقال للصفحة التالية
-          context,
-          PageRouteBuilder(
-            // 1. الصفحة المستهدفة هي DataEntryPage
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                const DataEntryPage(),
-            
-            // 2. نفس تأثير التلاشي من ملف Onboarding
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-              const begin = 0.0;
-              const end = 1.0;
-              const curve = Curves.ease;
+      // --- *** بداية التعديل المطلوب *** ---
+    Navigator.push( 
+      context,
+      PageRouteBuilder(
+        // 1. تمرير البيانات التي جمعناها هنا
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            DataEntryPage(
+          fullName: _nameController.text,
+          username: _usernameController.text,
+          email: _emailController.text,
+          password: _passwordController.text,
+        ),
 
-              var tween = Tween(
-                begin: begin,
-                end: end,
-              ).chain(CurveTween(curve: curve));
-
-              return FadeTransition(
-                opacity: animation.drive(tween),
-                child: child,
-              );
-            },
-            
-            // 3. نفس مدة الانتقال (700ms)
-            transitionDuration: const Duration(
-              milliseconds: 700,
-            ),
-          ),
-        );
-        // --- *** نهاية التعديل المطلوب *** ---
+        // (الحفاظ على تأثير التلاشي كما طلبت)
+        transitionsBuilder:
+            (context, animation, secondaryAnimation, child) {
+          const begin = 0.0;
+          const end = 1.0;
+          const curve = Curves.ease;
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          return FadeTransition(
+            opacity: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 700),
+      ),
+    );
+    // --- *** نهاية التعديل المطلوب *** ---
 
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

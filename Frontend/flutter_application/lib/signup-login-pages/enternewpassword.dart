@@ -1,14 +1,36 @@
-// --- enternewpassword.dart (Updated with Sticky Footer Button) ---
+// --- enternewpassword.dart (Updated with API, Sticky Button & All Features) ---
 
 import 'package:flutter/material.dart';
 import 'package:flutter_application/signup-login-pages/login.dart';
 
-// --- Global Constants ---
+// --- تعديل: إضافة import لخدمة الـ API ---
+import 'package:flutter_application/api/auth_service.dart';
+
+// --- (Global Constants & FadePageRoute Helper Class ... كما هي) ---
 const Color kPrimaryColor = Color(0xFFBF092F);
 const String kFontFamily = 'IBM Plex Sans Arabic';
 
+class FadePageRoute<T> extends PageRouteBuilder<T> {
+  final Widget child;
+  FadePageRoute({required this.child})
+    : super(
+        pageBuilder: (context, animation, secondaryAnimation) => child,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      );
+}
+// --- نهاية الإضافة ---
+
 class EnterNewPasswordScreen extends StatefulWidget {
-  const EnterNewPasswordScreen({Key? key}) : super(key: key);
+  // --- *** بداية التعديل المطلوب *** ---
+  // (تم حذف الإيميل، الـ API لا يحتاجه)
+  final String otpCode; // (الرمز الذي تم إدخاله في الصفحة السابقة)
+
+  const EnterNewPasswordScreen({Key? key, required this.otpCode})
+    : super(key: key);
+  // --- *** نهاية التعديل المطلوب *** ---
 
   @override
   _EnterNewPasswordScreenState createState() => _EnterNewPasswordScreenState();
@@ -29,10 +51,17 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
   double _passwordStrength = 0.0;
   bool _isConfirmValid = false;
 
+  // --- تعديل: إضافة متغيرات الـ API ---
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
+  // --- نهاية التعديل ---
+
+  // (دوال التحقق من التطابق كما هي)
   void _validateConfirmation() {
     if (mounted) {
       setState(() {
-        _isConfirmValid = _confirmPasswordController.text == _passwordController.text &&
+        _isConfirmValid =
+            _confirmPasswordController.text == _passwordController.text &&
             _confirmPasswordController.text.isNotEmpty;
       });
     }
@@ -54,35 +83,78 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
     super.dispose();
   }
 
-  /// دالة للـ Validation والـ Submit (كما هي)
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      if (_has8Chars && _hasNumber && _hasSymbol) {
-        print('New password set: ${_passwordController.text}');
+  /// دالة للـ Validation والـ Submit (تم تعديلها بالكامل)
+  Future<void> _submitForm() async {
+    // 1. التحقق من الحقول الحالية (التطابق وقوة كلمة المرور)
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    if (!(_has8Chars && _hasNumber && _hasSymbol)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'يرجى اختيار كلمة مرور أقوى لاستكمال العملية',
+            style: TextStyle(fontFamily: kFontFamily),
+          ),
+          backgroundColor: kPrimaryColor,
+        ),
+      );
+      return;
+    }
+
+    // 2. إظهار التحميل
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // 3. استدعاء الخدمة (Service)
+      final (bool success, String message) = await _authService.resetPassword(
+        token: widget.otpCode, // (تمرير الرمز من الصفحة السابقة)
+        newPassword: _passwordController.text,
+        confirmPassword: _confirmPasswordController.text,
+      );
+
+      // 4. التعامل مع الرد
+      if (success) {
+        // --- نجاح ---
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'تم تغيير كلمة المرور بنجاح!',
-              style: TextStyle(fontFamily: kFontFamily),
-            ),
+          SnackBar(
+            content: Text(message, style: TextStyle(fontFamily: kFontFamily)),
             backgroundColor: Colors.green,
           ),
         );
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          FadePageRoute(child: const LoginScreen()),
           (Route<dynamic> route) => false,
         );
       } else {
+        // --- خطأ من السيرفر (مثل: الرمز غلط) ---
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'يرجى اختيار كلمة مرور أقوى لاستكمال العملية',
-              style: TextStyle(fontFamily: kFontFamily),
-            ),
+          SnackBar(
+            content: Text(message, style: TextStyle(fontFamily: kFontFamily)),
             backgroundColor: kPrimaryColor,
           ),
         );
+      }
+    } catch (e) {
+      // --- خطأ غير متوقع ---
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'حدث خطأ: $e',
+            style: TextStyle(fontFamily: kFontFamily),
+          ),
+          backgroundColor: kPrimaryColor,
+        ),
+      );
+    } finally {
+      // 5. إخفاء التحميل
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -103,24 +175,20 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // (باقي كود الـ build كما هو، مع إضافة تعطيل للحقول والأزرار أثناء التحميل)
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      // --- تعديل: تم نقل SafeArea ليغطي الصفحة بالكامل ---
       body: SafeArea(
-        // --- تعديل: استخدام Column لتقسيم الشاشة (محتوى + زر) ---
         child: Column(
           children: [
-            // --- 1. المحتوى القابل للـ Scroll ---
             Expanded(
               child: SingleChildScrollView(
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 600, // لدعم التابلت
-                    ),
+                    constraints: const BoxConstraints(maxWidth: 600),
                     child: Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: screenWidth > 600 ? 40.0 : 24.0,
@@ -133,8 +201,6 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             SizedBox(height: screenHeight * 0.03),
-
-                            // --- اللوجو ---
                             Center(
                               child: Image.asset(
                                 'images/main-logo.png',
@@ -142,15 +208,13 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                                 height: screenHeight * 0.15,
                                 errorBuilder: (context, error, stackTrace) =>
                                     Icon(
-                                  Icons.group,
-                                  size: screenHeight * 0.15,
-                                  color: kPrimaryColor,
-                                ),
+                                      Icons.group,
+                                      size: screenHeight * 0.15,
+                                      color: kPrimaryColor,
+                                    ),
                               ),
                             ),
                             const SizedBox(height: 8),
-
-                            // --- العناوين ---
                             const Center(
                               child: Text(
                                 'اعادة تعيين كلمة المرور',
@@ -175,13 +239,12 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                               ),
                             ),
                             SizedBox(height: screenHeight * 0.04),
-
-                            // --- حقل كلمة المرور الجديدة ---
                             _buildLabel('كلمة المرور الجديدة *'),
                             const SizedBox(height: 8),
                             TextFormField(
                               controller: _passwordController,
                               obscureText: !_isPasswordVisible,
+                              enabled: !_isLoading, // (تعطيل أثناء التحميل)
                               onChanged: (value) {
                                 _updatePasswordStrength(value);
                                 _validateConfirmation();
@@ -210,12 +273,12 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                                 return null;
                               },
                             ),
-
-                            // --- مؤشر قوة كلمة المرور ---
                             if (_passwordController.text.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(
-                                    top: 12.0, bottom: 20.0),
+                                  top: 12.0,
+                                  bottom: 20.0,
+                                ),
                                 child: Column(
                                   children: [
                                     ClipRRect(
@@ -226,35 +289,37 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                                         color: _passwordStrength <= 0.33
                                             ? kPrimaryColor
                                             : _passwordStrength <= 0.66
-                                                ? Colors.yellow[700]
-                                                : Colors.green,
+                                            ? Colors.yellow[700]
+                                            : Colors.green,
                                         minHeight: 6,
                                       ),
                                     ),
                                     const SizedBox(height: 12),
                                     _buildStrengthCheck(
-                                        text: 'يحتوي على 8 احرف',
-                                        met: _has8Chars),
+                                      text: 'يحتوي على 8 احرف',
+                                      met: _has8Chars,
+                                    ),
                                     const SizedBox(height: 4),
                                     _buildStrengthCheck(
-                                        text: 'يحتوي على رموز &*/',
-                                        met: _hasSymbol),
+                                      text: 'يحتوي على رموز &*/',
+                                      met: _hasSymbol,
+                                    ),
                                     const SizedBox(height: 4),
                                     _buildStrengthCheck(
-                                        text: 'يحتوي على ارقام',
-                                        met: _hasNumber),
+                                      text: 'يحتوي على ارقام',
+                                      met: _hasNumber,
+                                    ),
                                   ],
                                 ),
                               ),
                             if (_passwordController.text.isEmpty)
                               const SizedBox(height: 20),
-
-                            // --- حقل تأكيد كلمة المرور ---
                             _buildLabel('تأكيد كلمة المرور الجديدة *'),
                             const SizedBox(height: 8),
                             TextFormField(
                               controller: _confirmPasswordController,
                               obscureText: !_isConfirmPasswordVisible,
+                              enabled: !_isLoading, // (تعطيل أثناء التحميل)
                               decoration: _buildInputDecoration(
                                 hintText: 'تأكيد كلمة المرور الجديدة',
                                 prefixIcon: IconButton(
@@ -272,10 +337,12 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                                     });
                                   },
                                 ),
-                                borderColor:
-                                    _isConfirmValid ? Colors.green : null,
-                                focusedBorderColor:
-                                    _isConfirmValid ? Colors.green : null,
+                                borderColor: _isConfirmValid
+                                    ? Colors.green
+                                    : null,
+                                focusedBorderColor: _isConfirmValid
+                                    ? Colors.green
+                                    : null,
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
@@ -287,8 +354,6 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                                 return null;
                               },
                             ),
-                            // --- تعديل: تم حذف المسافة الإضافية من هنا ---
-                            // const SizedBox(height: 40),
                           ],
                         ),
                       ),
@@ -297,31 +362,36 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                 ),
               ),
             ),
-            
+
             // --- 2. الزر الثابت في الأسفل ---
-            // --- تعديل: تم إخراج الزر من الـ Column الداخلية ---
             Padding(
-              // --- تعديل: 24 بكسل من الأسفل والجوانب، و 12 من الأعلى ---
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-              child: ElevatedButton(
-                onPressed: _submitForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryColor,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(50),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: const Text(
-                  'تأكيد',
-                  style: TextStyle(
-                    fontFamily: kFontFamily,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+              child: SizedBox(
+                height: 55, // (الحفاظ على الارتفاع)
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: kPrimaryColor),
+                      )
+                    : ElevatedButton(
+                        onPressed: _submitForm, // (استدعاء دالة الـ API)
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kPrimaryColor,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text(
+                          'تأكيد',
+                          style: TextStyle(
+                            fontFamily: kFontFamily,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
               ),
             ),
           ],
@@ -330,7 +400,7 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
     );
   }
 
-  /// (دالة _buildStrengthCheck كما هي)
+  // (باقي دوال المساعدة كما هي)
   Widget _buildStrengthCheck({required String text, required bool met}) {
     final color = met ? Colors.green : kPrimaryColor;
     return Row(
@@ -350,7 +420,6 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
     );
   }
 
-  /// (دالة _buildLabel مع النجمة الحمراء كما هي)
   Widget _buildLabel(String text) {
     if (text.endsWith(' *')) {
       final String label = text.substring(0, text.length - 2);
@@ -388,7 +457,6 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
     }
   }
 
-  /// (دالة _buildInputDecoration مع التركيز الأسود كما هي)
   InputDecoration _buildInputDecoration({
     required String hintText,
     Widget? prefixIcon,
@@ -438,7 +506,7 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
   }
 }
 
-//ان شاء الله اضافة رمز * بعد النص 
+//ان شاء الله اضافة رمز * بعد النص
 // وان شاء الله اضافة زر مثبت في الاسفل
 // وان شاء الله جعل حدود التركيز سوداء بدل الاحمر
 // وان شاء الله جعل لون مؤشر قوة كلمة المرور اخضر اصفر احمر
