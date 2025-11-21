@@ -1,0 +1,109 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}|Ajial.API\\Ajial.API.csproj|e:\\gradution project doc\\parenting-system-for-child-care-health-learning-gp\\backend\\ajial.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}|Ajial.API\\Ajial.API.csproj|solutionrelative:ajial.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}|Ajial.API\\Ajial.API.csproj|e:\\gradution project doc\\parenting-system-for-child-care-health-learning-gp\\backend\\ajial.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}|Ajial.API\\Ajial.API.csproj|solutionrelative:ajial.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}|Ajial.API\\Ajial.API.csproj|e:\\gradution project doc\\parenting-system-for-child-care-health-learning-gp\\backend\\ajial.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}|Ajial.API\\Ajial.API.csproj|solutionrelative:ajial.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}|Ajial.Infrastructure\\Ajial.Infrastructure.csproj|e:\\gradution project doc\\parenting-system-for-child-care-health-learning-gp\\backend\\ajial.infrastructure\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FF1C4631-99D0-4738-A1BD-E9A525E90C2A}|Ajial.Infrastructure\\Ajial.Infrastructure.csproj|solutionrelative:ajial.infrastructure\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}|Ajial.API\\Ajial.API.csproj|e:\\gradution project doc\\parenting-system-for-child-care-health-learning-gp\\backend\\ajial.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{CC0E5A57-DE8E-4167-8F02-F7650F8E4329}|Ajial.API\\Ajial.API.csproj|solutionrelative:ajial.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ApplicationDbContext.cs",
+              "DocumentMoniker": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Infrastructure\\Data\\ApplicationDbContext.cs",
+              "RelativeDocumentMoniker": "Ajial.Infrastructure\\Data\\ApplicationDbContext.cs",
+              "ToolTip": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Infrastructure\\Data\\ApplicationDbContext.cs",
+              "RelativeToolTip": "Ajial.Infrastructure\\Data\\ApplicationDbContext.cs",
+              "ViewState": "AgIAABwAAAAAAAAAAAAcwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T13:07:06.322Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "appsettings.Development.json",
+              "DocumentMoniker": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\appsettings.Development.json",
+              "RelativeDocumentMoniker": "Ajial.API\\appsettings.Development.json",
+              "ToolTip": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\appsettings.Development.json",
+              "RelativeToolTip": "Ajial.API\\appsettings.Development.json",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-10-26T13:02:42.794Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\appsettings.json",
+              "RelativeDocumentMoniker": "Ajial.API\\appsettings.json",
+              "ToolTip": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\appsettings.json",
+              "RelativeToolTip": "Ajial.API\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-10-26T13:01:34.767Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Program.cs",
+              "DocumentMoniker": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\Program.cs",
+              "RelativeDocumentMoniker": "Ajial.API\\Program.cs",
+              "ToolTip": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\Program.cs",
+              "RelativeToolTip": "Ajial.API\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T12:09:01.812Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "launchSettings.json",
+              "DocumentMoniker": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\Properties\\launchSettings.json",
+              "RelativeDocumentMoniker": "Ajial.API\\Properties\\launchSettings.json",
+              "ToolTip": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\Properties\\launchSettings.json",
+              "RelativeToolTip": "Ajial.API\\Properties\\launchSettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAuAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-10-26T12:08:53.077Z"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
