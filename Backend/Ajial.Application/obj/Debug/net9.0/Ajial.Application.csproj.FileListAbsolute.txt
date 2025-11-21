@@ -1,0 +1,6 @@
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Application\obj\Debug\net9.0\Ajial.Application.csproj.AssemblyReference.cache
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Application\obj\Debug\net9.0\Ajial.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Application\obj\Debug\net9.0\Ajial.Application.AssemblyInfoInputs.cache
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Application\obj\Debug\net9.0\Ajial.Application.AssemblyInfo.cs
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Application\obj\Debug\net9.0\Ajial.Application.csproj.CoreCompileInputs.cache
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Application\obj\Debug\net9.0\Ajial.Application.sourcelink.json

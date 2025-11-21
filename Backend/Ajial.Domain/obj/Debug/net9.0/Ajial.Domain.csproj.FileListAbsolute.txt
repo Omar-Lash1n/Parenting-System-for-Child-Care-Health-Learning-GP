@@ -1,0 +1,12 @@
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\bin\Debug\net9.0\Ajial.Domain.deps.json
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\bin\Debug\net9.0\Ajial.Domain.dll
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\bin\Debug\net9.0\Ajial.Domain.pdb
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\obj\Debug\net9.0\Ajial.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\obj\Debug\net9.0\Ajial.Domain.AssemblyInfoInputs.cache
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\obj\Debug\net9.0\Ajial.Domain.AssemblyInfo.cs
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\obj\Debug\net9.0\Ajial.Domain.csproj.CoreCompileInputs.cache
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\obj\Debug\net9.0\Ajial.Domain.sourcelink.json
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\obj\Debug\net9.0\Ajial.Domain.dll
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\obj\Debug\net9.0\refint\Ajial.Domain.dll
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\obj\Debug\net9.0\Ajial.Domain.pdb
+C:\Desktop\مشروع التخرج\Ajial\Parenting-System-for-Child-Care-Health-Learning-GP\Backend\Ajial.Domain\obj\Debug\net9.0\ref\Ajial.Domain.dll
