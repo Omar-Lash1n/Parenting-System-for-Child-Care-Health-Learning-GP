@@ -1742,35 +1742,12 @@
           }
         }
       },
-      "Ajial.Application/1.0.0": {
-        "type": "project",
-        "framework": ".NETCoreApp,Version=v9.0",
-        "dependencies": {
-          "Ajial.Domain": "1.0.0"
-        },
-        "compile": {
-          "bin/placeholder/Ajial.Application.dll": {}
-        },
-        "runtime": {
-          "bin/placeholder/Ajial.Application.dll": {}
-        }
-      },
-      "Ajial.Domain/1.0.0": {
-        "type": "project",
-        "framework": ".NETCoreApp,Version=v9.0",
-        "compile": {
-          "bin/placeholder/Ajial.Domain.dll": {}
-        },
-        "runtime": {
-          "bin/placeholder/Ajial.Domain.dll": {}
-        }
-      },
       "Ajial.Infrastructure/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
         "dependencies": {
-          "Ajial.Application": "1.0.0",
-          "Ajial.Domain": "1.0.0",
+          "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Application\\Ajial.Application.csproj": "1.0.0",
+          "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Domain\\Ajial.Domain.csproj": "1.0.0",
           "MailKit": "4.14.1",
           "Microsoft.AspNetCore.Cryptography.KeyDerivation": "9.0.10",
           "Microsoft.EntityFrameworkCore": "9.0.10",
@@ -5130,16 +5107,6 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "Ajial.Application/1.0.0": {
-      "type": "project",
-      "path": "../Ajial.Application/Ajial.Application.csproj",
-      "msbuildProject": "../Ajial.Application/Ajial.Application.csproj"
-    },
-    "Ajial.Domain/1.0.0": {
-      "type": "project",
-      "path": "../Ajial.Domain/Ajial.Domain.csproj",
-      "msbuildProject": "../Ajial.Domain/Ajial.Domain.csproj"
-    },
     "Ajial.Infrastructure/1.0.0": {
       "type": "project",
       "path": "../Ajial.Infrastructure/Ajial.Infrastructure.csproj",
@@ -5148,8 +5115,8 @@
   },
   "projectFileDependencyGroups": {
     "net9.0": [
-      "Ajial.Application >= 1.0.0",
       "Ajial.Infrastructure >= 1.0.0",
+      "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Application\\Ajial.Application.csproj",
       "Microsoft.AspNetCore.Authentication.JwtBearer >= 9.0.0",
       "Microsoft.EntityFrameworkCore >= 9.0.10",
       "Microsoft.EntityFrameworkCore.Design >= 9.0.10",
@@ -5157,20 +5124,24 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\marti\\.nuget\\packages\\": {}
+    "C:\\Users\\Eslam\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Desktop\\مشروع التخرج\\Ajial\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\Ajial.API.csproj",
+      "projectUniqueName": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\Ajial.API.csproj",
       "projectName": "Ajial.API",
-      "projectPath": "C:\\Desktop\\مشروع التخرج\\Ajial\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\Ajial.API.csproj",
-      "packagesPath": "C:\\Users\\marti\\.nuget\\packages\\",
-      "outputPath": "C:\\Desktop\\مشروع التخرج\\Ajial\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\obj\\",
+      "projectPath": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\Ajial.API.csproj",
+      "packagesPath": "C:\\Users\\Eslam\\.nuget\\packages\\",
+      "outputPath": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.API\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "C:\\Desktop\\مشروع التخرج\\Ajial\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\NuGet.Config",
-        "C:\\Users\\marti\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\NuGet.Config",
+        "C:\\Users\\Eslam\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -5185,11 +5156,11 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "C:\\Desktop\\مشروع التخرج\\Ajial\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Application\\Ajial.Application.csproj": {
-              "projectPath": "C:\\Desktop\\مشروع التخرج\\Ajial\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Application\\Ajial.Application.csproj"
+            "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Application\\Ajial.Application.csproj": {
+              "projectPath": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Application\\Ajial.Application.csproj"
             },
-            "C:\\Desktop\\مشروع التخرج\\Ajial\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Infrastructure\\Ajial.Infrastructure.csproj": {
-              "projectPath": "C:\\Desktop\\مشروع التخرج\\Ajial\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Infrastructure\\Ajial.Infrastructure.csproj"
+            "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Infrastructure\\Ajial.Infrastructure.csproj": {
+              "projectPath": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Infrastructure\\Ajial.Infrastructure.csproj"
             }
           }
         }
@@ -5248,8 +5219,28 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
       }
     }
-  }
+  },
+  "logs": [
+    {
+      "code": "NU1105",
+      "level": "Error",
+      "message": "Unable to find project information for 'E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Application\\Ajial.Application.csproj'. If you are using Visual Studio, this may be because the project is unloaded or not part of the current solution so run a restore from the command-line. Otherwise, the project file may be invalid or missing targets required for restore.",
+      "libraryId": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Application\\Ajial.Application.csproj",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    },
+    {
+      "code": "NU1105",
+      "level": "Error",
+      "message": "Unable to find project information for 'E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Domain\\Ajial.Domain.csproj'. If you are using Visual Studio, this may be because the project is unloaded or not part of the current solution so run a restore from the command-line. Otherwise, the project file may be invalid or missing targets required for restore.",
+      "libraryId": "E:\\Gradution Project Doc\\Parenting-System-for-Child-Care-Health-Learning-GP\\Backend\\Ajial.Domain\\Ajial.Domain.csproj",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    }
+  ]
 }

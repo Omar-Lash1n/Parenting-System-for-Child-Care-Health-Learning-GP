@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Ajial.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5f94c6cdf11375462471a0f5ddd29502e66b95d2")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+03c6a43ff33bab5b2008ac45b54ac88669034a76")]
 [assembly: System.Reflection.AssemblyProductAttribute("Ajial.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Ajial.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
