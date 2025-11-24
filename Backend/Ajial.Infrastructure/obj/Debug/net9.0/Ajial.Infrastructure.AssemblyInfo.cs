@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Ajial.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0b2c0f60b99821a7d088295afbbf4370b4fb062a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7f48b76ac0dd35d018dadc030a090a6a7a836d00")]
 [assembly: System.Reflection.AssemblyProductAttribute("Ajial.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Ajial.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
