@@ -19,7 +19,7 @@ builder.Services.AddSwaggerGen();
 // Database Configuration
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
+        builder.Configuration.GetConnectionString("AzureConnection"),
         b => b.MigrationsAssembly("Ajial.Infrastructure")));
 
 // Dependency Injection
