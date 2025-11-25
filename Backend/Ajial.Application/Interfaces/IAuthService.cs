@@ -15,7 +15,8 @@ public interface IAuthService
     Task<ApiResponse<VerifyOtpResponseDto>> VerifyOtpAsync(VerifyOtpRequestDto request);
     
     
-    
+    Task<ApiResponse<LoginChildResponseDto>> LoginChildAsync(LoginChildRequestDto request);
+
     
     
     Task<ApiResponse<ResetPasswordResponseDto>> ResetPasswordAsync(ResetPasswordRequestDto request);

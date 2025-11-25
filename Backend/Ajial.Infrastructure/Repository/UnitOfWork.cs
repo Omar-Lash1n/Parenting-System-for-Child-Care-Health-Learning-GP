@@ -4,29 +4,36 @@ using Ajial.Infrastructure.Data;
 using Ajlal.Application.Interfaces;
 using Microsoft.EntityFrameworkCore.Storage;
 
-namespace Ajial.Infrastructure.Repositories;
+namespace Ajial.Infrastructure.Repository;
 
 public class UnitOfWork : IUnitOfWork
 {
     private readonly ApplicationDbContext _context;
     private IDbContextTransaction? _transaction;
 
-    public IRepository<User> Users { get; }
-    public IRepository<Parent> Parents { get; }
-    public IRepository<City> Cities { get; }
-    public IRepository<PasswordResetToken> PasswordResetTokens { get; }  // ✅ NEW
+    public IRepository<User> Users { get; private set; }
+    public IRepository<Parent> Parents { get; private set; }
+    public IRepository<City> Cities { get; private set; }
+    public IRepository<PasswordResetToken> PasswordResetTokens { get; private set; }
+    public IChildRepository Children { get; private set; }
 
     public UnitOfWork(ApplicationDbContext context)
     {
         _context = context;
-        Users = new Repository<User>(context);
-        Parents = new Repository<Parent>(context);
-        Cities = new Repository<City>(context);
-        PasswordResetTokens = new Repository<PasswordResetToken>(_context);  // ✅ NEW
 
+        Users = new Repository<User>(_context);
+        Parents = new Repository<Parent>(_context);
+        Cities = new Repository<City>(_context);
+        PasswordResetTokens = new Repository<PasswordResetToken>(_context);
+        Children = new ChildRepository(_context);
     }
 
     public async Task<int> SaveChangesAsync()
+    {
+        return await _context.SaveChangesAsync();
+    }
+
+    public async Task<int> SaveAsync()
     {
         return await _context.SaveChangesAsync();
     }
@@ -38,11 +45,26 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task CommitTransactionAsync()
     {
-        if (_transaction != null)
+        try
         {
-            await _transaction.CommitAsync();
-            await _transaction.DisposeAsync();
-            _transaction = null;
+            await _context.SaveChangesAsync();
+            if (_transaction != null)
+            {
+                await _transaction.CommitAsync();
+            }
+        }
+        catch
+        {
+            await RollbackTransactionAsync();
+            throw;
+        }
+        finally
+        {
+            if (_transaction != null)
+            {
+                await _transaction.DisposeAsync();
+                _transaction = null;
+            }
         }
     }
 

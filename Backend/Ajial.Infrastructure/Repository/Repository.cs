@@ -1,9 +1,9 @@
-﻿using System.Linq.Expressions;
-using Ajial.Application.Interfaces;
+﻿using Ajial.Application.Interfaces;
 using Ajial.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
-namespace Ajial.Infrastructure.Repositories;
+namespace Ajial.Infrastructure.Repository;
 
 public class Repository<T> : IRepository<T> where T : class
 {
@@ -25,25 +25,44 @@ public class Repository<T> : IRepository<T> where T : class
     {
         return await _dbSet.FindAsync(id);
     }
+
     public async Task<IEnumerable<T>> GetAllAsync(Func<IQueryable<T>, IQueryable<T>>? include = null)
     {
         IQueryable<T> query = _dbSet;
-
+        
         if (include != null)
         {
             query = include(query);
         }
-
+        
         return await query.ToListAsync();
-    }
-    public async Task<T?> GetFirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
-    {
-        return await _dbSet.FirstOrDefaultAsync(predicate);
     }
 
     public async Task<IEnumerable<T>> GetAllAsync()
     {
         return await _dbSet.ToListAsync();
+    }
+
+    public async Task<T?> GetFirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet.FirstOrDefaultAsync(predicate);
+    }
+
+    public async Task<T?> GetFirstOrDefaultAsync(
+        Expression<Func<T, bool>> predicate,
+        string? includeProperties = null)
+    {
+        IQueryable<T> query = _dbSet;
+
+        if (!string.IsNullOrEmpty(includeProperties))
+        {
+            foreach (var includeProperty in includeProperties.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                query = query.Include(includeProperty.Trim());
+            }
+        }
+
+        return await query.FirstOrDefaultAsync(predicate);
     }
 
     public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
@@ -57,16 +76,16 @@ public class Repository<T> : IRepository<T> where T : class
         return entity;
     }
 
-    public Task UpdateAsync(T entity)
+    public async Task UpdateAsync(T entity)
     {
         _dbSet.Update(entity);
-        return Task.CompletedTask;
+        await Task.CompletedTask;
     }
 
-    public Task DeleteAsync(T entity)
+    public async Task DeleteAsync(T entity)
     {
         _dbSet.Remove(entity);
-        return Task.CompletedTask;
+        await Task.CompletedTask;
     }
 
     public async Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate)

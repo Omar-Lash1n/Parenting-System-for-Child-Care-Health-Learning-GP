@@ -11,5 +11,6 @@ public class Parent
     public ParentGender Gender { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    
+    public ICollection<Child> Children { get; set; } = new List<Child>();
+
 }

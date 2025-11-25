@@ -9,9 +9,10 @@ public interface IUnitOfWork : IDisposable
     IRepository<Parent> Parents { get; }
     IRepository<City> Cities { get; }
     IRepository<PasswordResetToken> PasswordResetTokens { get; }  // ✅ NEW
-
+    IChildRepository Children { get; }
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();
     Task RollbackTransactionAsync();
+    Task<int> SaveAsync();
 }

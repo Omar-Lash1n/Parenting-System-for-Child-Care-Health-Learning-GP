@@ -14,7 +14,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Parent> Parents { get; set; }
     public DbSet<City> Cities { get; set; }
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }  // ✅ NEW
-
+    public DbSet<Child> Children { get; set; } 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -67,6 +67,59 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.NameAr).IsRequired().HasMaxLength(100);
         });
+        modelBuilder.Entity<Child>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+
+            // Properties
+            entity.Property(c => c.FullName)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(c => c.BirthDate)
+                .IsRequired();
+
+            entity.Property(c => c.Age)
+                .IsRequired();
+
+            entity.Property(c => c.Gender)
+                .IsRequired()
+                .HasMaxLength(10);
+
+            entity.Property(c => c.ProfileImageUrl)
+                .HasMaxLength(500);
+
+            entity.Property(c => c.ChildLoginId)
+                .HasMaxLength(20);
+
+            entity.Property(c => c.PasswordHash)
+                .HasMaxLength(500);
+
+            entity.Property(c => c.CreatedAt)
+                .IsRequired();
+
+            entity.Property(c => c.UpdatedAt)
+                .IsRequired();
+
+            entity.Property(c => c.IsActive)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            // Relationship with Parent
+            entity.HasOne(c => c.Parent)
+                .WithMany(p => p.Children)
+                .HasForeignKey(c => c.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Indexes
+            entity.HasIndex(c => c.ChildLoginId)
+                .IsUnique()
+                .HasFilter("[ChildLoginId] IS NOT NULL");
+
+            entity.HasIndex(c => c.ParentId);
+            
+            entity.HasIndex(c => c.IsActive);
+        });
 
         // Seed Cities
         SeedCities(modelBuilder);
@@ -82,4 +135,5 @@ public class ApplicationDbContext : DbContext
             new City { Id = 5, Name = "Port Said", NameAr = "بورسعيد", IsActive = true }
         );
     }
+    
 }

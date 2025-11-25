@@ -113,7 +113,55 @@ public class AuthController : ControllerBase
     }
     
     
-    
+    /// <summary>
+    /// تسجيل دخول الطفل باستخدام معرف الدخول وكلمة المرور البصرية (5 فواكه)
+    /// Child login using login ID and visual password (5 fruits)
+    /// </summary>
+    /// <param name="request">بيانات تسجيل الدخول</param>
+    /// <returns>نتيجة تسجيل الدخول</returns>
+    [HttpPost("login/child")]
+    [ProducesResponseType(typeof(ApiResponse<LoginChildResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<LoginChildResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<LoginChildResponseDto>), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> LoginChild([FromBody] LoginChildRequestDto request)
+    {
+        try
+        {
+            // Log login attempt (don't log password!)
+            _logger.LogInformation("Child login attempt for login ID: {LoginId}", request.ChildLoginId);
+
+            var result = await _authService.LoginChildAsync(request);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("Child login failed for login ID: {LoginId}. Errors: {Errors}",
+                    request.ChildLoginId,
+                    string.Join(", ", result.Errors));
+
+                // Return 401 for authentication failures
+                if (result.Errors.Any(e => e.Contains("معرف الدخول أو كلمة السر غير صحيحة")))
+                {
+                    return Unauthorized(result);
+                }
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("Child login successful for login ID: {LoginId}, ChildId: {ChildId}",
+                request.ChildLoginId,
+                result.Data?.ChildId);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in LoginChild endpoint for login ID: {LoginId}", request.ChildLoginId);
+            return StatusCode(500, ApiResponse<LoginChildResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+            ));
+        }
+    }
 
 // Add these methods to AuthController
 
