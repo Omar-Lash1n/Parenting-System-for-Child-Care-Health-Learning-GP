@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application/child-app/child-sign-in.dart';
 // (تأكد من أن هذه المسارات صحيحة)
-import 'package:flutter_application/signup-login-pages/continuesignup.dart'; 
+import 'package:flutter_application/signup-login-pages/continuesignup.dart';
 import 'package:flutter_application/signup-login-pages/signup.dart';
 import 'package:flutter_application/splash_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -36,7 +36,6 @@ class AjialApp extends StatelessWidget {
       // --- *** بداية التعديل المطلوب *** ---
       // (تم حذف الخاصية 'home:' بالكامل لأنها تتعارض مع 'initialRoute')
       // --- *** نهاية التعديل المطلوب *** ---
-
       initialRoute: '/child-login',
       routes: {
         '/splash': (context) => SplashScreen(),
