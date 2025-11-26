@@ -1,10 +1,11 @@
-// --- child_login_screen.dart (Final Fixed Version) ---
+// --- child_login_screen.dart (Final UI + Audio Version) - MODIFIED
 
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_application/child-app/child-home.dart';
 import 'dart:ui' as ui;
+import 'package:audioplayers/audioplayers.dart'; // 1. تأكد من وجود المكتبة
+import 'package:flutter_application/child-app/child-home.dart';
 
 // --- الثوابت والألوان ---
 const String kFontFamily = 'IBM Plex Sans Arabic';
@@ -16,25 +17,27 @@ const Color kButtonShadowColor = Color(0xFF00579E);
 const Color kSuccessBorderColor = Color(0xFF01A449);
 const Color kDefaultShadowColor = Color(0xFFB0BEC5);
 
-// --- موديل الفاكهة ---
+// --- موديل الفاكهة (مع الصوت) ---
 class Fruit {
   final String id;
   final String name;
   final String imagePath;
+  final String audioPath; // 2. مسار الصوت
   final Color backgroundColor;
 
   Fruit({
     required this.id,
     required this.name,
     required this.imagePath,
+    required this.audioPath,
     required this.backgroundColor,
   });
 }
 
-// --- 1. زر الألعاب ثلاثي الأبعاد (النسخة المعدلة والمصححة) ---
+// --- زر الألعاب ثلاثي الأبعاد ---
 class GameButton extends StatefulWidget {
-  final String? text; // النص (اختياري)
-  final Widget? child; // محتوى مخصص مثل صورة (اختياري)
+  final String? text;
+  final Widget? child;
   final VoidCallback onTap;
   final Color color;
   final Color shadowColor;
@@ -77,7 +80,6 @@ class _GameButtonState extends State<GameButton> {
         width: widget.width,
         child: Stack(
           children: [
-            // طبقة الشادو
             Positioned(
               bottom: 0,
               left: 0,
@@ -90,7 +92,6 @@ class _GameButtonState extends State<GameButton> {
                 ),
               ),
             ),
-            // طبقة وجه الزر
             AnimatedPositioned(
               duration: const Duration(milliseconds: 50),
               curve: Curves.easeInOut,
@@ -104,7 +105,6 @@ class _GameButtonState extends State<GameButton> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Center(
-                  // عرض المحتوى المخصص (صورة) أو النص
                   child:
                       widget.child ??
                       Text(
@@ -131,20 +131,17 @@ class DashedBorderPainter extends CustomPainter {
   final Color color;
   final double strokeWidth;
   final double gap;
-
   DashedBorderPainter({
     this.color = Colors.black,
     this.strokeWidth = 1.5,
     this.gap = 5.0,
   });
-
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
       ..color = color
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
-
     final Path path = Path();
     path.addRRect(
       RRect.fromRectAndRadius(
@@ -152,10 +149,8 @@ class DashedBorderPainter extends CustomPainter {
         const Radius.circular(12),
       ),
     );
-
     final Path dashedPath = Path();
     final ui.PathMetrics pathMetrics = path.computeMetrics();
-
     for (ui.PathMetric pathMetric in pathMetrics) {
       double distance = 0.0;
       while (distance < pathMetric.length) {
@@ -177,7 +172,6 @@ class DashedBorderPainter extends CustomPainter {
 class SuccessDialog extends StatelessWidget {
   final String childName;
   const SuccessDialog({super.key, required this.childName});
-
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -209,7 +203,7 @@ class SuccessDialog extends StatelessWidget {
               ),
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(seconds: 8),
+                duration: const Duration(seconds: 15),
                 onEnd: () {
                   Navigator.pop(context);
                   Navigator.pushReplacement(
@@ -269,65 +263,80 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
   final TextEditingController _idController = TextEditingController();
   final FocusNode _idFocusNode = FocusNode();
 
+  // 3. مشغلات الصوت
+  final AudioPlayer _mainPlayer = AudioPlayer(); // للأصوات الرئيسية (كلام)
+  final AudioPlayer _sfxPlayer = AudioPlayer(); // للمؤثرات (كليك)
+
+  // 4. قائمة الفواكه مع مسارات الصوت
   final List<Fruit> availableFruits = [
     Fruit(
       id: '1',
       name: 'ليمون',
       imagePath: 'images/lemon.png',
+      audioPath: 'assets/sounds/lemon.mp3',
       backgroundColor: const Color(0xFFFFF59D),
     ),
     Fruit(
       id: '2',
       name: 'عنب',
       imagePath: 'images/grapes.png',
+      audioPath: 'assets/sounds/grape.mp3',
       backgroundColor: const Color(0xFFE1BEE7),
     ),
     Fruit(
       id: '3',
       name: 'برتقال',
       imagePath: 'images/orange-juice.png',
+      audioPath: 'assets/sounds/orange.mp3',
       backgroundColor: const Color(0xFFFFCC80),
     ),
     Fruit(
       id: '4',
       name: 'موز',
       imagePath: 'images/banana.png',
+      audioPath: 'assets/sounds/banana.mp3',
       backgroundColor: const Color(0xFFFFF9C4),
     ),
     Fruit(
       id: '5',
       name: 'كمثرى',
       imagePath: 'images/pear.png',
+      audioPath: 'assets/sounds/pear.mp3',
       backgroundColor: const Color(0xFFC8E6C9),
     ),
     Fruit(
       id: '6',
       name: 'تفاح',
       imagePath: 'images/apple.png',
+      audioPath: 'assets/sounds/apple.mp3',
       backgroundColor: const Color(0xFFFFCDD2),
     ),
     Fruit(
       id: '7',
       name: 'تين',
       imagePath: 'images/fig.png',
+      audioPath: 'assets/sounds/fig.mp3',
       backgroundColor: const Color(0xFFD1C4E9),
     ),
     Fruit(
       id: '8',
       name: 'فراولة',
       imagePath: 'images/strawberry.png',
+      audioPath: 'assets/sounds/strawberry.mp3',
       backgroundColor: const Color(0xFFEF9A9A),
     ),
     Fruit(
       id: '9',
       name: 'أناناس',
       imagePath: 'images/pineapple.png',
+      audioPath: 'assets/sounds/pineapple.mp3',
       backgroundColor: const Color(0xFFFFF176),
     ),
     Fruit(
       id: '10',
       name: 'بطيخ',
       imagePath: 'images/watermelon.png',
+      audioPath: 'assets/sounds/watermelon.mp3',
       backgroundColor: const Color(0xFFA5D6A7),
     ),
   ];
@@ -347,6 +356,10 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
   @override
   void initState() {
     super.initState();
+
+    // إعداد صوت الكليك
+    _sfxPlayer.setVolume(0.3);
+
     _idController.addListener(() {
       setState(() {
         isIdCompleted = _idController.text.length == 4;
@@ -360,6 +373,11 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
         isIdFocused = _idFocusNode.hasFocus;
       });
     });
+
+    // 5. تشغيل الترحيب عند الفتح
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _playSound('assets/sounds/welcome.mp3');
+    });
   }
 
   @override
@@ -367,7 +385,45 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
     _idController.dispose();
     _idFocusNode.dispose();
     _toastTimer?.cancel();
+    _mainPlayer.dispose(); // تنظيف
+    _sfxPlayer.dispose();
     super.dispose();
+  }
+
+  // ---------- Normalized audio playing functions (fix assets/... duplication on web) ----------
+  String _normalizeAssetPath(String path) {
+    // remove any leading/trailing spaces and slashes
+    String p = path.trim();
+    while (p.startsWith('/')) p = p.substring(1);
+
+    // remove repeated 'assets/' occurrences
+    // e.g. "assets/assets/sounds/x.mp3" -> "sounds/x.mp3"
+    while (p.startsWith('assets/')) {
+      p = p.substring('assets/'.length);
+    }
+
+    // Now ensure it's relative to the assets folder, e.g. 'sounds/...'
+    return p;
+  }
+
+  Future<void> _playSound(String rawPath) async {
+    try {
+      final path = _normalizeAssetPath(rawPath); // e.g. "sounds/strawberry.mp3"
+      await _mainPlayer.stop();
+      await _mainPlayer.play(AssetSource(path));
+    } catch (e) {
+      print("Audio Error (playSound) for '$rawPath' -> $e");
+    }
+  }
+
+  Future<void> _playClick() async {
+    try {
+      final path = _normalizeAssetPath('assets/sounds/click.mp3');
+      await _sfxPlayer.stop();
+      await _sfxPlayer.play(AssetSource(path));
+    } catch (e) {
+      print("SFX Error (playClick) -> $e");
+    }
   }
 
   void _addFruit(Fruit fruit) {
@@ -377,6 +433,8 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
         _hideToast();
         showQuestionMarks = false;
       });
+      // تشغيل صوت الفاكهة
+      _playSound(fruit.audioPath);
     }
   }
 
@@ -386,6 +444,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
       _hideToast();
       showQuestionMarks = false;
     });
+    _playClick();
   }
 
   void _validateAndSubmit() {
@@ -393,13 +452,15 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
 
     if (_idController.text.isEmpty) {
       setState(() => isIdError = true);
-      _showToast("اكتب رقمك", "الرقم مطلوب");
+      _showToast("اكتب رقمك", "رقمك مطلوب");
+      _playSound('assets/sounds/error_number.mp3');
       return;
     }
 
     if (_idController.text.length < 4) {
       setState(() => isIdError = true);
       _showToast("كمل رقمك", "الرقم ناقص");
+      _playSound('assets/sounds/error_number.mp3');
       return;
     }
 
@@ -408,16 +469,19 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
         showQuestionMarks = true;
       });
       _showToast("اختر الفواكه", "لم تختر أي فاكهة");
+      _playSound('assets/sounds/error_empty.mp3');
       return;
     }
 
     if (selectedPassword.length < 5) {
       setState(() => showQuestionMarks = true);
       _showToast("اكمل الفواكه", "كلمة السر ناقصة");
+      _playSound('assets/sounds/error_incomplete.mp3');
       return;
     }
 
     // النجاح
+    _playSound('assets/sounds/success.mp3');
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -455,6 +519,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
           onTap: () {
             FocusScope.of(context).unfocus();
             _hideToast();
+            _playClick(); // كليك عام
           },
           child: Stack(
             children: [
@@ -566,7 +631,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                                     horizontal: 16,
                                     vertical: 12,
                                   ),
-                                  hintText: "اكتب هنا ...",
+                                  hintText: "....",
                                   hintStyle: TextStyle(
                                     color: Colors.grey.shade400,
                                     letterSpacing: 0,
@@ -726,19 +791,18 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                           itemCount: availableFruits.length,
                           itemBuilder: (context, index) {
                             final fruit = availableFruits[index];
-                            // استخدام GameButton كحاوية للصورة
                             return GameButton(
-                              text: null, // لا نص
+                              text: null,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Image.asset(fruit.imagePath),
+                              ),
                               onTap: () => _addFruit(fruit),
                               height: 65,
                               width: 65,
                               color: fruit.backgroundColor,
                               shadowColor: fruit.backgroundColor.withOpacity(
                                 0.6,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Image.asset(fruit.imagePath),
                               ),
                             );
                           },
@@ -846,14 +910,17 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                                 : const SizedBox.shrink(key: ValueKey('empty')),
                           ),
 
-                          // زر انطلق (GameButton)
+                          // زر انطلق
                           GameButton(text: "انطلق", onTap: _validateAndSubmit),
 
                           const SizedBox(height: 25),
 
                           // زر رجوع
                           GestureDetector(
-                            onTap: () => Navigator.pop(context),
+                            onTap: () {
+                              _playClick();
+                              Navigator.pop(context);
+                            },
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: const [
