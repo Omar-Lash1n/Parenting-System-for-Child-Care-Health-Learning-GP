@@ -79,7 +79,7 @@ builder.Services.AddScoped<IParentService, ParentService>();
 builder.Services.AddScoped<IChildService, ChildService>();        // ✅ NEW - Child Management
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
-
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 // ✅ Infrastructure Services
 builder.Services.AddScoped<IImageService, AzureBlobImageService>(); // ✅ NEW - Image Upload to Azure
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
