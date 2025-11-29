@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import 'dart:math';
 
-import 'package:flutter_application/signup-login-pages/signup.dart';
+import 'package:Ajial/signup-login-pages/signup.dart';
 // --- *** بداية التعديل المطلوب *** ---
 // 1. إضافة import لصفحة اختيار الدور
 // (يرجى التأكد من أن هذا المسار صحيح)
-import 'package:flutter_application/role_selection.dart'; 
+import 'package:Ajial/role_selection.dart'; 
 // --- *** نهاية التعديل المطلوب *** ---
 
 

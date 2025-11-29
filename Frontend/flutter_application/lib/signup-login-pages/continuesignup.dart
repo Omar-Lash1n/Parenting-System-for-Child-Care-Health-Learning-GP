@@ -1,8 +1,8 @@
 // --- data_entry_page.dart (Updated with Sticky Buttons & Fade Transition) ---
 import 'package:flutter/material.dart';
-import 'package:flutter_application/signup-login-pages/login.dart';
+import 'package:Ajial/signup-login-pages/login.dart';
 import 'package:intl/intl.dart'; // لتنسيق التاريخ
-import 'package:flutter_application/api/auth_service.dart'; // (تأكد أن المسار صحيح)
+import 'package:Ajial/api/auth_service.dart'; // (تأكد أن المسار صحيح)
 
 // --- Global Constants ---
 const Color kPrimaryColor = Color(0xFFC7002B);

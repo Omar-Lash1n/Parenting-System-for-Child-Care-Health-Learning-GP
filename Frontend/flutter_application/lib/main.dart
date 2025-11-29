@@ -1,9 +1,12 @@
+import 'package:Ajial/add-child/add-child-flow.dart';
+import 'package:Ajial/homepage/homepage.dart';
+import 'package:Ajial/signup-login-pages/login.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_application/child-app/child-sign-in.dart';
+import 'package:Ajial/child-app/child-sign-in.dart';
 // (تأكد من أن هذه المسارات صحيحة)
-import 'package:flutter_application/signup-login-pages/continuesignup.dart';
-import 'package:flutter_application/signup-login-pages/signup.dart';
-import 'package:flutter_application/splash_screen.dart';
+import 'package:Ajial/signup-login-pages/continuesignup.dart';
+import 'package:Ajial/signup-login-pages/signup.dart';
+import 'package:Ajial/splash_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
@@ -36,13 +39,16 @@ class AjialApp extends StatelessWidget {
       // --- *** بداية التعديل المطلوب *** ---
       // (تم حذف الخاصية 'home:' بالكامل لأنها تتعارض مع 'initialRoute')
       // --- *** نهاية التعديل المطلوب *** ---
-      initialRoute: '/child-login',
+      initialRoute:
+          '/child-login', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
       routes: {
         '/splash': (context) => SplashScreen(),
         // (يمكنك إضافة باقي الصفحات هنا إذا أردت استخدام التنقل بالأسماء)
-        // '/login': (context) => const LoginScreen(),
+        '/login': (context) => const LoginScreen(),
         // '/signup': (context) => const SignUpScreen(),
         '/child-login': (context) => const ChildLoginScreen(),
+        '/home': (context) => HomeScreen(),
+        '/add-child': (context) => const AddChildFlow(),
       },
     );
   }

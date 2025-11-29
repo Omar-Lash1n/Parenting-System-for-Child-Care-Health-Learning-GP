@@ -3,11 +3,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // (لإدخال الأرقام فقط)
-import 'package:flutter_application/signup-login-pages/enternewpassword.dart';
+import 'package:Ajial/signup-login-pages/enternewpassword.dart';
 import 'package:pinput/pinput.dart';
 
 // --- تعديل: إضافة import لخدمة الـ API ---
-import 'package:flutter_application/api/auth_service.dart';
+import 'package:Ajial/api/auth_service.dart';
 
 // --- (Global Constants & FadePageRoute Helper Class ... كما هي) ---
 const Color kPrimaryColor = Color(0xFFBF092F);

@@ -1,3 +1,4 @@
+import 'package:Ajial/child-app/child-sign-in.dart';
 import 'package:flutter/material.dart';
 // تأكد من استيراد ParentWelcomeScreen بشكل صحيح
 import 'ParentWelcomeScreen.dart';
@@ -115,6 +116,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           Navigator.of(context).pushReplacement(
                             MaterialPageRoute(
                               builder: (context) => const ParentWelcomeScreen(),
+                            ),
+                          );
+                        } else if (_selectedRole == "child") {
+                          // الانتقال لصفحة تسجيل دخول الطفل
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              // (تأكد من استيراد ChildLoginScreen في الأعلى)
+                              builder: (context) => const ChildLoginScreen(),
                             ),
                           );
                         } else {

@@ -1,11 +1,12 @@
-// --- child_login_screen.dart (Final UI + Audio Version) - MODIFIED
+// --- lib/child-app/child-sign-in.dart (Fixed Input Limit & Generic Error Audio) ---
 
 import 'dart:async';
+import 'package:Ajial/api/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
-import 'package:audioplayers/audioplayers.dart'; // 1. تأكد من وجود المكتبة
-import 'package:flutter_application/child-app/child-home.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:Ajial/child-app/child-home.dart';
 
 // --- الثوابت والألوان ---
 const String kFontFamily = 'IBM Plex Sans Arabic';
@@ -17,16 +18,18 @@ const Color kButtonShadowColor = Color(0xFF00579E);
 const Color kSuccessBorderColor = Color(0xFF01A449);
 const Color kDefaultShadowColor = Color(0xFFB0BEC5);
 
-// --- موديل الفاكهة (مع الصوت) ---
+// --- موديل الفاكهة ---
 class Fruit {
   final String id;
+  final String code;
   final String name;
   final String imagePath;
-  final String audioPath; // 2. مسار الصوت
+  final String audioPath;
   final Color backgroundColor;
 
   Fruit({
     required this.id,
+    required this.code,
     required this.name,
     required this.imagePath,
     required this.audioPath,
@@ -105,8 +108,7 @@ class _GameButtonState extends State<GameButton> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Center(
-                  child:
-                      widget.child ??
+                  child: widget.child ??
                       Text(
                         widget.text ?? "",
                         style: TextStyle(
@@ -131,17 +133,20 @@ class DashedBorderPainter extends CustomPainter {
   final Color color;
   final double strokeWidth;
   final double gap;
+
   DashedBorderPainter({
     this.color = Colors.black,
     this.strokeWidth = 1.5,
     this.gap = 5.0,
   });
+
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
       ..color = color
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
+
     final Path path = Path();
     path.addRRect(
       RRect.fromRectAndRadius(
@@ -149,8 +154,10 @@ class DashedBorderPainter extends CustomPainter {
         const Radius.circular(12),
       ),
     );
+
     final Path dashedPath = Path();
     final ui.PathMetrics pathMetrics = path.computeMetrics();
+
     for (ui.PathMetric pathMetric in pathMetrics) {
       double distance = 0.0;
       while (distance < pathMetric.length) {
@@ -171,7 +178,16 @@ class DashedBorderPainter extends CustomPainter {
 // --- Success Dialog Widget ---
 class SuccessDialog extends StatelessWidget {
   final String childName;
-  const SuccessDialog({super.key, required this.childName});
+  final String? profileImageUrl;
+  final int? age;
+
+  const SuccessDialog({
+    super.key,
+    required this.childName,
+    this.profileImageUrl,
+    this.age,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -194,6 +210,7 @@ class SuccessDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Progress bar
             Container(
               height: 10,
               width: double.infinity,
@@ -203,7 +220,7 @@ class SuccessDialog extends StatelessWidget {
               ),
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(seconds: 15),
+                duration: const Duration(seconds: 3),
                 onEnd: () {
                   Navigator.pop(context);
                   Navigator.pushReplacement(
@@ -228,8 +245,35 @@ class SuccessDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+
+            if (profileImageUrl != null && profileImageUrl!.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(50),
+                child: Image.network(
+                  profileImageUrl!,
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(
+                      Icons.emoji_emotions,
+                      size: 80,
+                      color: kSuccessBorderColor,
+                    );
+                  },
+                ),
+              )
+            else
+              const Icon(
+                Icons.emoji_emotions,
+                size: 80,
+                color: kSuccessBorderColor,
+              ),
+
+            const SizedBox(height: 20),
+
             Text(
-              "احسنت يا $childName!",
+              "أهلاً $childName! ",
               style: const TextStyle(
                 fontFamily: kFontFamily,
                 fontSize: 28,
@@ -238,13 +282,27 @@ class SuccessDialog extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
+
+            if (age != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  "$age سنوات",
+                  style: TextStyle(
+                    fontFamily: kFontFamily,
+                    fontSize: 18,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ),
+
             const SizedBox(height: 20),
+
             const Icon(
               Icons.workspace_premium,
-              size: 80,
+              size: 60,
               color: kSuccessBorderColor,
             ),
-            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -252,6 +310,7 @@ class SuccessDialog extends StatelessWidget {
   }
 }
 
+// --- Main Child Login Screen ---
 class ChildLoginScreen extends StatefulWidget {
   const ChildLoginScreen({super.key});
 
@@ -263,28 +322,32 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
   final TextEditingController _idController = TextEditingController();
   final FocusNode _idFocusNode = FocusNode();
 
-  // 3. مشغلات الصوت
-  final AudioPlayer _mainPlayer = AudioPlayer(); // للأصوات الرئيسية (كلام)
-  final AudioPlayer _sfxPlayer = AudioPlayer(); // للمؤثرات (كليك)
+  final AudioPlayer _mainPlayer = AudioPlayer();
+  final AudioPlayer _sfxPlayer = AudioPlayer();
 
-  // 4. قائمة الفواكه مع مسارات الصوت
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
+
   final List<Fruit> availableFruits = [
     Fruit(
       id: '1',
-      name: 'ليمون',
-      imagePath: 'images/lemon.png',
-      audioPath: 'assets/sounds/lemon.mp3',
-      backgroundColor: const Color(0xFFFFF59D),
+      code: 'apple2025',
+      name: 'تفاح',
+      imagePath: 'images/apple.png',
+      audioPath: 'sounds/apple.mp3',
+      backgroundColor: const Color(0xFFFFCDD2),
     ),
     Fruit(
       id: '2',
-      name: 'عنب',
-      imagePath: 'images/grapes.png',
-      audioPath: 'assets/sounds/grape.mp3',
-      backgroundColor: const Color(0xFFE1BEE7),
+      code: 'banana2025',
+      name: 'موز',
+      imagePath: 'images/banana.png',
+      audioPath: 'assets/sounds/banana.mp3',
+      backgroundColor: const Color(0xFFFFF9C4),
     ),
     Fruit(
       id: '3',
+      code: 'orange2025',
       name: 'برتقال',
       imagePath: 'images/orange-juice.png',
       audioPath: 'assets/sounds/orange.mp3',
@@ -292,13 +355,15 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
     ),
     Fruit(
       id: '4',
-      name: 'موز',
-      imagePath: 'images/banana.png',
-      audioPath: 'assets/sounds/banana.mp3',
-      backgroundColor: const Color(0xFFFFF9C4),
+      code: 'grape2025',
+      name: 'عنب',
+      imagePath: 'images/grapes.png',
+      audioPath: 'assets/sounds/grape.mp3',
+      backgroundColor: const Color(0xFFE1BEE7),
     ),
     Fruit(
       id: '5',
+      code: 'pear2025',
       name: 'كمثرى',
       imagePath: 'images/pear.png',
       audioPath: 'assets/sounds/pear.mp3',
@@ -306,38 +371,43 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
     ),
     Fruit(
       id: '6',
-      name: 'تفاح',
-      imagePath: 'images/apple.png',
-      audioPath: 'assets/sounds/apple.mp3',
-      backgroundColor: const Color(0xFFFFCDD2),
-    ),
-    Fruit(
-      id: '7',
-      name: 'تين',
-      imagePath: 'images/fig.png',
-      audioPath: 'assets/sounds/fig.mp3',
-      backgroundColor: const Color(0xFFD1C4E9),
-    ),
-    Fruit(
-      id: '8',
+      code: 'strawberry2025',
       name: 'فراولة',
       imagePath: 'images/strawberry.png',
       audioPath: 'assets/sounds/strawberry.mp3',
       backgroundColor: const Color(0xFFEF9A9A),
     ),
     Fruit(
-      id: '9',
+      id: '7',
+      code: 'watermelon2025',
+      name: 'بطيخ',
+      imagePath: 'images/watermelon.png',
+      audioPath: 'assets/sounds/watermelon.mp3',
+      backgroundColor: const Color(0xFFA5D6A7),
+    ),
+    Fruit(
+      id: '8',
+      code: 'pineapple2025',
       name: 'أناناس',
       imagePath: 'images/pineapple.png',
       audioPath: 'assets/sounds/pineapple.mp3',
       backgroundColor: const Color(0xFFFFF176),
     ),
     Fruit(
+      id: '9',
+      code: 'fig2025',
+      name: 'تين',
+      imagePath: 'images/fig.png',
+      audioPath: 'assets/sounds/fig.mp3',
+      backgroundColor: const Color(0xFFD1C4E9),
+    ),
+    Fruit(
       id: '10',
-      name: 'بطيخ',
-      imagePath: 'images/watermelon.png',
-      audioPath: 'assets/sounds/watermelon.mp3',
-      backgroundColor: const Color(0xFFA5D6A7),
+      code: 'lemon2025',
+      name: 'ليمون',
+      imagePath: 'images/lemon.png',
+      audioPath: 'assets/sounds/lemon.mp3',
+      backgroundColor: const Color(0xFFFFF59D),
     ),
   ];
 
@@ -357,12 +427,11 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
   void initState() {
     super.initState();
 
-    // إعداد صوت الكليك
     _sfxPlayer.setVolume(0.3);
 
     _idController.addListener(() {
       setState(() {
-        isIdCompleted = _idController.text.length == 4;
+        isIdCompleted = _idController.text.length >= 4;
         if (showError) _hideToast();
         if (isIdCompleted || _idController.text.isNotEmpty) isIdError = false;
       });
@@ -374,7 +443,6 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
       });
     });
 
-    // 5. تشغيل الترحيب عند الفتح
     Future.delayed(const Duration(milliseconds: 500), () {
       _playSound('assets/sounds/welcome.mp3');
     });
@@ -385,30 +453,24 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
     _idController.dispose();
     _idFocusNode.dispose();
     _toastTimer?.cancel();
-    _mainPlayer.dispose(); // تنظيف
+    _mainPlayer.dispose();
     _sfxPlayer.dispose();
     super.dispose();
   }
 
-  // ---------- Normalized audio playing functions (fix assets/... duplication on web) ----------
+  // --- Audio Functions ---
   String _normalizeAssetPath(String path) {
-    // remove any leading/trailing spaces and slashes
     String p = path.trim();
     while (p.startsWith('/')) p = p.substring(1);
-
-    // remove repeated 'assets/' occurrences
-    // e.g. "assets/assets/sounds/x.mp3" -> "sounds/x.mp3"
     while (p.startsWith('assets/')) {
       p = p.substring('assets/'.length);
     }
-
-    // Now ensure it's relative to the assets folder, e.g. 'sounds/...'
     return p;
   }
 
   Future<void> _playSound(String rawPath) async {
     try {
-      final path = _normalizeAssetPath(rawPath); // e.g. "sounds/strawberry.mp3"
+      final path = _normalizeAssetPath(rawPath);
       await _mainPlayer.stop();
       await _mainPlayer.play(AssetSource(path));
     } catch (e) {
@@ -433,7 +495,6 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
         _hideToast();
         showQuestionMarks = false;
       });
-      // تشغيل صوت الفاكهة
       _playSound(fruit.audioPath);
     }
   }
@@ -447,9 +508,11 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
     _playClick();
   }
 
-  void _validateAndSubmit() {
+  // --- دالة التحقق والإرسال (المعدلة) ---
+  Future<void> _validateAndSubmit() async {
     _hideToast();
 
+    // 1. التحقق من الرقم فارغ
     if (_idController.text.isEmpty) {
       setState(() => isIdError = true);
       _showToast("اكتب رقمك", "رقمك مطلوب");
@@ -457,6 +520,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
       return;
     }
 
+    // 2. التحقق من الرقم ناقص
     if (_idController.text.length < 4) {
       setState(() => isIdError = true);
       _showToast("كمل رقمك", "الرقم ناقص");
@@ -464,15 +528,15 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
       return;
     }
 
+    // 3. التحقق من الفواكه فارغة
     if (selectedPassword.isEmpty) {
-      setState(() {
-        showQuestionMarks = true;
-      });
+      setState(() => showQuestionMarks = true);
       _showToast("اختر الفواكه", "لم تختر أي فاكهة");
       _playSound('assets/sounds/error_empty.mp3');
       return;
     }
 
+    // 4. التحقق من الفواكه ناقصة
     if (selectedPassword.length < 5) {
       setState(() => showQuestionMarks = true);
       _showToast("اكمل الفواكه", "كلمة السر ناقصة");
@@ -480,13 +544,59 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
       return;
     }
 
-    // النجاح
-    _playSound('assets/sounds/success.mp3');
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const SuccessDialog(childName: "أنس"),
+    // --- الاتصال بالـ Backend ---
+    setState(() => _isLoading = true);
+
+    List<String> fruitCodes =
+        selectedPassword.map((fruit) => fruit.code).toList();
+
+    print('📤 Sending login with codes: $fruitCodes');
+
+    final result = await _authService.loginChild(
+      childLoginId: _idController.text.trim(),
+      fruitPasswordCodes: fruitCodes,
     );
+
+    if (mounted) setState(() => _isLoading = false);
+
+    print('📥 Login result: $result');
+
+    if (result.success) {
+      // --- نجاح ---
+      _playSound('assets/sounds/success.mp3');
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => SuccessDialog(
+            childName: result.childName ?? "يا بطل",
+            profileImageUrl: result.profileImageUrl,
+            age: result.age,
+          ),
+        );
+      }
+    } else {
+      // --- فشل (معالجة موحدة للأخطاء) ---
+      _handleLoginError(result);
+    }
+  }
+
+  /// معالجة أخطاء تسجيل الدخول (المعدلة لتوحيد الصوت)
+  void _handleLoginError(ChildLoginResult result) {
+    // تشغيل صوت الخطأ العام دائماً لأي مشكلة من الباك اند
+    _playSound('assets/sounds/error_backend.mp3');
+
+    // إظهار رسالة الخطأ القادمة من الباك اند
+    _showToast("حاول تاني", result.errorMessage ?? "بيانات خاطئة");
+
+    // تحديث الحالة البصرية لمساعدة الطفل
+    setState(() {
+      // تفعيل اللون الأحمر للرقم وعلامات الاستفهام للفواكه
+      // ليعرف الطفل أن هناك مشكلة ما في أحد المدخلات
+      isIdError = true;
+      showQuestionMarks = true;
+    });
   }
 
   void _showToast(String actionText, String debugMsg) {
@@ -496,7 +606,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
       errorMessage = debugMsg;
     });
     _toastTimer?.cancel();
-    _toastTimer = Timer(const Duration(seconds: 20), () {
+    _toastTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) _hideToast();
     });
   }
@@ -519,7 +629,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
           onTap: () {
             FocusScope.of(context).unfocus();
             _hideToast();
-            _playClick(); // كليك عام
+            _playClick();
           },
           child: Stack(
             children: [
@@ -541,6 +651,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 60),
+
                       // الهيدر
                       SizedBox(
                         height: 120,
@@ -563,7 +674,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                               ),
                             ),
                             const Text(
-                              "مرحباً يا أبطال!",
+                              "مرحباً يا أبطال! ",
                               style: TextStyle(
                                 fontFamily: kFontFamily,
                                 fontSize: 38,
@@ -601,13 +712,13 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                                     color: isIdError
                                         ? kErrorColor
                                         : isIdCompleted
-                                        ? kSuccessBorderColor
-                                        : isIdFocused
-                                        ? Colors.black
-                                        : kDefaultShadowColor,
+                                            ? kSuccessBorderColor
+                                            : isIdFocused
+                                                ? Colors.black
+                                                : kDefaultShadowColor,
                                     blurRadius: 0,
                                     offset: const Offset(0, 4),
-                                  ),
+                                  )
                                 ],
                               ),
                               child: TextField(
@@ -624,6 +735,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                                 ),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.digitsOnly,
+                                  // ✅ التعديل الأول: تقييد الإدخال بـ 4 أرقام فقط
                                   LengthLimitingTextInputFormatter(4),
                                 ],
                                 decoration: InputDecoration(
@@ -631,7 +743,7 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                                     horizontal: 16,
                                     vertical: 12,
                                   ),
-                                  hintText: "....",
+                                  hintText: "اكتب رقمك هنا ...",
                                   hintStyle: TextStyle(
                                     color: Colors.grey.shade400,
                                     letterSpacing: 0,
@@ -681,13 +793,13 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                             ),
                             const SizedBox(height: 12),
 
+                            // خانات الفواكه المختارة
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: List.generate(5, (index) {
                                 bool hasFruit = index < selectedPassword.length;
-                                Fruit? fruit = hasFruit
-                                    ? selectedPassword[index]
-                                    : null;
+                                Fruit? fruit =
+                                    hasFruit ? selectedPassword[index] : null;
 
                                 return GestureDetector(
                                   onTap: () {
@@ -695,19 +807,16 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                                   },
                                   child: AnimatedSwitcher(
                                     duration: const Duration(milliseconds: 300),
-                                    transitionBuilder:
-                                        (
-                                          Widget child,
-                                          Animation<double> animation,
-                                        ) {
-                                          return ScaleTransition(
-                                            scale: animation,
-                                            child: child,
-                                          );
-                                        },
+                                    transitionBuilder: (Widget child,
+                                        Animation<double> animation) {
+                                      return ScaleTransition(
+                                          scale: animation, child: child);
+                                    },
                                     child: hasFruit
                                         ? Container(
-                                            key: ValueKey(fruit!.id),
+                                            key: ValueKey(
+                                              fruit!.id + index.toString(),
+                                            ),
                                             width: (size.width - 48 - 40) / 5,
                                             height: (size.width - 48 - 40) / 5,
                                             decoration: BoxDecoration(
@@ -720,52 +829,56 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                                               ),
                                             ),
                                             child: Padding(
-                                              padding: const EdgeInsets.all(
-                                                8.0,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.all(8.0),
                                               child: Image.asset(
                                                 fruit.imagePath,
                                               ),
                                             ),
                                           )
                                         : showQuestionMarks
-                                        ? Container(
-                                            key: const ValueKey('error'),
-                                            width: (size.width - 48 - 40) / 5,
-                                            height: (size.width - 48 - 40) / 5,
-                                            alignment: Alignment.center,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              border: Border.all(
-                                                color: kErrorColor,
-                                                width: 2.0,
+                                            ? Container(
+                                                key: const ValueKey('error'),
+                                                width:
+                                                    (size.width - 48 - 40) / 5,
+                                                height:
+                                                    (size.width - 48 - 40) / 5,
+                                                alignment: Alignment.center,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: kErrorColor,
+                                                    width: 2.0,
+                                                  ),
+                                                ),
+                                                child: const Text(
+                                                  "؟",
+                                                  style: TextStyle(
+                                                    color: kErrorColor,
+                                                    fontSize: 28,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontFamily: kFontFamily,
+                                                  ),
+                                                ),
+                                              )
+                                            : CustomPaint(
+                                                key: ValueKey('empty$index'),
+                                                painter: DashedBorderPainter(
+                                                  color: Colors.grey.shade400,
+                                                  strokeWidth: 1.5,
+                                                  gap: 4,
+                                                ),
+                                                child: Container(
+                                                  width:
+                                                      (size.width - 48 - 40) /
+                                                          5,
+                                                  height:
+                                                      (size.width - 48 - 40) /
+                                                          5,
+                                                ),
                                               ),
-                                            ),
-                                            child: const Text(
-                                              "؟",
-                                              style: TextStyle(
-                                                color: kErrorColor,
-                                                fontSize: 28,
-                                                fontWeight: FontWeight.bold,
-                                                fontFamily: kFontFamily,
-                                              ),
-                                            ),
-                                          )
-                                        : CustomPaint(
-                                            key: const ValueKey('empty'),
-                                            painter: DashedBorderPainter(
-                                              color: Colors.grey.shade400,
-                                              strokeWidth: 1.5,
-                                              gap: 4,
-                                            ),
-                                            child: Container(
-                                              width: (size.width - 48 - 40) / 5,
-                                              height:
-                                                  (size.width - 48 - 40) / 5,
-                                            ),
-                                          ),
                                   ),
                                 );
                               }),
@@ -784,10 +897,10 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 5,
-                                crossAxisSpacing: 10,
-                                mainAxisSpacing: 10,
-                              ),
+                            crossAxisCount: 5,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                          ),
                           itemCount: availableFruits.length,
                           itemBuilder: (context, index) {
                             final fruit = availableFruits[index];
@@ -801,9 +914,8 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                               height: 65,
                               width: 65,
                               color: fruit.backgroundColor,
-                              shadowColor: fruit.backgroundColor.withOpacity(
-                                0.6,
-                              ),
+                              shadowColor:
+                                  fruit.backgroundColor.withOpacity(0.6),
                             );
                           },
                         ),
@@ -827,7 +939,6 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                       fit: BoxFit.cover,
                       height: 120,
                     ),
-
                     Padding(
                       padding: const EdgeInsets.only(
                         bottom: 140.0,
@@ -843,24 +954,23 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                             reverseDuration: const Duration(milliseconds: 200),
                             transitionBuilder:
                                 (Widget child, Animation<double> animation) {
-                                  final offsetAnimation =
-                                      Tween<Offset>(
-                                        begin: const Offset(0.0, 0.5),
-                                        end: Offset.zero,
-                                      ).animate(
-                                        CurvedAnimation(
-                                          parent: animation,
-                                          curve: Curves.easeOutBack,
-                                        ),
-                                      );
-                                  return SlideTransition(
-                                    position: offsetAnimation,
-                                    child: FadeTransition(
-                                      opacity: animation,
-                                      child: child,
-                                    ),
-                                  );
-                                },
+                              final offsetAnimation = Tween<Offset>(
+                                begin: const Offset(0.0, 0.5),
+                                end: Offset.zero,
+                              ).animate(
+                                CurvedAnimation(
+                                  parent: animation,
+                                  curve: Curves.easeOutBack,
+                                ),
+                              );
+                              return SlideTransition(
+                                position: offsetAnimation,
+                                child: FadeTransition(
+                                  opacity: animation,
+                                  child: child,
+                                ),
+                              );
+                            },
                             child: showError
                                 ? GestureDetector(
                                     key: const ValueKey('toast'),
@@ -872,19 +982,18 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                                         vertical: 15,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(25),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: kErrorColor,
-                                            offset: Offset(0, 4),
-                                            blurRadius: 0,
-                                          ),
-                                        ],
-                                        border: Border.all(
-                                          color: Colors.grey.shade200,
-                                        ),
-                                      ),
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(25),
+                                          boxShadow: const [
+                                            BoxShadow(
+                                              color: kErrorColor,
+                                              offset: Offset(0, 4),
+                                              blurRadius: 0,
+                                            ),
+                                          ],
+                                          border: Border.all(
+                                              color: Colors.grey.shade200)),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
@@ -911,7 +1020,19 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                           ),
 
                           // زر انطلق
-                          GameButton(text: "انطلق", onTap: _validateAndSubmit),
+                          _isLoading
+                              ? const SizedBox(
+                                  height: 55,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: kButtonMainColor,
+                                    ),
+                                  ),
+                                )
+                              : GameButton(
+                                  text: "انطلق",
+                                  onTap: _validateAndSubmit,
+                                ),
 
                           const SizedBox(height: 25),
 
@@ -921,9 +1042,9 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                               _playClick();
                               Navigator.pop(context);
                             },
-                            child: Row(
+                            child: const Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: const [
+                              children: [
                                 Icon(
                                   Icons.arrow_forward,
                                   size: 28,

@@ -1,10 +1,10 @@
 // --- enternewpassword.dart (Updated with API, Sticky Button & All Features) ---
 
 import 'package:flutter/material.dart';
-import 'package:flutter_application/signup-login-pages/login.dart';
+import 'package:Ajial/signup-login-pages/login.dart';
 
 // --- تعديل: إضافة import لخدمة الـ API ---
-import 'package:flutter_application/api/auth_service.dart';
+import 'package:Ajial/api/auth_service.dart';
 
 // --- (Global Constants & FadePageRoute Helper Class ... كما هي) ---
 const Color kPrimaryColor = Color(0xFFBF092F);
