@@ -1,8 +1,8 @@
 // --- forgetpassword.dart (Updated with New Back Button Style) ---
 
 import 'package:flutter/material.dart';
-import 'package:flutter_application/signup-login-pages/verifyemail.dart';
-import 'package:flutter_application/api/auth_service.dart'; // (تأكد من المسار)
+import 'package:Ajial/signup-login-pages/verifyemail.dart';
+import 'package:Ajial/api/auth_service.dart'; // (تأكد من المسار)
 // --- Global Constants ---
 const Color kPrimaryColor = Color(0xFFBF092F);
 const String kFontFamily = 'IBM Plex Sans Arabic';

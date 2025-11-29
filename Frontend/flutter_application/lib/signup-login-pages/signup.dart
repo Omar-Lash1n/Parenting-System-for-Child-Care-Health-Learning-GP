@@ -1,8 +1,8 @@
 // --- signup.dart (Updated with Fade Transition & Sticky Buttons) ---
 
 import 'package:flutter/material.dart';
-import 'package:flutter_application/signup-login-pages/continuesignup.dart';
-import 'package:flutter_application/signup-login-pages/login.dart';
+import 'package:Ajial/signup-login-pages/continuesignup.dart';
+import 'package:Ajial/signup-login-pages/login.dart';
 
 // --- Global Constants ---
 const Color kPrimaryColor = Color(0xFFBF092F);

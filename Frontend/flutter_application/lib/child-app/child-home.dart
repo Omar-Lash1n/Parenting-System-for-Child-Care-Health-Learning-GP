@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application/child-app/child-sign-in.dart';
+import 'package:Ajial/child-app/child-sign-in.dart';
 
 class ChildHomeScreen extends StatelessWidget {
   const ChildHomeScreen({super.key});

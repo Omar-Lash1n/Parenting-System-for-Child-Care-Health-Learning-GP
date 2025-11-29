@@ -1,12 +1,12 @@
 // --- login.dart (Updated with API Connection & Sticky Buttons) ---
 
 import 'package:flutter/material.dart';
-import 'package:flutter_application/homepage/homepage.dart';
-import 'package:flutter_application/signup-login-pages/forgetpassword.dart';
-import 'package:flutter_application/signup-login-pages/signup.dart';
+import 'package:Ajial/homepage/homepage.dart';
+import 'package:Ajial/signup-login-pages/forgetpassword.dart';
+import 'package:Ajial/signup-login-pages/signup.dart';
 
 // --- 1. إضافة import لخدمة الـ API ---
-import 'package:flutter_application/api/auth_service.dart'; // (تأكد من المسار)
+import 'package:Ajial/api/auth_service.dart'; // (تأكد من المسار)
 
 // --- (Global Constants & FadePageRoute Helper Class ... كما هي) ---
 const Color kPrimaryColor = Color(0xFFBF092F);

@@ -1,9 +1,10 @@
 // --- homepage.dart (Updated with Functional Logout Button) ---
 
+import 'package:Ajial/add-child/add-new-child-firstpage.dart';
 import 'package:flutter/material.dart';
 // --- 1. إضافة import لصفحة اللوجن وخدمة الـ API ---
-import 'package:flutter_application/signup-login-pages/login.dart'; 
-import 'package:flutter_application/api/auth_service.dart'; // (تأكد من المسار)
+import 'package:Ajial/signup-login-pages/login.dart';
+import 'package:Ajial/api/auth_service.dart'; // (تأكد من المسار)
 
 // --- Global Constants ---
 const Color kPrimaryColor = Color(0xFFBF092F);
@@ -25,7 +26,6 @@ class FadePageRoute<T> extends PageRouteBuilder<T> {
         );
 }
 // --- نهاية الإضافة ---
-
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({Key? key}) : super(key: key);
@@ -52,6 +52,19 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 40),
 
+            // داخل Column في homepage.dart
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          const AddNewChildFirstPage()), // صفحة المقدمة اللي عملتها
+                );
+              },
+              child: const Text("إضافة طفل جديد"),
+            ),
+
             // --- 5. زر تسجيل الخروج المضاف ---
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -59,16 +72,18 @@ class HomeScreen extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12), // (يمكنك تغييرها إلى 50 لو أردت)
+                  borderRadius: BorderRadius.circular(
+                      12), // (يمكنك تغييرها إلى 50 لو أردت)
                 ),
               ),
-              onPressed: () async { // (تحويلها إلى async)
-                
+              onPressed: () async {
+                // (تحويلها إلى async)
+
                 // --- 3. لوجيك تسجيل الخروج ---
-                
+
                 // (أولاً: استدعاء دالة مسح الـ Token)
                 await _authService.logout();
-                
+
                 // (ثانياً: العودة لصفحة اللوجن)
                 // (استخدام 'mounted' check لضمان الأمان)
                 if (context.mounted) {
