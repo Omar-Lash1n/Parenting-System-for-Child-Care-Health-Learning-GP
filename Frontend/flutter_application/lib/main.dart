@@ -40,7 +40,7 @@ class AjialApp extends StatelessWidget {
       // (تم حذف الخاصية 'home:' بالكامل لأنها تتعارض مع 'initialRoute')
       // --- *** نهاية التعديل المطلوب *** ---
       initialRoute:
-          '/child-login', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
+          '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
       routes: {
         '/splash': (context) => SplashScreen(),
         // (يمكنك إضافة باقي الصفحات هنا إذا أردت استخدام التنقل بالأسماء)
