@@ -83,7 +83,7 @@ public class AzureBlobImageService : IImageService
 
     public string GetDefaultChildAvatar(string gender)
     {
-        var baseUrl = _configuration["AzureStorage:DefaultAvatarsUrl"] 
+        var baseUrl = _configuration["AzureStorage:DefaultAvatarsUrl"]
                       ?? "https://ajialchildimages.blob.core.windows.net/defaults";
 
         return gender.ToLower() switch
@@ -92,5 +92,80 @@ public class AzureBlobImageService : IImageService
             "أنثى" or "female" => $"{baseUrl}/girl-default.png",
             _ => $"{baseUrl}/child-default.png"
         };
+    }
+
+    /// <summary>
+    /// Upload parent profile image to Azure Blob Storage
+    /// </summary>
+    public async Task<string> UploadParentImageAsync(IFormFile image, Guid parentId)
+    {
+        if (image == null || image.Length == 0)
+        {
+            throw new ArgumentException("الصورة فارغة");
+        }
+
+        // Validate image (size, format, etc.)
+        ValidateImage(image);
+
+        // Get container client
+        var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
+        await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+        // Generate unique filename
+        var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
+        var uniqueFileName = $"parent_{parentId}_{Guid.NewGuid()}{extension}";
+        var blobName = $"parents/{uniqueFileName}";
+
+        // Get blob client
+        var blobClient = containerClient.GetBlobClient(blobName);
+
+        // Set content type
+        var blobHttpHeaders = new BlobHttpHeaders
+        {
+            ContentType = image.ContentType
+        };
+
+        // Upload file
+        using (var stream = image.OpenReadStream())
+        {
+            await blobClient.UploadAsync(stream, new BlobUploadOptions
+            {
+                HttpHeaders = blobHttpHeaders
+            });
+        }
+
+        return blobClient.Uri.ToString();
+    }
+
+    /// <summary>
+    /// Validate image file (if not already exists)
+    /// </summary>
+    private void ValidateImage(IFormFile image)
+    {
+        // Max 5MB
+        const long maxSizeInBytes = 5 * 1024 * 1024;
+
+        if (image.Length > maxSizeInBytes)
+        {
+            throw new ArgumentException($"حجم الصورة يجب ألا يتجاوز {maxSizeInBytes / (1024 * 1024)} ميجابايت");
+        }
+
+        // Allowed extensions
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+        var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
+
+        if (!allowedExtensions.Contains(extension))
+        {
+            throw new ArgumentException(
+                $"نوع الملف غير مدعوم.  الأنواع المسموحة: {string.Join(", ", allowedExtensions)}");
+        }
+
+        // Allowed MIME types
+        var allowedMimeTypes = new[] { "image/jpeg", "image/jpg", "image/png" };
+
+        if (!allowedMimeTypes.Contains(image.ContentType.ToLowerInvariant()))
+        {
+            throw new ArgumentException("نوع الصورة غير صحيح");
+        }
     }
 }

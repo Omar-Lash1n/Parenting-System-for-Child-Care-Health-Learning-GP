@@ -9,6 +9,7 @@ public class Parent
     public int CityId { get; set; }
     public City City { get; set; } = null!;
     public ParentGender Gender { get; set; }
+    public string?  ProfileImageUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public ICollection<Child> Children { get; set; } = new List<Child>();

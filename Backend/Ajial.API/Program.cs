@@ -1,5 +1,6 @@
 using System.Text;
 using Ajial.Application.Interfaces;
+using Ajial.Application.Service;
 using Ajial.Application.Services;
 using Ajial.Infrastructure.Data;
 using Ajial.Infrastructure.Repository;
@@ -55,6 +56,7 @@ builder.Services.AddSwaggerGen(c =>
             new string[] {}
         }
     });
+
 });
 
 // Database Configuration
@@ -83,6 +85,7 @@ builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 // ✅ Infrastructure Services
 builder.Services.AddScoped<IImageService, AzureBlobImageService>(); // ✅ NEW - Image Upload to Azure
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IParentService, ParentService>();
 
 // ✅ JWT Authentication Configuration
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
