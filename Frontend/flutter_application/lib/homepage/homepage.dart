@@ -1,16 +1,13 @@
-// --- homepage.dart (Updated with Functional Logout Button) ---
+// --- homepage.dart (Refactored with Provider Pattern) ---
 
-import 'package:Ajial/add-child/add-new-child-firstpage.dart';
+import 'package:Ajial/add-child/add-child-flow.dart';
 import 'package:flutter/material.dart';
-// --- 1. إضافة import لصفحة اللوجن وخدمة الـ API ---
-import 'package:Ajial/signup-login-pages/login.dart';
-import 'package:Ajial/api/auth_service.dart'; // (تأكد من المسار)
+import 'package:provider/provider.dart';
+import 'package:Ajial/providers/home_provider.dart';
 
-// --- Global Constants ---
 const Color kPrimaryColor = Color(0xFFBF092F);
 const String kFontFamily = 'IBM Plex Sans Arabic';
 
-// --- (كلاس تأثير التلاشي كما هو) ---
 class FadePageRoute<T> extends PageRouteBuilder<T> {
   final Widget child;
   FadePageRoute({required this.child})
@@ -22,89 +19,117 @@ class FadePageRoute<T> extends PageRouteBuilder<T> {
               child: child,
             );
           },
-          transitionDuration: const Duration(milliseconds: 300),
+          transitionDuration: const Duration(milliseconds: 700),
         );
 }
-// --- نهاية الإضافة ---
 
 class HomeScreen extends StatelessWidget {
-  HomeScreen({Key? key}) : super(key: key);
-
-  // --- 2. إضافة نسخة من خدمة الـ API ---
-  final AuthService _authService = AuthService();
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'أهلاً بك في الصفحة الرئيسية!',
-              style: TextStyle(
-                fontFamily: kFontFamily,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+      body: SafeArea(
+        child: Consumer<HomeProvider>(
+          builder: (context, provider, _) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo
+                  Image.asset(
+                    'images/main-logo.png',
+                    width: 150,
+                    height: 150,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.home,
+                      size: 100,
+                      color: kPrimaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Welcome Message
+                  const Text(
+                    'مرحباً بك في الصفحة الرئيسية!',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: kFontFamily,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    'هذه صفحة مؤقتة، سيتم تطويرها لاحقاً',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                      fontFamily: kFontFamily,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+                  // Add Child Button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: ElevatedButton.icon(
+                      onPressed: provider.isLoggingOut ? null : () {
+                        Navigator.push(
+                          context,
+                          FadePageRoute(child: const AddChildFlow()),
+                        );
+                      },
+                      icon: const Icon(Icons.child_care, color: Colors.white),
+                      label: const Text(
+                        'أضف طفلاً جديداً',
+                        style: TextStyle(
+                          fontFamily: kFontFamily,
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimaryColor,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Logout Button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: provider.isLoggingOut
+                        ? const CircularProgressIndicator(color: kPrimaryColor)
+                        : OutlinedButton.icon(
+                            onPressed: () => provider.logout(context),
+                            icon: const Icon(Icons.logout, color: kPrimaryColor),
+                            label: const Text(
+                              'تسجيل الخروج',
+                              style: TextStyle(
+                                fontFamily: kFontFamily,
+                                fontSize: 18,
+                                color: kPrimaryColor,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: kPrimaryColor),
+                              minimumSize: const Size(double.infinity, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                          ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 40),
-
-            // داخل Column في homepage.dart
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) =>
-                          const AddNewChildFirstPage()), // صفحة المقدمة اللي عملتها
-                );
-              },
-              child: const Text("إضافة طفل جديد"),
-            ),
-
-            // --- 5. زر تسجيل الخروج المضاف ---
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimaryColor,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                      12), // (يمكنك تغييرها إلى 50 لو أردت)
-                ),
-              ),
-              onPressed: () async {
-                // (تحويلها إلى async)
-
-                // --- 3. لوجيك تسجيل الخروج ---
-
-                // (أولاً: استدعاء دالة مسح الـ Token)
-                await _authService.logout();
-
-                // (ثانياً: العودة لصفحة اللوجن)
-                // (استخدام 'mounted' check لضمان الأمان)
-                if (context.mounted) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    FadePageRoute(child: const LoginScreen()),
-                    (Route<dynamic> route) => false,
-                  );
-                }
-              },
-              child: const Text(
-                'تسجيل الخروج',
-                style: TextStyle(
-                  fontFamily: kFontFamily,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

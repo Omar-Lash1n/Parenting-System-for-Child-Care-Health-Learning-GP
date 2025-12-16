@@ -3,15 +3,39 @@ import 'package:Ajial/homepage/homepage.dart';
 import 'package:Ajial/signup-login-pages/login.dart';
 import 'package:flutter/material.dart';
 import 'package:Ajial/child-app/child-sign-in.dart';
-// (تأكد من أن هذه المسارات صحيحة)
 import 'package:Ajial/signup-login-pages/continuesignup.dart';
 import 'package:Ajial/signup-login-pages/signup.dart';
 import 'package:Ajial/splash_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+// --- Provider Imports ---
+import 'package:provider/provider.dart';
+import 'package:Ajial/providers/login_provider.dart';
+import 'package:Ajial/providers/signup_provider.dart';
+import 'package:Ajial/providers/continue_signup_provider.dart';
+import 'package:Ajial/providers/forgot_password_provider.dart';
+import 'package:Ajial/providers/verify_email_provider.dart';
+import 'package:Ajial/providers/home_provider.dart';
+import 'package:Ajial/providers/add_child_flow_provider.dart';
+import 'package:Ajial/providers/child_login_provider.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const AjialApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => LoginProvider()),
+        ChangeNotifierProvider(create: (_) => SignupProvider()),
+        ChangeNotifierProvider(create: (_) => ContinueSignupProvider()),
+        ChangeNotifierProvider(create: (_) => ForgotPasswordProvider()),
+        ChangeNotifierProvider(create: (_) => VerifyEmailProvider()),
+        ChangeNotifierProvider(create: (_) => HomeProvider()),
+        ChangeNotifierProvider(create: (_) => AddChildFlowProvider()),
+        ChangeNotifierProvider(create: (_) => ChildLoginProvider()),
+      ],
+      child: const AjialApp(),
+    ),
+  );
 }
 
 class AjialApp extends StatelessWidget {
@@ -36,16 +60,11 @@ class AjialApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
 
-      // --- *** بداية التعديل المطلوب *** ---
-      // (تم حذف الخاصية 'home:' بالكامل لأنها تتعارض مع 'initialRoute')
-      // --- *** نهاية التعديل المطلوب *** ---
       initialRoute:
           '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
       routes: {
         '/splash': (context) => SplashScreen(),
-        // (يمكنك إضافة باقي الصفحات هنا إذا أردت استخدام التنقل بالأسماء)
         '/login': (context) => const LoginScreen(),
-        // '/signup': (context) => const SignUpScreen(),
         '/child-login': (context) => const ChildLoginScreen(),
         '/home': (context) => HomeScreen(),
         '/add-child': (context) => const AddChildFlow(),

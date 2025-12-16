@@ -1,24 +1,19 @@
+// --- add-child-flow.dart (Refactored with Provider Pattern) ---
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'dart:ui' as ui;
+import 'package:provider/provider.dart';
 
-// استيراد السيرفس والهوم
-import 'package:Ajial/api/auth_service.dart'; // تأكد من المسار
+import 'package:Ajial/providers/add_child_flow_provider.dart';
 import 'package:Ajial/homepage/homepage.dart';
 
 // --- CONSTANTS ---
 const String kFontFamily = 'IBM Plex Sans Arabic';
 const Color kPrimaryColor = Color(0xFFBF092F);
 const Color kBgColor = Colors.white;
-
-// --- موديل مساعد للفواكه (لربط الصورة بالكود) ---
-class FruitItem {
-  final String imagePath;
-  final String code; // الكود للباك اند
-  FruitItem(this.imagePath, this.code);
-}
 
 class AddChildFlow extends StatefulWidget {
   const AddChildFlow({super.key});
@@ -29,66 +24,13 @@ class AddChildFlow extends StatefulWidget {
 
 class _AddChildFlowState extends State<AddChildFlow> {
   final PageController _pageController = PageController();
-  int _currentStep = 0;
 
-  int _totalSteps = 4;
-
-  // --- Data Variables ---
+  // Controllers stay in widget for proper disposal
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _dayController = TextEditingController();
   final TextEditingController _monthController = TextEditingController();
   final TextEditingController _yearController = TextEditingController();
   final TextEditingController _childIdController = TextEditingController();
-
-  String? _selectedGender;
-  File? _childImage;
-
-  // سنحتفظ بأكواد الفواكه هنا (مثل apple2025) للباك اند
-  List<String> _selectedFruitCodes = [];
-  // ونحتفظ بمسارات الصور للعرض في الواجهة
-  List<String> _selectedFruitImages = [];
-
-  // --- Validation & State ---
-  String? _nameError;
-  String? _dateError;
-  String? _genderError;
-  String? _idError;
-
-  bool _isOlderChild = false;
-  String? _selectedMonth;
-  bool _isLoading = false; // حالة التحميل
-
-  final AuthService _authService = AuthService(); // نسخة من السيرفس
-
-  // --- Fruit Data (Mapping based on PDF Page 13) ---
-  // هذه القائمة تربط الصورة بالكود المطلوب
-  final List<FruitItem> _fruitsList = [
-    FruitItem('images/lemon.png', 'lemon2025'),
-    FruitItem('images/grapes.png', 'grape2025'),
-    FruitItem('images/orange-juice.png', 'orange2025'),
-    FruitItem('images/banana.png', 'banana2025'),
-    FruitItem('images/pear.png', 'pear2025'),
-    FruitItem('images/apple.png', 'apple2025'),
-    FruitItem('images/fig.png', 'fig2025'),
-    FruitItem('images/strawberry.png', 'strawberry2025'),
-    FruitItem('images/pineapple.png', 'pineapple2025'),
-    FruitItem('images/watermelon.png', 'watermelon2025'),
-  ];
-
-  final List<Map<String, String>> _monthsList = [
-    {'val': '1', 'label': 'يناير (01)'},
-    {'val': '2', 'label': 'فبراير (02)'},
-    {'val': '3', 'label': 'مارس (03)'},
-    {'val': '4', 'label': 'أبريل (04)'},
-    {'val': '5', 'label': 'مايو (05)'},
-    {'val': '6', 'label': 'يونيو (06)'},
-    {'val': '7', 'label': 'يوليو (07)'},
-    {'val': '8', 'label': 'أغسطس (08)'},
-    {'val': '9', 'label': 'سبتمبر (09)'},
-    {'val': '10', 'label': 'أكتوبر (10)'},
-    {'val': '11', 'label': 'نوفمبر (11)'},
-    {'val': '12', 'label': 'ديسمبر (12)'},
-  ];
 
   @override
   void dispose() {
@@ -98,11 +40,12 @@ class _AddChildFlowState extends State<AddChildFlow> {
     _yearController.dispose();
     _childIdController.dispose();
     _pageController.dispose();
+    // Reset provider state when leaving screen
+    context.read<AddChildFlowProvider>().reset();
     super.dispose();
   }
 
   // --- Logic ---
-
   void _nextPage() {
     _pageController.nextPage(
         duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
@@ -113,141 +56,69 @@ class _AddChildFlowState extends State<AddChildFlow> {
         duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
   }
 
-  // --- دالة الإرسال للباك اند ---
+  // --- Submit to Backend ---
   Future<void> _submitDataToBackend() async {
-    setState(() => _isLoading = true);
-
-    // 1. تجهيز البيانات
-    final String fullName = _nameController.text.trim();
-
-    // تجهيز التاريخ
-    final int d = int.parse(_dayController.text);
-    final int m = int.parse(_monthController.text);
-    final int y = int.parse(_yearController.text);
-    final DateTime birthDate = DateTime(y, m, d);
-
-    // تجهيز النوع (تحويل small إلى Capital كما في الـ PDF)
-    // الـ PDF يطلب "Male" أو "Female"
-    final String gender = (_selectedGender == 'male') ? 'Male' : 'Female';
-
-    // 2. استدعاء الـ API
-    final result = await _authService.addChild(
-      fullName: fullName,
-      birthDate: birthDate,
-      gender: gender,
-      profileImage: _childImage,
-      // نرسل بيانات الحساب فقط لو الطفل كبير
-      childLoginId: _isOlderChild ? _childIdController.text.trim() : null,
-      fruitPasswordCodes: _isOlderChild ? _selectedFruitCodes : null,
+    final provider = context.read<AddChildFlowProvider>();
+    
+    final success = await provider.submitDataToBackend(
+      name: _nameController.text,
+      day: _dayController.text,
+      month: _monthController.text,
+      year: _yearController.text,
+      childId: _childIdController.text,
+      context: context,
     );
 
-    setState(() => _isLoading = false);
-
-    // 3. التعامل مع الرد
-    if (result.$1) {
-      // نجاح
-      // الانتقال لصفحة النجاح
-      // (نحتاج للقفز للصفحة الأخيرة وهي رقم 5)
+    if (success) {
+      // Jump to success page
       _pageController.jumpToPage(5);
-    } else {
-      // فشل - عرض رسالة الخطأ
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text(result.$2, style: const TextStyle(fontFamily: kFontFamily)),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
   void _validateAndProceed(int stepIndex) {
-    setState(() {
-      _nameError = null;
-      _dateError = null;
-      _genderError = null;
-      _idError = null;
+    final provider = context.read<AddChildFlowProvider>();
+    
+    bool isValid = provider.validateStep(
+      stepIndex: stepIndex,
+      name: _nameController.text,
+      day: _dayController.text,
+      month: _monthController.text,
+      year: _yearController.text,
+      childId: _childIdController.text,
+      context: context,
+    );
 
-      switch (stepIndex) {
-        case 0: // الاسم
-          if (_nameController.text.trim().isEmpty) {
-            _nameError = "يرجى إدخال اسم الطفل";
-          } else {
-            _nextPage();
-          }
-          break;
+    if (!isValid) {
+      setState(() {}); // Refresh to show errors
+      return;
+    }
 
-        case 1: // العمر
-          if (_dayController.text.isEmpty ||
-              _monthController.text.isEmpty ||
-              _yearController.text.isEmpty) {
-            _dateError = "يرجى إدخال تاريخ الميلاد كاملاً";
-          } else {
-            int? d = int.tryParse(_dayController.text);
-            int? m = int.tryParse(_monthController.text);
-            int? y = int.tryParse(_yearController.text);
+    switch (stepIndex) {
+      case 0: // Name
+      case 1: // Birth Date
+      case 2: // Gender
+        _nextPage();
+        break;
 
-            if (d == null ||
-                d < 1 ||
-                d > 31 ||
-                m == null ||
-                m < 1 ||
-                m > 12 ||
-                y == null ||
-                y > DateTime.now().year ||
-                y < 2000) {
-              _dateError = "تاريخ غير صحيح";
-            } else {
-              final dob = DateTime(y, m, d);
-              final now = DateTime.now();
-              int age = now.year - dob.year;
-              if (now.month < dob.month ||
-                  (now.month == dob.month && now.day < dob.day)) age--;
+      case 3: // Picture
+        if (provider.isOlderChild) {
+          _nextPage(); // Older child -> go to account page
+        } else {
+          // Young child -> submit now
+          _submitDataToBackend();
+        }
+        break;
 
-              _isOlderChild = age >= 4;
-              _totalSteps = _isOlderChild ? 5 : 4;
-              _nextPage();
-            }
-          }
-          break;
-
-        case 2: // النوع
-          if (_selectedGender == null) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text("يرجى اختيار نوع الطفل",
-                    style: TextStyle(fontFamily: kFontFamily))));
-          } else {
-            _nextPage();
-          }
-          break;
-
-        case 3: // الصورة
-          if (_isOlderChild) {
-            _nextPage(); // طفل كبير -> يروح لصفحة الحساب
-          } else {
-            // طفل صغير -> يرسل البيانات الآن
-            _submitDataToBackend();
-          }
-          break;
-
-        case 4: // الحساب (للأطفال الكبار)
-          if (_childIdController.text.length != 4) {
-            _idError = "يجب أن يتكون الرقم من 4 أرقام";
-          } else if (_selectedFruitCodes.length != 5) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text("يرجى اختيار 5 فواكه لكلمة السر",
-                    style: TextStyle(fontFamily: kFontFamily))));
-          } else {
-            // طفل كبير -> يرسل البيانات الآن
-            _submitDataToBackend();
-          }
-          break;
-      }
-    });
+      case 4: // Account (for older children)
+        _submitDataToBackend();
+        break;
+    }
   }
 
   // --- Image Picker ---
   void _showImageSourceDialog() {
+    final provider = context.read<AddChildFlowProvider>();
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -272,7 +143,7 @@ class _AddChildFlowState extends State<AddChildFlow> {
                   style: TextStyle(fontFamily: kFontFamily)),
               onTap: () {
                 Navigator.pop(ctx);
-                _pickImage(ImageSource.camera);
+                provider.pickImage(ImageSource.camera);
               },
             ),
             ListTile(
@@ -281,29 +152,13 @@ class _AddChildFlowState extends State<AddChildFlow> {
                   style: TextStyle(fontFamily: kFontFamily)),
               onTap: () {
                 Navigator.pop(ctx);
-                _pickImage(ImageSource.gallery);
+                provider.pickImage(ImageSource.gallery);
               },
             ),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? pickedFile =
-          await picker.pickImage(source: source, imageQuality: 80);
-
-      if (pickedFile != null) {
-        setState(() {
-          _childImage = File(pickedFile.path);
-        });
-      }
-    } catch (e) {
-      debugPrint("Error picking image: $e");
-    }
   }
 
   // ==========================   UI BUILD   ===================================
@@ -315,35 +170,41 @@ class _AddChildFlowState extends State<AddChildFlow> {
       body: SafeArea(
         child: Directionality(
           textDirection: TextDirection.rtl,
-          child: PageView(
-            controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
-            onPageChanged: (idx) => setState(() => _currentStep = idx),
-            children: [
-              _buildNamePage(), // 0
-              _buildBirthDatePage(), // 1
-              _buildGenderPage(), // 2
-              _buildPicturePage(), // 3
-              _buildAccountPage(), // 4
-              _buildSuccessPage(), // 5
-            ],
+          child: Consumer<AddChildFlowProvider>(
+            builder: (context, provider, _) {
+              return PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                onPageChanged: (idx) => provider.setCurrentStep(idx),
+                children: [
+                  _buildNamePage(provider), // 0
+                  _buildBirthDatePage(provider), // 1
+                  _buildGenderPage(provider), // 2
+                  _buildPicturePage(provider), // 3
+                  _buildAccountPage(provider), // 4
+                  _buildSuccessPage(provider), // 5
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  // ... (Helper Widgets نفس السابق) ...
-  Widget _buildPageLayout(
-      {required String title,
-      required int stepNumber,
-      required Widget content,
-      VoidCallback? onNext,
-      String nextText = "التالي",
-      bool showBack = true,
-      bool canSkip = false,
-      VoidCallback? onSkip}) {
-    int total = _isOlderChild ? 5 : 4;
+  // --- Helper Widgets ---
+  Widget _buildPageLayout({
+    required String title,
+    required int stepNumber,
+    required Widget content,
+    required AddChildFlowProvider provider,
+    VoidCallback? onNext,
+    String nextText = "التالي",
+    bool showBack = true,
+    bool canSkip = false,
+    VoidCallback? onSkip,
+  }) {
+    int total = provider.isOlderChild ? 5 : 4;
     return Column(children: [
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -408,11 +269,11 @@ class _AddChildFlowState extends State<AddChildFlow> {
                 offset: const Offset(0, -5))
           ]),
           child: Column(children: [
-            // زر الإرسال/التالي (مع مؤشر تحميل)
+            // Submit/Next button (with loading indicator)
             SizedBox(
                 width: double.infinity,
                 height: 55,
-                child: _isLoading
+                child: provider.isLoading
                     ? const Center(
                         child: CircularProgressIndicator(color: kPrimaryColor))
                     : ElevatedButton(
@@ -428,7 +289,7 @@ class _AddChildFlowState extends State<AddChildFlow> {
                                 color: Colors.white,
                                 fontFamily: kFontFamily,
                                 fontWeight: FontWeight.bold)))),
-            if (showBack && !_isLoading) ...[
+            if (showBack && !provider.isLoading) ...[
               const SizedBox(height: 12),
               SizedBox(
                   width: double.infinity,
@@ -449,12 +310,13 @@ class _AddChildFlowState extends State<AddChildFlow> {
     ]);
   }
 
-  Widget _buildTextField(
-      {required TextEditingController controller,
-      required String hint,
-      bool isNumber = false,
-      int? maxLength,
-      String? errorText}) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    bool isNumber = false,
+    int? maxLength,
+    String? errorText,
+  }) {
     Color borderColor = Colors.grey[300]!;
     if (errorText != null)
       borderColor = Colors.red;
@@ -527,10 +389,10 @@ class _AddChildFlowState extends State<AddChildFlow> {
     ]));
   }
 
-  Widget _buildGenderOption(String label, String val, IconData icon) {
-    bool selected = _selectedGender == val;
+  Widget _buildGenderOption(String label, String val, IconData icon, AddChildFlowProvider provider) {
+    bool selected = provider.selectedGender == val;
     return GestureDetector(
-        onTap: () => setState(() => _selectedGender = val),
+        onTap: () => provider.setGender(val),
         child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 25),
@@ -553,11 +415,11 @@ class _AddChildFlowState extends State<AddChildFlow> {
             ])));
   }
 
-  Widget _buildMonthDropdown() {
+  Widget _buildMonthDropdown(AddChildFlowProvider provider) {
     Color borderColor = Colors.grey[300]!;
-    if (_dateError != null)
+    if (provider.dateError != null)
       borderColor = Colors.red;
-    else if (_selectedMonth != null) borderColor = Colors.green;
+    else if (provider.selectedMonth != null) borderColor = Colors.green;
     return Container(
         height: 55,
         padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -567,13 +429,13 @@ class _AddChildFlowState extends State<AddChildFlow> {
             border: Border.all(color: borderColor)),
         child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-                value: _selectedMonth,
+                value: provider.selectedMonth,
                 hint: Text("شهر",
                     style: TextStyle(
                         color: Colors.grey[400], fontFamily: kFontFamily)),
                 isExpanded: true,
                 icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-                items: _monthsList.map((month) {
+                items: provider.monthsList.map((month) {
                   return DropdownMenuItem<String>(
                       value: month['val'],
                       child: Text(month['label']!,
@@ -581,19 +443,18 @@ class _AddChildFlowState extends State<AddChildFlow> {
                               fontFamily: kFontFamily, fontSize: 14)));
                 }).toList(),
                 onChanged: (val) {
-                  setState(() {
-                    _selectedMonth = val;
-                    _monthController.text = val ?? "";
-                  });
+                  provider.setSelectedMonth(val);
+                  _monthController.text = val ?? "";
                 })));
   }
 
   // --- Pages ---
 
-  Widget _buildNamePage() => _buildPageLayout(
+  Widget _buildNamePage(AddChildFlowProvider provider) => _buildPageLayout(
       title: "ادخل اسم الطفل",
       stepNumber: 1,
       showBack: false,
+      provider: provider,
       onNext: () => _validateAndProceed(0),
       content: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _buildLabel("اسم الطفل", true),
@@ -601,12 +462,13 @@ class _AddChildFlowState extends State<AddChildFlow> {
         _buildTextField(
             controller: _nameController,
             hint: "على جمال",
-            errorText: _nameError)
+            errorText: provider.nameError)
       ]));
 
-  Widget _buildBirthDatePage() => _buildPageLayout(
+  Widget _buildBirthDatePage(AddChildFlowProvider provider) => _buildPageLayout(
       title: "ادخل عمر الطفل",
       stepNumber: 2,
+      provider: provider,
       onNext: () => _validateAndProceed(1),
       content: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _buildLabel("تاريخ ميلاد الطفل", true),
@@ -619,7 +481,7 @@ class _AddChildFlowState extends State<AddChildFlow> {
                   isNumber: true,
                   maxLength: 2)),
           const SizedBox(width: 10),
-          Expanded(flex: 2, child: _buildMonthDropdown()),
+          Expanded(flex: 2, child: _buildMonthDropdown(provider)),
           const SizedBox(width: 10),
           Expanded(
               child: _buildTextField(
@@ -628,31 +490,33 @@ class _AddChildFlowState extends State<AddChildFlow> {
                   isNumber: true,
                   maxLength: 4))
         ]),
-        if (_dateError != null)
+        if (provider.dateError != null)
           Padding(
               padding: const EdgeInsets.only(top: 5),
-              child: Text(_dateError!,
+              child: Text(provider.dateError!,
                   style: const TextStyle(
                       color: Colors.red,
                       fontSize: 12,
                       fontFamily: kFontFamily)))
       ]));
 
-  Widget _buildGenderPage() => _buildPageLayout(
+  Widget _buildGenderPage(AddChildFlowProvider provider) => _buildPageLayout(
       title: "ادخل نوع الطفل",
       stepNumber: 3,
+      provider: provider,
       onNext: () => _validateAndProceed(2),
       content: Column(children: [
-        _buildGenderOption("طفل", "male", Icons.face),
+        _buildGenderOption("طفل", "male", Icons.face, provider),
         const SizedBox(height: 15),
-        _buildGenderOption("طفلة", "female", Icons.face_3)
+        _buildGenderOption("طفلة", "female", Icons.face_3, provider)
       ]));
 
-  Widget _buildPicturePage() {
+  Widget _buildPicturePage(AddChildFlowProvider provider) {
     return _buildPageLayout(
       title: "اضف صورة الطفل",
       stepNumber: 4,
       canSkip: true,
+      provider: provider,
       onSkip: () => _validateAndProceed(3),
       onNext: () => _validateAndProceed(3),
       content: Center(
@@ -660,7 +524,7 @@ class _AddChildFlowState extends State<AddChildFlow> {
         const SizedBox(height: 20),
         GestureDetector(
           onTap: _showImageSourceDialog,
-          child: _childImage == null
+          child: provider.childImage == null
               ? CustomPaint(
                   painter: DashedCirclePainter(),
                   child: Container(
@@ -687,11 +551,11 @@ class _AddChildFlowState extends State<AddChildFlow> {
                   decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       image: DecorationImage(
-                          image: FileImage(_childImage!), fit: BoxFit.cover),
+                          image: FileImage(provider.childImage!), fit: BoxFit.cover),
                       border: Border.all(color: Colors.grey[300]!, width: 1))),
         ),
         const SizedBox(height: 20),
-        if (_childImage != null)
+        if (provider.childImage != null)
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             ElevatedButton(
                 onPressed: _showImageSourceDialog,
@@ -700,7 +564,7 @@ class _AddChildFlowState extends State<AddChildFlow> {
                     const Text("تغيير", style: TextStyle(color: Colors.white))),
             const SizedBox(width: 10),
             OutlinedButton(
-                onPressed: () => setState(() => _childImage = null),
+                onPressed: () => provider.clearChildImage(),
                 child: const Text("حذف", style: TextStyle(color: Colors.red)))
           ]),
         const SizedBox(height: 10),
@@ -713,13 +577,13 @@ class _AddChildFlowState extends State<AddChildFlow> {
     );
   }
 
-  // --- صفحة الحساب (المعدلة لربط الفواكه بالأكواد) ---
-  Widget _buildAccountPage() {
+  Widget _buildAccountPage(AddChildFlowProvider provider) {
     return _buildPageLayout(
         title: "ادخل بيانات حساب الطفل",
         stepNumber: 5,
         nextText: "انهاء",
         canSkip: true,
+        provider: provider,
         onNext: () => _validateAndProceed(4),
         onSkip: () {
           _submitDataToBackend();
@@ -732,16 +596,15 @@ class _AddChildFlowState extends State<AddChildFlow> {
               hint: "اكتب 4 أرقام...",
               isNumber: true,
               maxLength: 4,
-              errorText: _idError),
+              errorText: provider.idError),
           const SizedBox(height: 25), _buildLabel("كلمة المرور", true),
           const SizedBox(height: 10),
 
-          // خانات كلمة السر
+          // Password slots
           Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: List.generate(5, (index) {
-                bool filled = index <
-                    _selectedFruitImages.length; // نستخدم قائمة الصور للعرض
+                bool filled = index < provider.selectedFruitImages.length;
                 return Container(
                     width: 55,
                     height: 55,
@@ -753,46 +616,34 @@ class _AddChildFlowState extends State<AddChildFlow> {
                     child: filled
                         ? Padding(
                             padding: const EdgeInsets.all(8.0),
-                            child: Image.asset(_selectedFruitImages[index]))
+                            child: Image.asset(provider.selectedFruitImages[index]))
                         : null);
               })),
           const SizedBox(height: 20),
 
-          // شبكة الفواكه
+          // Fruits grid
           GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 5, crossAxisSpacing: 10, mainAxisSpacing: 10),
-              itemCount: _fruitsList.length,
+              itemCount: provider.fruitsList.length,
               itemBuilder: (ctx, idx) {
                 return GestureDetector(
-                    onTap: () {
-                      if (_selectedFruitImages.length < 5) {
-                        setState(() {
-                          // إضافة المسار للعرض
-                          _selectedFruitImages.add(_fruitsList[idx].imagePath);
-                          // إضافة الكود للإرسال
-                          _selectedFruitCodes.add(_fruitsList[idx].code);
-                        });
-                      }
-                    },
+                    onTap: () => provider.addFruit(idx),
                     child: Container(
                         decoration: BoxDecoration(
                             color: const Color(0xFFFFF8E1),
                             borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.all(8),
-                        child: Image.asset(_fruitsList[idx].imagePath)));
+                        child: Image.asset(provider.fruitsList[idx].imagePath)));
               }),
 
-          if (_selectedFruitImages.isNotEmpty)
+          if (provider.selectedFruitImages.isNotEmpty)
             Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
-                    onPressed: () => setState(() {
-                          _selectedFruitImages.clear();
-                          _selectedFruitCodes.clear();
-                        }),
+                    onPressed: () => provider.clearFruits(),
                     icon: const Icon(Icons.refresh, color: kPrimaryColor),
                     label: const Text("إعادة تعيين",
                         style: TextStyle(
@@ -800,7 +651,7 @@ class _AddChildFlowState extends State<AddChildFlow> {
         ]));
   }
 
-  Widget _buildSuccessPage() {
+  Widget _buildSuccessPage(AddChildFlowProvider provider) {
     return Center(
         child: Padding(
             padding: const EdgeInsets.all(24.0),
@@ -836,7 +687,7 @@ class _AddChildFlowState extends State<AddChildFlow> {
                             MaterialPageRoute(
                                 builder: (context) => ChildProfileTestPage(
                                     childName: _nameController.text,
-                                    childImage: _childImage)));
+                                    childImage: provider.childImage)));
                       },
                       style: ElevatedButton.styleFrom(
                           backgroundColor: kPrimaryColor,
@@ -915,7 +766,7 @@ class ChildProfileTestPage extends StatelessWidget {
             onPressed: () {
               Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) =>  HomeScreen()),
+                  MaterialPageRoute(builder: (context) => const HomeScreen()),
                   (route) => false);
             },
             icon: const Icon(Icons.home, color: Colors.white),
