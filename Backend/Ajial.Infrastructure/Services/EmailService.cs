@@ -20,16 +20,16 @@ public class EmailService : IEmailService
         try
         {
             var email = new MimeMessage();
-            
+
             // From
             email.From.Add(new MailboxAddress(
                 _configuration["EmailSettings:SenderName"] ?? "Ajial System",
                 _configuration["EmailSettings:SenderEmail"] ?? "noreply@ajial.com"
             ));
-            
+
             // To
             email.To.Add(new MailboxAddress(userName, toEmail));
-            
+
             // Subject
             email.Subject = "إعادة تعيين كلمة المرور - نظام أجيال";
 
@@ -113,6 +113,106 @@ public class EmailService : IEmailService
         catch (Exception ex)
         {
             throw new Exception($"Failed to send email: {ex.Message}", ex);
+        }
+    }
+
+    public async Task SendEmailVerificationAsync(string toEmail, string verificationLink, string userName)
+    {
+        try
+        {
+            var email = new MimeMessage();
+
+            // From
+            email.From.Add(new MailboxAddress(
+                _configuration["EmailSettings:SenderName"] ?? "Ajial System",
+                _configuration["EmailSettings:SenderEmail"] ?? "noreply@ajial.com"
+            ));
+
+            // To
+            email.To.Add(new MailboxAddress(userName, toEmail));
+
+            // Subject
+            email.Subject = "تأكيد البريد الإلكتروني - نظام أجيال";
+
+            // Body
+            var bodyBuilder = new BodyBuilder
+            {
+                HtmlBody = $@"
+                    <!DOCTYPE html>
+                    <html dir='rtl' lang='ar'>
+                    <head>
+                        <meta charset='UTF-8'>
+                        <style>
+                            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; direction: rtl; }}
+                            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }}
+                            .content {{ background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }}
+                            .header {{ text-align: center; color: #4CAF50; margin-bottom: 20px; }}
+                            .button {{ display: inline-block; padding: 15px 40px; background-color: #FF9800; color: white; text-decoration: none; border-radius: 25px; margin: 20px 0; font-size: 18px; font-weight: bold; }}
+                            .button:hover {{ background-color: #F57C00; }}
+                            .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 20px; }}
+                            .link-text {{ word-break: break-all; color: #666; font-size: 11px; }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class='container'>
+                            <div class='content'>
+                                <div class='header'>
+                                    <h1>✉️ تأكيد البريد الإلكتروني</h1>
+                                </div>
+                                
+                                <p>مرحباً <strong>{userName}</strong>,</p>
+                                
+                                <p>شكراً لتسجيلك في نظام أجيال! يرجى تأكيد بريدك الإلكتروني بالضغط على الزر أدناه:</p>
+                                
+                                <div style='text-align: center;'>
+                                    <a href='{verificationLink}' class='button'>تأكيد البريد الإلكتروني</a>
+                                </div>
+                                
+                                <p><strong>ملاحظات هامة:</strong></p>
+                                <ul>
+                                    <li>هذا الرابط صالح لمدة <strong>24 ساعة فقط</strong></li>
+                                    <li>يمكن استخدام الرابط <strong>مرة واحدة فقط</strong></li>
+                                </ul>
+                                
+                                <p>إذا لم تتمكن من الضغط على الزر، انسخ الرابط التالي والصقه في المتصفح:</p>
+                                <p class='link-text'>{verificationLink}</p>
+                                
+                                <p>إذا لم تقم بإنشاء حساب في نظام أجيال، يرجى تجاهل هذه الرسالة.</p>
+                                
+                                <div class='footer'>
+                                    <p>© 2025 نظام أجيال لرعاية الوالدين</p>
+                                    <p>هذه رسالة تلقائية، يرجى عدم الرد عليها</p>
+                                </div>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                "
+            };
+
+            email.Body = bodyBuilder.ToMessageBody();
+
+            // Send email
+            using (var smtp = new SmtpClient())
+            {
+                await smtp.ConnectAsync(
+                    _configuration["EmailSettings:SmtpServer"] ?? "smtp.gmail.com",
+                    int.Parse(_configuration["EmailSettings:SmtpPort"] ?? "587"),
+                    SecureSocketOptions.StartTls
+                );
+
+                await smtp.AuthenticateAsync(
+                    _configuration["EmailSettings:Username"],
+                    _configuration["EmailSettings:Password"]
+                );
+
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Failed to send verification email: {ex.Message}", ex);
         }
     }
 }

@@ -530,4 +530,243 @@ public class ParentsController : ControllerBase
             ));
         }
     }
+
+    /// <summary>
+    /// إرسال رابط التحقق من البريد الإلكتروني - Send email verification link
+    /// </summary>
+    /// <remarks>
+    /// يرسل رابط التحقق إلى البريد الإلكتروني المسجل.
+    /// الرابط صالح لمدة 24 ساعة.
+    /// 
+    /// Sends a verification link to the registered email.
+    /// The link is valid for 24 hours.
+    /// </remarks>
+    [HttpPost("send-verification-email")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<SendEmailVerificationResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<SendEmailVerificationResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<SendEmailVerificationResponseDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<SendEmailVerificationResponseDto>), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> SendEmailVerification()
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                _logger.LogWarning("Unauthorized email verification request - invalid user ID claim");
+                return Unauthorized(ApiResponse<SendEmailVerificationResponseDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول لإرسال رابط التحقق" }
+                ));
+            }
+
+            _logger.LogInformation("Email verification requested by user ID: {UserId}", userId);
+
+            var result = await _parentService.SendEmailVerificationAsync(userId);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning(
+                    "Email verification send failed for user {UserId}. Errors: {Errors}",
+                    userId,
+                    string.Join(", ", result.Errors)
+                );
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("Email verification sent for user {UserId}", userId);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in SendEmailVerification endpoint");
+            return StatusCode(500, ApiResponse<SendEmailVerificationResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع أثناء إرسال رابط التحقق" }
+            ));
+        }
+    }
+
+    /// <summary>
+    /// التحقق من البريد الإلكتروني - Verify email address
+    /// </summary>
+    /// <remarks>
+    /// يتم استدعاء هذا الرابط عند النقر على رابط التحقق في البريد الإلكتروني.
+    /// 
+    /// This endpoint is called when clicking the verification link in the email.
+    /// </remarks>
+    /// <param name="token">رمز التحقق - Verification token</param>
+    [HttpGet("verify-email")]
+    [Produces("text/html")]
+    public async Task<IActionResult> VerifyEmail([FromQuery] string token)
+    {
+        try
+        {
+            _logger.LogInformation("Email verification attempt with token");
+
+            var result = await _parentService.VerifyEmailAsync(token);
+
+            string htmlContent;
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Email verification successful for email: {Email}", result.Data?.Email);
+
+                htmlContent = GenerateVerificationHtmlPage(
+                    isSuccess: true,
+                    title: "تم تفعيل حسابك بنجاح!",
+                    message: "تم تأكيد بريدك الإلكتروني بنجاح. يمكنك الآن استخدام جميع ميزات التطبيق.",
+                    email: result.Data?.Email ?? ""
+                );
+            }
+            else
+            {
+                _logger.LogWarning("Email verification failed. Errors: {Errors}", string.Join(", ", result.Errors));
+
+                var errorMessage = result.Errors?.FirstOrDefault() ?? "حدث خطأ أثناء التحقق من البريد الإلكتروني";
+
+                htmlContent = GenerateVerificationHtmlPage(
+                    isSuccess: false,
+                    title: "فشل التحقق",
+                    message: errorMessage,
+                    email: ""
+                );
+            }
+
+            return Content(htmlContent, "text/html");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in VerifyEmail endpoint");
+
+            var errorHtml = GenerateVerificationHtmlPage(
+                isSuccess: false,
+                title: "حدث خطأ",
+                message: "حدث خطأ غير متوقع أثناء التحقق من البريد الإلكتروني. يرجى المحاولة لاحقاً.",
+                email: ""
+            );
+
+            return Content(errorHtml, "text/html");
+        }
+    }
+
+    /// <summary>
+    /// Generate HTML page for email verification result
+    /// </summary>
+    private string GenerateVerificationHtmlPage(bool isSuccess, string title, string message, string email)
+    {
+        var iconSvg = isSuccess
+            ? @"<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='none' stroke='#4CAF50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'></path><polyline points='22 4 12 14.01 9 11.01'></polyline></svg>"
+            : @"<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='none' stroke='#f44336' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'></circle><line x1='15' y1='9' x2='9' y2='15'></line><line x1='9' y1='9' x2='15' y2='15'></line></svg>";
+
+        var headerColor = isSuccess ? "#4CAF50" : "#f44336";
+        var emailSection = !string.IsNullOrEmpty(email)
+            ? $"<p style='color: #666; font-size: 14px; margin-top: 15px;'>البريد الإلكتروني: <strong>{email}</strong></p>"
+            : "";
+
+        return $@"
+<!DOCTYPE html>
+<html dir='rtl' lang='ar'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>{title} - نظام أجيال</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            direction: rtl;
+            padding: 20px;
+        }}
+        .container {{
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 50px 40px;
+            text-align: center;
+            max-width: 450px;
+            width: 100%;
+            animation: fadeIn 0.5s ease-out;
+        }}
+        @keyframes fadeIn {{
+            from {{ opacity: 0; transform: translateY(-20px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        .icon {{
+            margin-bottom: 25px;
+        }}
+        h1 {{
+            color: {headerColor};
+            font-size: 28px;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }}
+        .message {{
+            color: #555;
+            font-size: 16px;
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }}
+        .logo {{
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }}
+        .logo-text {{
+            color: #FF9800;
+            font-size: 24px;
+            font-weight: bold;
+        }}
+        .logo-subtitle {{
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+        }}
+        .app-button {{
+            display: inline-block;
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            color: white;
+            text-decoration: none;
+            padding: 12px 35px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }}
+        .app-button:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 152, 0, 0.4);
+        }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='icon'>
+            {iconSvg}
+        </div>
+        <h1>{title}</h1>
+        <p class='message'>{message}</p>
+        {emailSection}
+        <div class='logo'>
+            <div class='logo-text'>🌟 نظام أجيال</div>
+            <div class='logo-subtitle'>رعاية الوالدين للأطفال</div>
+        </div>
+    </div>
+</body>
+</html>";
+    }
 }

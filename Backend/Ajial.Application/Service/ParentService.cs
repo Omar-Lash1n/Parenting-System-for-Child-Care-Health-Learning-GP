@@ -17,13 +17,21 @@ public class ParentService : IParentService
     private readonly ILogger<ParentService> _logger;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IImageService _imageService;
+    private readonly IEmailService _emailService;
+    private const string BaseApiUrl = "https://ajial-api-dev-dvg9hfgtdgewekcv.westeurope-01.azurewebsites.net";
 
-    public ParentService(IUnitOfWork unitOfWork, ILogger<ParentService> logger, IPasswordHasher passwordHasher, IImageService imageService)
+    public ParentService(
+        IUnitOfWork unitOfWork,
+        ILogger<ParentService> logger,
+        IPasswordHasher passwordHasher,
+        IImageService imageService,
+        IEmailService emailService)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _passwordHasher = passwordHasher;
         _imageService = imageService;
+        _emailService = emailService;
     }
 
     public async Task<ApiResponse<List<ParentAnalyticsDto>>> GetAllParentsForAnalyticsAsync()
@@ -195,6 +203,8 @@ public class ParentService : IParentService
                 CityNameAr = parent.City.NameAr,
                 DateOfBirth = parent.DateOfBirth,
                 Gender = parent.Gender.ToString(),
+                IsEmailVerified = parent.User.IsEmailVerified,
+                EmailVerificationStatus = parent.User.IsEmailVerified ? "مؤكد" : "غير مؤكد",
                 Children = childrenDtos // ✅ NEW: Include children list
             };
 
@@ -861,6 +871,222 @@ public class ParentService : IParentService
             _logger.LogError(ex, "Error deleting account for user ID: {UserId}", userId);
             return ApiResponse<DeleteParentAccountResponseDto>.FailureResponse(
                 "حدث خطأ أثناء حذف الحساب",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً" }
+            );
+        }
+    }
+
+    /// <summary>
+    /// Send email verification link to parent's email
+    /// إرسال رابط التحقق من البريد الإلكتروني
+    /// </summary>
+    public async Task<ApiResponse<SendEmailVerificationResponseDto>> SendEmailVerificationAsync(Guid userId)
+    {
+        try
+        {
+            _logger.LogInformation("Email verification requested for user ID: {UserId}", userId);
+
+            // Step 1: Get user
+            var user = await _unitOfWork.Users.GetFirstOrDefaultAsync(
+                predicate: u => u.Id == userId
+            );
+
+            if (user == null)
+            {
+                _logger.LogWarning("User not found for email verification: {UserId}", userId);
+                return ApiResponse<SendEmailVerificationResponseDto>.FailureResponse(
+                    "المستخدم غير موجود",
+                    new List<string> { "لم يتم العثور على المستخدم" }
+                );
+            }
+
+            // Step 2: Check if already verified
+            if (user.IsEmailVerified)
+            {
+                _logger.LogInformation("Email already verified for user: {UserId}", userId);
+                return ApiResponse<SendEmailVerificationResponseDto>.FailureResponse(
+                    "البريد الإلكتروني مؤكد بالفعل",
+                    new List<string> { "تم تأكيد بريدك الإلكتروني مسبقاً" }
+                );
+            }
+
+            // Step 3: Check if user is active
+            if (!user.IsActive)
+            {
+                _logger.LogWarning("Inactive user requested email verification: {UserId}", userId);
+                return ApiResponse<SendEmailVerificationResponseDto>.FailureResponse(
+                    "الحساب غير نشط",
+                    new List<string> { "لا يمكن إرسال التحقق لحساب غير نشط" }
+                );
+            }
+
+            // Step 4: Invalidate any existing tokens for this user
+            var existingTokens = await _unitOfWork.EmailVerificationTokens.FindAsync(
+                predicate: t => t.UserId == userId && !t.IsUsed
+            );
+            foreach (var token in existingTokens)
+            {
+                token.IsUsed = true;
+                token.UsedAt = DateTime.UtcNow;
+                await _unitOfWork.EmailVerificationTokens.UpdateAsync(token);
+            }
+
+            // Step 5: Generate new verification token
+            var verificationToken = new EmailVerificationToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Token = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"), // 64 char token
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddHours(24), // 24 hours expiry
+                IsUsed = false
+            };
+
+            await _unitOfWork.EmailVerificationTokens.AddAsync(verificationToken);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Step 6: Build verification link
+            var verificationLink = $"{BaseApiUrl}/api/Parents/verify-email?token={verificationToken.Token}";
+
+            // Step 7: Send email
+            await _emailService.SendEmailVerificationAsync(
+                user.Email,
+                verificationLink,
+                user.FullName
+            );
+
+            _logger.LogInformation("Email verification sent to {Email} for user {UserId}", user.Email, userId);
+
+            // Step 8: Return success
+            var response = new SendEmailVerificationResponseDto
+            {
+                Message = "تم إرسال رابط التحقق إلى بريدك الإلكتروني",
+                Email = user.Email,
+                SentAt = DateTime.UtcNow
+            };
+
+            return ApiResponse<SendEmailVerificationResponseDto>.SuccessResponse(
+                response,
+                "تم إرسال رابط التحقق بنجاح. يرجى التحقق من بريدك الإلكتروني."
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending email verification for user ID: {UserId}", userId);
+            return ApiResponse<SendEmailVerificationResponseDto>.FailureResponse(
+                "حدث خطأ أثناء إرسال رابط التحقق",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً" }
+            );
+        }
+    }
+
+    /// <summary>
+    /// Verify email using token from verification link
+    /// التحقق من البريد الإلكتروني باستخدام الرمز
+    /// </summary>
+    public async Task<ApiResponse<VerifyEmailResponseDto>> VerifyEmailAsync(string token)
+    {
+        try
+        {
+            _logger.LogInformation("Email verification attempt with token");
+
+            // Step 1: Validate token not empty
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return ApiResponse<VerifyEmailResponseDto>.FailureResponse(
+                    "رمز التحقق غير صالح",
+                    new List<string> { "رمز التحقق مطلوب" }
+                );
+            }
+
+            // Step 2: Find token in database
+            var verificationToken = await _unitOfWork.EmailVerificationTokens.GetFirstOrDefaultAsync(
+                predicate: t => t.Token == token,
+                includeProperties: "User"
+            );
+
+            if (verificationToken == null)
+            {
+                _logger.LogWarning("Invalid verification token attempted");
+                return ApiResponse<VerifyEmailResponseDto>.FailureResponse(
+                    "رمز التحقق غير صالح",
+                    new List<string> { "رابط التحقق غير صحيح أو منتهي الصلاحية" }
+                );
+            }
+
+            // Step 3: Check if token already used
+            if (verificationToken.IsUsed)
+            {
+                _logger.LogWarning("Already used verification token attempted: {TokenId}", verificationToken.Id);
+                return ApiResponse<VerifyEmailResponseDto>.FailureResponse(
+                    "رابط التحقق مستخدم مسبقاً",
+                    new List<string> { "تم استخدام هذا الرابط مسبقاً. يرجى طلب رابط جديد." }
+                );
+            }
+
+            // Step 4: Check if token expired
+            if (verificationToken.ExpiresAt < DateTime.UtcNow)
+            {
+                _logger.LogWarning("Expired verification token attempted: {TokenId}", verificationToken.Id);
+                return ApiResponse<VerifyEmailResponseDto>.FailureResponse(
+                    "انتهت صلاحية رابط التحقق",
+                    new List<string> { "انتهت صلاحية هذا الرابط. يرجى طلب رابط جديد." }
+                );
+            }
+
+            // Step 5: Check if email already verified
+            if (verificationToken.User.IsEmailVerified)
+            {
+                // Mark token as used anyway
+                verificationToken.IsUsed = true;
+                verificationToken.UsedAt = DateTime.UtcNow;
+                await _unitOfWork.EmailVerificationTokens.UpdateAsync(verificationToken);
+                await _unitOfWork.SaveChangesAsync();
+
+                return ApiResponse<VerifyEmailResponseDto>.SuccessResponse(
+                    new VerifyEmailResponseDto
+                    {
+                        Message = "البريد الإلكتروني مؤكد بالفعل",
+                        Email = verificationToken.User.Email,
+                        VerifiedAt = verificationToken.User.EmailVerifiedAt ?? DateTime.UtcNow
+                    },
+                    "بريدك الإلكتروني مؤكد بالفعل"
+                );
+            }
+
+            // Step 6: Mark email as verified
+            verificationToken.User.IsEmailVerified = true;
+            verificationToken.User.EmailVerifiedAt = DateTime.UtcNow;
+            verificationToken.User.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.Users.UpdateAsync(verificationToken.User);
+
+            // Step 7: Mark token as used
+            verificationToken.IsUsed = true;
+            verificationToken.UsedAt = DateTime.UtcNow;
+            await _unitOfWork.EmailVerificationTokens.UpdateAsync(verificationToken);
+
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Email verified successfully for user: {UserId}", verificationToken.UserId);
+
+            // Step 8: Return success
+            var response = new VerifyEmailResponseDto
+            {
+                Message = "تم تأكيد البريد الإلكتروني بنجاح",
+                Email = verificationToken.User.Email,
+                VerifiedAt = DateTime.UtcNow
+            };
+
+            return ApiResponse<VerifyEmailResponseDto>.SuccessResponse(
+                response,
+                "تم تأكيد بريدك الإلكتروني بنجاح! شكراً لك."
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying email with token");
+            return ApiResponse<VerifyEmailResponseDto>.FailureResponse(
+                "حدث خطأ أثناء التحقق من البريد الإلكتروني",
                 new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً" }
             );
         }

@@ -23,4 +23,16 @@ public interface IParentService
     Task<ApiResponse<DeleteParentAccountResponseDto>> DeleteParentAccountAsync(
         Guid userId,
         DeleteParentAccountRequestDto request);
+
+    /// <summary>
+    /// Send email verification link to parent's email
+    /// إرسال رابط التحقق من البريد الإلكتروني
+    /// </summary>
+    Task<ApiResponse<SendEmailVerificationResponseDto>> SendEmailVerificationAsync(Guid userId);
+
+    /// <summary>
+    /// Verify email using token from verification link
+    /// التحقق من البريد الإلكتروني باستخدام الرمز
+    /// </summary>
+    Task<ApiResponse<VerifyEmailResponseDto>> VerifyEmailAsync(string token);
 }

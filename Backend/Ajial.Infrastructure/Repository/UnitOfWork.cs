@@ -15,6 +15,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Parent> Parents { get; private set; }
     public IRepository<City> Cities { get; private set; }
     public IRepository<PasswordResetToken> PasswordResetTokens { get; private set; }
+    public IRepository<EmailVerificationToken> EmailVerificationTokens { get; private set; }
     public IChildRepository Children { get; private set; }
 
     public UnitOfWork(ApplicationDbContext context)
@@ -25,6 +26,7 @@ public class UnitOfWork : IUnitOfWork
         Parents = new Repository<Parent>(_context);
         Cities = new Repository<City>(_context);
         PasswordResetTokens = new Repository<PasswordResetToken>(_context);
+        EmailVerificationTokens = new Repository<EmailVerificationToken>(_context);
         Children = new ChildRepository(_context);
     }
 
