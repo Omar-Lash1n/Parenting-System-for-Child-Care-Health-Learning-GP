@@ -18,7 +18,7 @@ public class ParentService : IParentService
     private readonly IPasswordHasher _passwordHasher;
     private readonly IImageService _imageService;
 
-    public ParentService(IUnitOfWork unitOfWork,ILogger<ParentService> logger,IPasswordHasher passwordHasher,IImageService imageService)
+    public ParentService(IUnitOfWork unitOfWork, ILogger<ParentService> logger, IPasswordHasher passwordHasher, IImageService imageService)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -130,8 +130,8 @@ public class ParentService : IParentService
             _ => "Other"
         };
     }
-    
-     /// <summary>
+
+    /// <summary>
     /// Get parent profile data for the logged-in parent (including children)
     /// </summary>
     public async Task<ApiResponse<GetParentProfileResponseDto>> GetParentProfileAsync(Guid userId)
@@ -141,7 +141,7 @@ public class ParentService : IParentService
             _logger.LogInformation("Fetching profile for user ID: {UserId}", userId);
 
             // Get parent with related data (including children)
-            var parent = await _unitOfWork.Parents. GetFirstOrDefaultAsync(
+            var parent = await _unitOfWork.Parents.GetFirstOrDefaultAsync(
                 predicate: p => p.UserId == userId,
                 includeProperties: "User,City,Children"
             );
@@ -149,7 +149,7 @@ public class ParentService : IParentService
             if (parent == null)
             {
                 _logger.LogWarning("Parent not found for user ID: {UserId}", userId);
-                return ApiResponse<GetParentProfileResponseDto>. FailureResponse(
+                return ApiResponse<GetParentProfileResponseDto>.FailureResponse(
                     "الملف الشخصي غير موجود",
                     new List<string> { "لم يتم العثور على بيانات الملف الشخصي" }
                 );
@@ -166,7 +166,7 @@ public class ParentService : IParentService
             }
 
             // Map children to DTOs
-            var childrenDtos = parent.Children? 
+            var childrenDtos = parent.Children?
                 .OrderByDescending(c => c.CreatedAt) // Newest first
                 .Select(child => new ChildBasicInfoDto
                 {
@@ -175,7 +175,7 @@ public class ParentService : IParentService
                     ProfileImageUrl = child.ProfileImageUrl,
                     Age = child.Age,
                     Gender = child.Gender,
-                    HasAccount = ! string.IsNullOrEmpty(child.ChildLoginId),
+                    HasAccount = !string.IsNullOrEmpty(child.ChildLoginId),
                     ChildLoginId = child.ChildLoginId,
                     IsActive = child.IsActive
                 })
@@ -192,9 +192,9 @@ public class ParentService : IParentService
                 Email = parent.User.Email,
                 NumberOfChildren = childrenDtos.Count,
                 CityName = parent.City.Name,
-                CityNameAr = parent.City. NameAr,
+                CityNameAr = parent.City.NameAr,
                 DateOfBirth = parent.DateOfBirth,
-                Gender = parent.Gender. ToString(),
+                Gender = parent.Gender.ToString(),
                 Children = childrenDtos // ✅ NEW: Include children list
             };
 
@@ -217,8 +217,8 @@ public class ParentService : IParentService
             );
         }
     }
-     
-    
+
+
     /// <summary>
     /// Change parent's password from profile page
     /// </summary>
@@ -277,7 +277,7 @@ public class ParentService : IParentService
             }
 
             // Step 4: Check if user is active
-            if (! user.IsActive)
+            if (!user.IsActive)
             {
                 _logger.LogWarning("Inactive user attempted password change: {UserId}", userId);
                 return ApiResponse<ChangePasswordResponseDto>.FailureResponse(
@@ -289,7 +289,7 @@ public class ParentService : IParentService
             // Step 5: Verify current password
             bool isCurrentPasswordValid = _passwordHasher.VerifyPassword(
                 request.CurrentPassword,
-                user. PasswordHash
+                user.PasswordHash
             );
 
             if (!isCurrentPasswordValid)
@@ -306,7 +306,7 @@ public class ParentService : IParentService
 
             // Step 7: Update password
             user.PasswordHash = newPasswordHash;
-            user. UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
             await _unitOfWork.Users.UpdateAsync(user);
 
             // Step 8: Save changes
@@ -339,7 +339,7 @@ public class ParentService : IParentService
                 new List<string> { "حدث خطأ غير متوقع.  يرجى المحاولة لاحقاً" }
             );
         }
-    } 
+    }
     /// <summary>
     /// Update parent profile with partial updates (only provided fields are updated)
     /// </summary>
@@ -363,7 +363,7 @@ public class ParentService : IParentService
                     string.Join(", ", errors)
                 );
 
-                return ApiResponse<UpdateParentProfileResponseDto>. FailureResponse(
+                return ApiResponse<UpdateParentProfileResponseDto>.FailureResponse(
                     "فشل في تحديث البيانات",
                     errors
                 );
@@ -383,7 +383,7 @@ public class ParentService : IParentService
                 );
             }
 
-            var parent = await _unitOfWork. Parents.GetFirstOrDefaultAsync(
+            var parent = await _unitOfWork.Parents.GetFirstOrDefaultAsync(
                 predicate: p => p.UserId == userId,
                 includeProperties: "City"
             );
@@ -391,14 +391,14 @@ public class ParentService : IParentService
             if (parent == null)
             {
                 _logger.LogWarning("Parent not found for user {UserId}", userId);
-                return ApiResponse<UpdateParentProfileResponseDto>. FailureResponse(
+                return ApiResponse<UpdateParentProfileResponseDto>.FailureResponse(
                     "غير مصرح",
                     new List<string> { "هذه الوظيفة متاحة فقط لأولياء الأمور" }
                 );
             }
 
             // Step 3: Check if user is active
-            if (! user.IsActive)
+            if (!user.IsActive)
             {
                 _logger.LogWarning("Inactive user attempted profile update: {UserId}", userId);
                 return ApiResponse<UpdateParentProfileResponseDto>.FailureResponse(
@@ -410,9 +410,9 @@ public class ParentService : IParentService
             var fieldsUpdated = new List<string>();
 
             // Step 4: Update Full Name (if provided)
-            if (request.FullName != null && request.FullName. Trim() != user.FullName)
+            if (request.FullName != null && request.FullName.Trim() != user.FullName)
             {
-                user. FullName = request.FullName. Trim();
+                user.FullName = request.FullName.Trim();
                 fieldsUpdated.Add("fullName");
                 _logger.LogInformation("Updating full name for user {UserId}", userId);
             }
@@ -420,8 +420,8 @@ public class ParentService : IParentService
             // Step 5: Update Username (if provided)
             if (request.Username != null && request.Username.Trim() != user.Username)
             {
-                var trimmedUsername = request.Username. Trim();
-                
+                var trimmedUsername = request.Username.Trim();
+
                 // Check uniqueness
                 var usernameExists = await _unitOfWork.Users.GetFirstOrDefaultAsync(
                     predicate: u => u.Username == trimmedUsername && u.Id != userId
@@ -437,16 +437,16 @@ public class ParentService : IParentService
 
                 user.Username = trimmedUsername;
                 fieldsUpdated.Add("username");
-                _logger. LogInformation("Updating username for user {UserId}", userId);
+                _logger.LogInformation("Updating username for user {UserId}", userId);
             }
 
             // Step 6: Update Email (if provided)
-            if (request.Email != null && request.Email.Trim(). ToLower() != user.Email. ToLower())
+            if (request.Email != null && request.Email.Trim().ToLower() != user.Email.ToLower())
             {
-                var trimmedEmail = request.Email. Trim(). ToLower();
-                
+                var trimmedEmail = request.Email.Trim().ToLower();
+
                 // Check uniqueness
-                var emailExists = await _unitOfWork. Users.GetFirstOrDefaultAsync(
+                var emailExists = await _unitOfWork.Users.GetFirstOrDefaultAsync(
                     predicate: u => u.Email == trimmedEmail && u.Id != userId
                 );
 
@@ -464,7 +464,7 @@ public class ParentService : IParentService
             }
 
             // Step 7: Update City (if provided)
-            if (request.CityId.HasValue && request. CityId.Value != parent.CityId)
+            if (request.CityId.HasValue && request.CityId.Value != parent.CityId)
             {
                 // Verify city exists
                 var cityExists = await _unitOfWork.Cities.GetFirstOrDefaultAsync(
@@ -481,12 +481,12 @@ public class ParentService : IParentService
 
                 parent.CityId = request.CityId.Value;
                 parent.City = cityExists; // Update navigation property
-                fieldsUpdated. Add("city");
+                fieldsUpdated.Add("city");
                 _logger.LogInformation("Updating city for user {UserId}", userId);
             }
 
             // Step 8: Update Date of Birth (if provided)
-            if (request.DateOfBirth.HasValue && request.DateOfBirth.Value. Date != parent.DateOfBirth.Date)
+            if (request.DateOfBirth.HasValue && request.DateOfBirth.Value.Date != parent.DateOfBirth.Date)
             {
                 parent.DateOfBirth = request.DateOfBirth.Value;
                 fieldsUpdated.Add("dateOfBirth");
@@ -496,7 +496,7 @@ public class ParentService : IParentService
             // Step 9: Update Role/Gender (if provided)
             if (request.Role.HasValue && (int)parent.Gender != request.Role.Value)
             {
-                parent.Gender = (ParentGender)request.Role. Value;
+                parent.Gender = (ParentGender)request.Role.Value;
                 fieldsUpdated.Add("role");
                 _logger.LogInformation("Updating role for user {UserId}", userId);
             }
@@ -511,12 +511,12 @@ public class ParentService : IParentService
                         UserId = user.Id,
                         FullName = user.FullName,
                         Username = user.Username,
-                        Email = user. Email,
+                        Email = user.Email,
                         CityName = parent.City.Name,
-                        CityNameAr = parent.City. NameAr,
+                        CityNameAr = parent.City.NameAr,
                         DateOfBirth = parent.DateOfBirth,
                         Role = GetRoleDisplayName(parent.Gender),
-                        UpdatedAt = parent.UpdatedAt ??  parent.CreatedAt,
+                        UpdatedAt = parent.UpdatedAt ?? parent.CreatedAt,
                         FieldsUpdated = fieldsUpdated,
                         Message = "لم يتم تغيير أي بيانات"
                     },
@@ -525,12 +525,12 @@ public class ParentService : IParentService
             }
 
             // Step 11: Update timestamps
-            user.UpdatedAt = DateTime. UtcNow;
-            parent.UpdatedAt = DateTime. UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
+            parent.UpdatedAt = DateTime.UtcNow;
 
             // Step 12: Save changes
             await _unitOfWork.Users.UpdateAsync(user);
-            await _unitOfWork. Parents.UpdateAsync(parent);
+            await _unitOfWork.Parents.UpdateAsync(parent);
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation(
@@ -544,14 +544,14 @@ public class ParentService : IParentService
             {
                 ParentId = parent.Id,
                 UserId = user.Id,
-                FullName = user. FullName,
+                FullName = user.FullName,
                 Username = user.Username,
                 Email = user.Email,
                 CityName = parent.City.Name,
                 CityNameAr = parent.City.NameAr,
                 DateOfBirth = parent.DateOfBirth,
                 Role = GetRoleDisplayName(parent.Gender),
-                UpdatedAt = parent.UpdatedAt. Value,
+                UpdatedAt = parent.UpdatedAt.Value,
                 FieldsUpdated = fieldsUpdated,
                 Message = $"تم تحديث {fieldsUpdated.Count} حقل بنجاح"
             };
@@ -578,7 +578,7 @@ public class ParentService : IParentService
     {
         return gender switch
         {
-            ParentGender. Father => "أب",
+            ParentGender.Father => "أب",
             ParentGender.Mother => "أم",
             ParentGender.Educator => "مربي",
             _ => "غير محدد"
@@ -699,4 +699,185 @@ public class ParentService : IParentService
             );
         }
     }
+
+    /// <summary>
+    /// Delete parent account permanently including all children and related data
+    /// حذف حساب ولي الأمر نهائياً بما في ذلك جميع الأطفال والبيانات المرتبطة
+    /// </summary>
+    public async Task<ApiResponse<DeleteParentAccountResponseDto>> DeleteParentAccountAsync(
+        Guid userId,
+        DeleteParentAccountRequestDto request)
+    {
+        try
+        {
+            _logger.LogInformation("Account deletion requested for user ID: {UserId}", userId);
+
+            // Step 1: Validate input
+            var validator = new DeleteParentAccountRequestValidator();
+            var (isValid, errors) = validator.Validate(request);
+
+            if (!isValid)
+            {
+                _logger.LogWarning(
+                    "Account deletion validation failed for user {UserId}. Errors: {Errors}",
+                    userId,
+                    string.Join(", ", errors)
+                );
+
+                return ApiResponse<DeleteParentAccountResponseDto>.FailureResponse(
+                    "فشل في حذف الحساب",
+                    errors
+                );
+            }
+
+            // Step 2: Get user
+            var user = await _unitOfWork.Users.GetFirstOrDefaultAsync(
+                predicate: u => u.Id == userId
+            );
+
+            if (user == null)
+            {
+                _logger.LogWarning("User not found for account deletion: {UserId}", userId);
+                return ApiResponse<DeleteParentAccountResponseDto>.FailureResponse(
+                    "المستخدم غير موجود",
+                    new List<string> { "لم يتم العثور على المستخدم" }
+                );
+            }
+
+            // Step 3: Get parent with children
+            var parent = await _unitOfWork.Parents.GetFirstOrDefaultAsync(
+                predicate: p => p.UserId == userId,
+                includeProperties: "Children"
+            );
+
+            if (parent == null)
+            {
+                _logger.LogWarning("Parent not found for user {UserId}", userId);
+                return ApiResponse<DeleteParentAccountResponseDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "هذه الوظيفة متاحة فقط لأولياء الأمور" }
+                );
+            }
+
+            // Step 4: Check if user is active
+            if (!user.IsActive)
+            {
+                _logger.LogWarning("Inactive user attempted account deletion: {UserId}", userId);
+                return ApiResponse<DeleteParentAccountResponseDto>.FailureResponse(
+                    "الحساب غير نشط",
+                    new List<string> { "لا يمكن حذف حساب غير نشط" }
+                );
+            }
+
+            // Step 5: Verify password
+            bool isPasswordValid = _passwordHasher.VerifyPassword(
+                request.Password,
+                user.PasswordHash
+            );
+
+            if (!isPasswordValid)
+            {
+                _logger.LogWarning("Invalid password for account deletion attempt: {UserId}", userId);
+                return ApiResponse<DeleteParentAccountResponseDto>.FailureResponse(
+                    "كلمة المرور غير صحيحة",
+                    new List<string> { "كلمة المرور التي أدخلتها غير صحيحة" }
+                );
+            }
+
+            // Step 6: Get children count before deletion
+            int childrenCount = parent.Children?.Count ?? 0;
+
+            // Step 7: Delete children's profile images and records
+            if (parent.Children != null && parent.Children.Any())
+            {
+                foreach (var child in parent.Children.ToList())
+                {
+                    // Delete child's profile image from Azure
+                    if (!string.IsNullOrEmpty(child.ProfileImageUrl))
+                    {
+                        try
+                        {
+                            await _imageService.DeleteImageAsync(child.ProfileImageUrl);
+                            _logger.LogInformation("Deleted profile image for child {ChildId}", child.Id);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to delete image for child {ChildId}", child.Id);
+                            // Continue with deletion even if image deletion fails
+                        }
+                    }
+
+                    // Delete child record
+                    await _unitOfWork.Children.DeleteAsync(child);
+                    _logger.LogInformation("Deleted child record: {ChildId}", child.Id);
+                }
+            }
+
+            // Step 8: Delete parent's profile image from Azure
+            if (!string.IsNullOrEmpty(parent.ProfileImageUrl))
+            {
+                try
+                {
+                    await _imageService.DeleteImageAsync(parent.ProfileImageUrl);
+                    _logger.LogInformation("Deleted profile image for parent {ParentId}", parent.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to delete image for parent {ParentId}", parent.Id);
+                    // Continue with deletion even if image deletion fails
+                }
+            }
+
+            // Step 9: Delete password reset tokens (get tokens before the transaction)
+            var passwordResetTokens = await _unitOfWork.PasswordResetTokens.FindAsync(
+                predicate: t => t.UserId == userId
+            );
+            var tokensList = passwordResetTokens.ToList();
+
+            foreach (var token in tokensList)
+            {
+                await _unitOfWork.PasswordResetTokens.DeleteAsync(token);
+            }
+            _logger.LogInformation("Deleted {Count} password reset tokens for user {UserId}",
+                tokensList.Count, userId);
+
+            // Step 10: Delete parent record
+            await _unitOfWork.Parents.DeleteAsync(parent);
+            _logger.LogInformation("Deleted parent record: {ParentId}", parent.Id);
+
+            // Step 11: Delete user record
+            await _unitOfWork.Users.DeleteAsync(user);
+            _logger.LogInformation("Deleted user record: {UserId}", userId);
+
+            // Step 12: Save all changes to database
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Account deleted successfully for user {UserId}. Children deleted: {ChildrenCount}",
+                userId,
+                childrenCount
+            );
+
+            // Step 13: Return success response
+            var response = new DeleteParentAccountResponseDto
+            {
+                Message = "تم حذف الحساب بنجاح",
+                DeletedAt = DateTime.UtcNow,
+                ChildrenDeleted = childrenCount
+            };
+
+            return ApiResponse<DeleteParentAccountResponseDto>.SuccessResponse(
+                response,
+                "تم حذف حسابك وجميع البيانات المرتبطة به بنجاح"
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting account for user ID: {UserId}", userId);
+            return ApiResponse<DeleteParentAccountResponseDto>.FailureResponse(
+                "حدث خطأ أثناء حذف الحساب",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً" }
+            );
+        }
     }
+}

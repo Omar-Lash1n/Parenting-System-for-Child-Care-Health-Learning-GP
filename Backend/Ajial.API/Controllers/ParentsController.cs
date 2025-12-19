@@ -37,12 +37,12 @@ public class ParentsController : ControllerBase
 
             if (result.Success)
             {
-                _logger.LogInformation("Successfully retrieved {Count} parent records for analytics", 
+                _logger.LogInformation("Successfully retrieved {Count} parent records for analytics",
                     result.Data?.Count ?? 0);
             }
             else
             {
-                _logger.LogWarning("Failed to retrieve parents analytics data. Errors: {Errors}", 
+                _logger.LogWarning("Failed to retrieve parents analytics data. Errors: {Errors}",
                     string.Join(", ", result.Errors));
             }
 
@@ -148,7 +148,7 @@ public class ParentsController : ControllerBase
     [HttpGet("profile")]
     [Authorize] // ✅ Requires JWT token
     [ProducesResponseType(typeof(ApiResponse<GetParentProfileResponseDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<GetParentProfileResponseDto>), StatusCodes. Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<GetParentProfileResponseDto>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse<GetParentProfileResponseDto>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<GetParentProfileResponseDto>), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetParentProfile()
@@ -171,7 +171,7 @@ public class ParentsController : ControllerBase
 
             var result = await _parentService.GetParentProfileAsync(userId);
 
-            if (! result.Success)
+            if (!result.Success)
             {
                 _logger.LogWarning(
                     "Failed to retrieve profile for user {UserId}.  Errors: {Errors}",
@@ -191,7 +191,7 @@ public class ParentsController : ControllerBase
             _logger.LogInformation(
                 "Successfully returned profile for user {UserId}: {ParentName}",
                 userId,
-                result.Data?. FullName
+                result.Data?.FullName
             );
 
             return Ok(result);
@@ -205,7 +205,7 @@ public class ParentsController : ControllerBase
             ));
         }
     }
-    
+
     /// <summary>
     /// Change parent's password from profile page
     /// </summary>
@@ -230,7 +230,7 @@ public class ParentsController : ControllerBase
     [Authorize] // Requires JWT token
     [ProducesResponseType(typeof(ApiResponse<ChangePasswordResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ChangePasswordResponseDto>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<ChangePasswordResponseDto>), StatusCodes. Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<ChangePasswordResponseDto>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse<ChangePasswordResponseDto>), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestDto request)
     {
@@ -242,7 +242,7 @@ public class ParentsController : ControllerBase
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
             {
                 _logger.LogWarning("Unauthorized password change attempt - invalid user ID claim");
-                return Unauthorized(ApiResponse<ChangePasswordResponseDto>. FailureResponse(
+                return Unauthorized(ApiResponse<ChangePasswordResponseDto>.FailureResponse(
                     "غير مصرح",
                     new List<string> { "يجب تسجيل الدخول لتغيير كلمة المرور" }
                 ));
@@ -250,33 +250,33 @@ public class ParentsController : ControllerBase
 
             _logger.LogInformation("Password change requested by user ID: {UserId}", userId);
 
-            var result = await _parentService. ChangePasswordAsync(userId, request);
+            var result = await _parentService.ChangePasswordAsync(userId, request);
 
-            if (! result.Success)
+            if (!result.Success)
             {
                 _logger.LogWarning(
                     "Password change failed for user {UserId}.  Errors: {Errors}",
                     userId,
-                    string.Join(", ", result. Errors)
+                    string.Join(", ", result.Errors)
                 );
 
                 return BadRequest(result);
             }
 
-            _logger. LogInformation("Password changed successfully for user {UserId}", userId);
+            _logger.LogInformation("Password changed successfully for user {UserId}", userId);
 
             return Ok(result);
         }
         catch (Exception ex)
         {
-            _logger. LogError(ex, "Error in ChangePassword endpoint");
-            return StatusCode(500, ApiResponse<ChangePasswordResponseDto>. FailureResponse(
+            _logger.LogError(ex, "Error in ChangePassword endpoint");
+            return StatusCode(500, ApiResponse<ChangePasswordResponseDto>.FailureResponse(
                 "حدث خطأ في الخادم",
                 new List<string> { "حدث خطأ غير متوقع أثناء تغيير كلمة المرور" }
             ));
         }
     }
-  
+
     /// <summary>
     /// Update parent profile (partial updates - only provided fields are updated)
     /// </summary>
@@ -331,7 +331,7 @@ public class ParentsController : ControllerBase
             // Get user ID from JWT token
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (string.IsNullOrEmpty(userIdClaim) || ! Guid.TryParse(userIdClaim, out Guid userId))
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
             {
                 _logger.LogWarning("Unauthorized profile update attempt - invalid user ID claim");
                 return Unauthorized(ApiResponse<UpdateParentProfileResponseDto>.FailureResponse(
@@ -344,109 +344,190 @@ public class ParentsController : ControllerBase
 
             var result = await _parentService.UpdateParentProfileAsync(userId, request);
 
-            if (! result.Success)
+            if (!result.Success)
             {
                 _logger.LogWarning(
                     "Profile update failed for user {UserId}.  Errors: {Errors}",
                     userId,
-                    string.Join(", ", result. Errors)
+                    string.Join(", ", result.Errors)
                 );
 
                 return BadRequest(result);
             }
 
-            _logger. LogInformation(
+            _logger.LogInformation(
                 "Profile updated successfully for user {UserId}. Fields: {Fields}",
                 userId,
-                string.Join(", ", result.Data?. FieldsUpdated ?? new List<string>())
+                string.Join(", ", result.Data?.FieldsUpdated ?? new List<string>())
             );
 
             return Ok(result);
         }
         catch (Exception ex)
         {
-            _logger. LogError(ex, "Error in UpdateParentProfile endpoint");
+            _logger.LogError(ex, "Error in UpdateParentProfile endpoint");
             return StatusCode(500, ApiResponse<UpdateParentProfileResponseDto>.FailureResponse(
                 "حدث خطأ في الخادم",
                 new List<string> { "حدث خطأ غير متوقع أثناء تحديث الملف الشخصي" }
             ));
         }
-    }  
-    
-    
-    
+    }
+
+
+
     /// <summary>
-/// Upload or update parent profile image
-/// </summary>
-/// <remarks>
-/// Upload a new profile image or replace the existing one. 
-/// 
-/// **Image Requirements:**
-/// - Max size: 5MB
-/// - Allowed formats: JPG, JPEG, PNG
-/// - Recommended: Square image (500x500px or larger)
-/// 
-/// **Behavior:**
-/// - If parent has existing image, it will be deleted and replaced
-/// - If parent has no image, new image will be uploaded
-/// - Returns the new image URL
-/// 
-/// **Note:** Use Postman or client code for testing (Swagger file upload may have limitations)
-/// </remarks>
-/// <param name="image">Profile image file to upload</param>
-[HttpPost("profile/image")]
-[Authorize]
-[ProducesResponseType(typeof(ApiResponse<UploadParentImageResponseDto>), StatusCodes. Status200OK)]
-[ProducesResponseType(typeof(ApiResponse<UploadParentImageResponseDto>), StatusCodes.Status400BadRequest)]
-[ProducesResponseType(typeof(ApiResponse<UploadParentImageResponseDto>), StatusCodes.Status401Unauthorized)]
-[ProducesResponseType(typeof(ApiResponse<UploadParentImageResponseDto>), StatusCodes.Status500InternalServerError)]
-public async Task<IActionResult> UploadProfileImage(IFormFile image)
-{
-    try
+    /// Upload or update parent profile image
+    /// </summary>
+    /// <remarks>
+    /// Upload a new profile image or replace the existing one. 
+    /// 
+    /// **Image Requirements:**
+    /// - Max size: 5MB
+    /// - Allowed formats: JPG, JPEG, PNG
+    /// - Recommended: Square image (500x500px or larger)
+    /// 
+    /// **Behavior:**
+    /// - If parent has existing image, it will be deleted and replaced
+    /// - If parent has no image, new image will be uploaded
+    /// - Returns the new image URL
+    /// 
+    /// **Note:** Use Postman or client code for testing (Swagger file upload may have limitations)
+    /// </remarks>
+    /// <param name="image">Profile image file to upload</param>
+    [HttpPost("profile/image")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<UploadParentImageResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<UploadParentImageResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<UploadParentImageResponseDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<UploadParentImageResponseDto>), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UploadProfileImage(IFormFile image)
     {
-        // Get user ID from JWT token
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+        try
         {
-            _logger.LogWarning("Unauthorized image upload attempt - invalid user ID claim");
-            return Unauthorized(ApiResponse<UploadParentImageResponseDto>.FailureResponse(
-                "غير مصرح",
-                new List<string> { "يجب تسجيل الدخول لرفع الصورة" }
-            ));
-        }
+            // Get user ID from JWT token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        _logger.LogInformation("Profile image upload requested by user ID: {UserId}", userId);
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                _logger.LogWarning("Unauthorized image upload attempt - invalid user ID claim");
+                return Unauthorized(ApiResponse<UploadParentImageResponseDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول لرفع الصورة" }
+                ));
+            }
 
-        var result = await _parentService.UploadParentProfileImageAsync(userId, image);
+            _logger.LogInformation("Profile image upload requested by user ID: {UserId}", userId);
 
-        if (! result.Success)
-        {
-            _logger.LogWarning(
-                "Profile image upload failed for user {UserId}.  Errors: {Errors}",
+            var result = await _parentService.UploadParentProfileImageAsync(userId, image);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning(
+                    "Profile image upload failed for user {UserId}.  Errors: {Errors}",
+                    userId,
+                    string.Join(", ", result.Errors)
+                );
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation(
+                "Profile image uploaded successfully for user {UserId}. URL: {ImageUrl}",
                 userId,
-                string.Join(", ", result. Errors)
+                result.Data?.ProfileImageUrl
             );
 
-            return BadRequest(result);
+            return Ok(result);
         }
-
-        _logger.LogInformation(
-            "Profile image uploaded successfully for user {UserId}. URL: {ImageUrl}",
-            userId,
-            result.Data?. ProfileImageUrl
-        );
-
-        return Ok(result);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in UploadProfileImage endpoint");
+            return StatusCode(500, ApiResponse<UploadParentImageResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع أثناء رفع الصورة" }
+            ));
+        }
     }
-    catch (Exception ex)
+
+    /// <summary>
+    /// حذف حساب ولي الأمر نهائياً - Delete parent account permanently
+    /// </summary>
+    /// <remarks>
+    /// ⚠️ **تحذير: هذا الإجراء لا يمكن التراجع عنه!**
+    /// 
+    /// سيتم حذف:
+    /// - حساب ولي الأمر
+    /// - جميع بيانات الأطفال المرتبطة
+    /// - صور الملفات الشخصية
+    /// - رموز إعادة تعيين كلمة المرور
+    /// 
+    /// المتطلبات:
+    /// - يجب إدخال كلمة المرور الحالية للتأكيد
+    /// 
+    /// **WARNING: This action cannot be undone!**
+    /// 
+    /// Will delete:
+    /// - Parent account
+    /// - All associated children data
+    /// - Profile images
+    /// - Password reset tokens
+    /// 
+    /// Requirements:
+    /// - Must provide current password for confirmation
+    /// </remarks>
+    /// <param name="request">كلمة المرور للتأكيد - Password for confirmation</param>
+    [HttpDelete("account")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<DeleteParentAccountResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<DeleteParentAccountResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<DeleteParentAccountResponseDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<DeleteParentAccountResponseDto>), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeleteParentAccount([FromBody] DeleteParentAccountRequestDto request)
     {
-        _logger.LogError(ex, "Error in UploadProfileImage endpoint");
-        return StatusCode(500, ApiResponse<UploadParentImageResponseDto>.FailureResponse(
-            "حدث خطأ في الخادم",
-            new List<string> { "حدث خطأ غير متوقع أثناء رفع الصورة" }
-        ));
+        try
+        {
+            // Get user ID from JWT token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                _logger.LogWarning("Unauthorized account deletion attempt - invalid user ID claim");
+                return Unauthorized(ApiResponse<DeleteParentAccountResponseDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول لحذف الحساب" }
+                ));
+            }
+
+            _logger.LogInformation("Account deletion requested by user ID: {UserId}", userId);
+
+            var result = await _parentService.DeleteParentAccountAsync(userId, request);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning(
+                    "Account deletion failed for user {UserId}. Errors: {Errors}",
+                    userId,
+                    string.Join(", ", result.Errors)
+                );
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation(
+                "Account deleted successfully for user {UserId}. Children deleted: {ChildrenCount}",
+                userId,
+                result.Data?.ChildrenDeleted ?? 0
+            );
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in DeleteParentAccount endpoint");
+            return StatusCode(500, ApiResponse<DeleteParentAccountResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع أثناء حذف الحساب" }
+            ));
+        }
     }
-}
-    
 }
