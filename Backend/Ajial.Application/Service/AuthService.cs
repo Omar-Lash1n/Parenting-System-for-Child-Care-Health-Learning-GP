@@ -4,10 +4,9 @@ using Ajial.Application.Interfaces;
 using Ajial.Application.Validators;
 using Ajial.Domain.Entities;
 using Ajlal.Application.Interfaces;
-using Ajial.Domain.Entities;
-using System.Security.Cryptography;
+using Ajial.Application.DTOs.Validators;
 
-namespace Ajial.Application.Services;
+namespace Ajial.Application.Service;
 
 public class AuthService : IAuthService
 {
@@ -144,7 +143,6 @@ public class AuthService : IAuthService
             // الخطوة 1: التحقق من صحة البيانات
             var validator = new ForgotPasswordRequestValidator();
             var (isValid, errors) = validator.Validate(request);
-
             if (!isValid)
             {
                 return ApiResponse<ForgotPasswordResponseDto>.FailureResponse(

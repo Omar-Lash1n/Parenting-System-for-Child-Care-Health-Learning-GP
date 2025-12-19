@@ -7,8 +7,8 @@ namespace Ajial.Application.DTOs.Parent;
 public class DeleteParentAccountRequestDto
 {
     /// <summary>
-    /// Current password for verification (security measure)
-    /// كلمة المرور الحالية للتحقق (إجراء أمني)
+    /// Confirmation text - user must type "حذف" to confirm deletion
+    /// نص التأكيد - يجب على المستخدم كتابة "حذف" لتأكيد الحذف
     /// </summary>
-    public string Password { get; set; } = string.Empty;
+    public string ConfirmationText { get; set; } = string.Empty;
 }

@@ -462,7 +462,7 @@ public class ParentsController : ControllerBase
     /// - رموز إعادة تعيين كلمة المرور
     /// 
     /// المتطلبات:
-    /// - يجب إدخال كلمة المرور الحالية للتأكيد
+    /// - يجب كتابة كلمة "حذف" للتأكيد
     /// 
     /// **WARNING: This action cannot be undone!**
     /// 
@@ -473,9 +473,9 @@ public class ParentsController : ControllerBase
     /// - Password reset tokens
     /// 
     /// Requirements:
-    /// - Must provide current password for confirmation
+    /// - Must type "حذف" to confirm deletion
     /// </remarks>
-    /// <param name="request">كلمة المرور للتأكيد - Password for confirmation</param>
+    /// <param name="request">نص التأكيد - يجب كتابة "حذف" - Confirmation text - must type "حذف"</param>
     [HttpDelete("account")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<DeleteParentAccountResponseDto>), StatusCodes.Status200OK)]

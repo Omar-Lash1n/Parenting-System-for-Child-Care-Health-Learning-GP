@@ -769,25 +769,10 @@ public class ParentService : IParentService
                 );
             }
 
-            // Step 5: Verify password
-            bool isPasswordValid = _passwordHasher.VerifyPassword(
-                request.Password,
-                user.PasswordHash
-            );
-
-            if (!isPasswordValid)
-            {
-                _logger.LogWarning("Invalid password for account deletion attempt: {UserId}", userId);
-                return ApiResponse<DeleteParentAccountResponseDto>.FailureResponse(
-                    "كلمة المرور غير صحيحة",
-                    new List<string> { "كلمة المرور التي أدخلتها غير صحيحة" }
-                );
-            }
-
-            // Step 6: Get children count before deletion
+            // Step 5: Get children count before deletion
             int childrenCount = parent.Children?.Count ?? 0;
 
-            // Step 7: Delete children's profile images and records
+            // Step 6: Delete children's profile images and records
             if (parent.Children != null && parent.Children.Any())
             {
                 foreach (var child in parent.Children.ToList())
