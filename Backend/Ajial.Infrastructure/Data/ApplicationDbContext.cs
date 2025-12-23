@@ -5,16 +5,17 @@ namespace Ajial.Infrastructure.Data;
 
 public class ApplicationDbContext : DbContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) 
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
     }
 
-    public DbSet<User> Users { get; set; }
-    public DbSet<Parent> Parents { get; set; }
-    public DbSet<City> Cities { get; set; }
-    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }  // ✅ NEW
-    public DbSet<Child> Children { get; set; } 
+    public DbSet<User> Users { get; set; }= null!;
+    public DbSet<Parent> Parents { get; set; }= null!;
+    public DbSet<City> Cities { get; set; }= null!;
+    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
+    public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }= null!;
+    public DbSet<Child> Children { get; set; }= null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -36,15 +37,31 @@ public class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Token).IsRequired().HasMaxLength(500);
-            
+
             entity.HasOne(e => e.User)
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasIndex(e => e.Token);
             entity.HasIndex(e => e.UserId);
         });
+
+        // Configure EmailVerificationToken
+        modelBuilder.Entity<EmailVerificationToken>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Token).IsRequired().HasMaxLength(500);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.Token);
+            entity.HasIndex(e => e.UserId);
+        });
+
         // Parent Configuration
         modelBuilder.Entity<Parent>(entity =>
         {
@@ -53,7 +70,7 @@ public class ApplicationDbContext : DbContext
                   .WithOne()
                   .HasForeignKey<Parent>(e => e.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
-            
+
             entity.HasOne(e => e.City)
                   .WithMany()
                   .HasForeignKey(e => e.CityId)
@@ -117,7 +134,7 @@ public class ApplicationDbContext : DbContext
                 .HasFilter("[ChildLoginId] IS NOT NULL");
 
             entity.HasIndex(c => c.ParentId);
-            
+
             entity.HasIndex(c => c.IsActive);
         });
 
@@ -135,5 +152,5 @@ public class ApplicationDbContext : DbContext
             new City { Id = 5, Name = "Port Said", NameAr = "بورسعيد", IsActive = true }
         );
     }
-    
+
 }

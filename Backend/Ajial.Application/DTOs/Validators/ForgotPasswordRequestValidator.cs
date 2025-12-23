@@ -1,7 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using Ajial.Application.DTOs.Auth;
 
-namespace Ajial.Application.Validators;
+namespace Ajial.Application.DTOs.Validators;
 
 public class ForgotPasswordRequestValidator
 {
