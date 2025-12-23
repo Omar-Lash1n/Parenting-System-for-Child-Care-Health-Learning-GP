@@ -71,19 +71,18 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 40),
 
-                  // Add Child Button
+                  // Profile Button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 40),
                     child: ElevatedButton.icon(
-                      onPressed: provider.isLoggingOut ? null : () {
-                        Navigator.push(
-                          context,
-                          FadePageRoute(child: const AddChildFlow()),
-                        );
-                      },
-                      icon: const Icon(Icons.child_care, color: Colors.white),
+                      onPressed: provider.isLoggingOut
+                          ? null
+                          : () {
+                              Navigator.pushNamed(context, '/profile');
+                            },
+                      icon: const Icon(Icons.person, color: Colors.white),
                       label: const Text(
-                        'أضف طفلاً جديداً',
+                        'الملف الشخصي',
                         style: TextStyle(
                           fontFamily: kFontFamily,
                           fontSize: 18,
@@ -92,6 +91,38 @@ class HomeScreen extends StatelessWidget {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: kPrimaryColor,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Add Child Button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: OutlinedButton.icon(
+                      onPressed: provider.isLoggingOut
+                          ? null
+                          : () {
+                              Navigator.push(
+                                context,
+                                FadePageRoute(child: const AddChildFlow()),
+                              );
+                            },
+                      icon: const Icon(Icons.child_care, color: kPrimaryColor),
+                      label: const Text(
+                        'أضف طفلاً جديداً',
+                        style: TextStyle(
+                          fontFamily: kFontFamily,
+                          fontSize: 18,
+                          color: kPrimaryColor,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: kPrimaryColor),
                         minimumSize: const Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
@@ -108,7 +139,8 @@ class HomeScreen extends StatelessWidget {
                         ? const CircularProgressIndicator(color: kPrimaryColor)
                         : OutlinedButton.icon(
                             onPressed: () => provider.logout(context),
-                            icon: const Icon(Icons.logout, color: kPrimaryColor),
+                            icon:
+                                const Icon(Icons.logout, color: kPrimaryColor),
                             label: const Text(
                               'تسجيل الخروج',
                               style: TextStyle(

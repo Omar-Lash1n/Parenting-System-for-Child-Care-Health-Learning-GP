@@ -10,12 +10,12 @@ public class ApplicationDbContext : DbContext
     {
     }
 
-    public DbSet<User> Users { get; set; }
-    public DbSet<Parent> Parents { get; set; }
-    public DbSet<City> Cities { get; set; }
-    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }  // ✅ NEW
-    public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }
-    public DbSet<Child> Children { get; set; }
+    public DbSet<User> Users { get; set; }= null!;
+    public DbSet<Parent> Parents { get; set; }= null!;
+    public DbSet<City> Cities { get; set; }= null!;
+    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
+    public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }= null!;
+    public DbSet<Child> Children { get; set; }= null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

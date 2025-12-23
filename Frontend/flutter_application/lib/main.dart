@@ -6,6 +6,7 @@ import 'package:Ajial/child-app/child-sign-in.dart';
 import 'package:Ajial/signup-login-pages/continuesignup.dart';
 import 'package:Ajial/signup-login-pages/signup.dart';
 import 'package:Ajial/splash_screen.dart';
+import 'package:Ajial/profile/parent_profile.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 // --- Provider Imports ---
@@ -60,14 +61,14 @@ class AjialApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
 
-      initialRoute:
-          '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
+      initialRoute: '/profile', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
       routes: {
         '/splash': (context) => SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/child-login': (context) => const ChildLoginScreen(),
         '/home': (context) => HomeScreen(),
         '/add-child': (context) => const AddChildFlow(),
+        '/profile': (context) => const ParentProfilePage(),
       },
     );
   }
