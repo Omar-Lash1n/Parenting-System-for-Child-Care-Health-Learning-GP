@@ -51,6 +51,18 @@ public class GetParentProfileResponseDto
     public string Gender { get; set; } = string.Empty;
 
     /// <summary>
+    /// Parent role code (1=Father, 2=Mother, 3=Educator)
+    /// كود دور ولي الأمر (1=أب، 2=أم، 3=مربي)
+    /// </summary>
+    public int RoleCode { get; set; }
+
+    /// <summary>
+    /// Parent role display name in Arabic
+    /// اسم دور ولي الأمر بالعربية
+    /// </summary>
+    public string Role { get; set; } = string.Empty;
+
+    /// <summary>
     /// Parent ID
     /// </summary>
     public Guid ParentId { get; set; }

@@ -41,6 +41,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  // Cache screen dimensions to avoid rebuilds on keyboard
+  late double _screenHeight;
+  late double _screenWidth;
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +52,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _nameController.addListener(_onNameChanged);
     _usernameController.addListener(_onUsernameChanged);
     _emailController.addListener(_onEmailChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final size = MediaQuery.of(context).size;
+    _screenHeight = size.height;
+    _screenWidth = size.width;
   }
 
   void _onNameChanged() {
@@ -81,12 +93,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   void _submitForm() {
     final provider = context.read<SignupProvider>();
-    
+
     if (_formKey.currentState!.validate()) {
       if (provider.isPasswordStrong()) {
         print('Form is valid and ready to submit!');
-        
-        Navigator.push( 
+
+        Navigator.push(
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
@@ -101,7 +113,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
               const begin = 0.0;
               const end = 1.0;
               const curve = Curves.ease;
-              var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+              var tween =
+                  Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
               return FadeTransition(
                 opacity: animation.drive(tween),
                 child: child,
@@ -122,9 +135,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -142,27 +152,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                         child: Padding(
                           padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth > 600 ? 40.0 : 24.0,
+                            horizontal: _screenWidth > 600 ? 40.0 : 24.0,
                             vertical: 20.0,
                           ),
                           child: Form(
                             key: _formKey,
-                            autovalidateMode: AutovalidateMode.onUserInteraction,
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                SizedBox(height: screenHeight * 0.02),
+                                SizedBox(height: _screenHeight * 0.02),
 
                                 // --- Logo ---
                                 Center(
                                   child: Image.asset(
                                     'images/main-logo.png',
-                                    width: screenHeight * 0.15,
-                                    height: screenHeight * 0.15,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        Icon(
+                                    width: _screenHeight * 0.15,
+                                    height: _screenHeight * 0.15,
+                                    errorBuilder:
+                                        (context, error, stackTrace) => Icon(
                                       Icons.group,
-                                      size: screenHeight * 0.15,
+                                      size: _screenHeight * 0.15,
                                       color: kPrimaryColor,
                                     ),
                                   ),
@@ -192,7 +203,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
-                                SizedBox(height: screenHeight * 0.04),
+                                SizedBox(height: _screenHeight * 0.04),
 
                                 // --- Full Name Field ---
                                 _buildLabel('الاسم كامل *'),
@@ -209,10 +220,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                                 _nameController.clear(),
                                           )
                                         : null,
-                                    borderColor:
-                                        provider.isFullNameValid ? Colors.green : null,
-                                    focusedBorderColor:
-                                        provider.isFullNameValid ? Colors.green : null,
+                                    borderColor: provider.isFullNameValid
+                                        ? Colors.green
+                                        : null,
+                                    focusedBorderColor: provider.isFullNameValid
+                                        ? Colors.green
+                                        : null,
                                   ),
                                   keyboardType: TextInputType.name,
                                   validator: (value) {
@@ -233,19 +246,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 TextFormField(
                                   controller: _usernameController,
                                   decoration: _buildInputDecoration(
-                                    hintText: 'اكتب اسم المستخدم بدون مسافات...',
-                                    suffixIcon: _usernameController.text.isNotEmpty
-                                        ? IconButton(
-                                            icon: const Icon(Icons.close,
-                                                color: Colors.grey),
-                                            onPressed: () =>
-                                                _usernameController.clear(),
-                                          )
+                                    hintText:
+                                        'اكتب اسم المستخدم بدون مسافات...',
+                                    suffixIcon:
+                                        _usernameController.text.isNotEmpty
+                                            ? IconButton(
+                                                icon: const Icon(Icons.close,
+                                                    color: Colors.grey),
+                                                onPressed: () =>
+                                                    _usernameController.clear(),
+                                              )
+                                            : null,
+                                    borderColor: provider.isUsernameValid
+                                        ? Colors.green
                                         : null,
-                                    borderColor:
-                                        provider.isUsernameValid ? Colors.green : null,
-                                    focusedBorderColor:
-                                        provider.isUsernameValid ? Colors.green : null,
+                                    focusedBorderColor: provider.isUsernameValid
+                                        ? Colors.green
+                                        : null,
                                   ),
                                   keyboardType: TextInputType.text,
                                   validator: (value) {
@@ -279,10 +296,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                             },
                                           )
                                         : null,
-                                    borderColor:
-                                        provider.isEmailValid ? Colors.green : null,
-                                    focusedBorderColor:
-                                        provider.isEmailValid ? Colors.green : null,
+                                    borderColor: provider.isEmailValid
+                                        ? Colors.green
+                                        : null,
+                                    focusedBorderColor: provider.isEmailValid
+                                        ? Colors.green
+                                        : null,
                                   ),
                                   keyboardType: TextInputType.emailAddress,
                                   validator: (value) {
@@ -304,7 +323,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   controller: _passwordController,
                                   obscureText: !provider.isPasswordVisible,
                                   decoration: _buildInputDecoration(
-                                    hintText: 'اكتب كلمة مرور لا تقل عن 8 حروف...',
+                                    hintText:
+                                        'اكتب كلمة مرور لا تقل عن 8 حروف...',
                                     prefixIcon: IconButton(
                                       padding: const EdgeInsets.only(left: 15),
                                       icon: Icon(
@@ -313,7 +333,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                             : Icons.visibility,
                                         color: Colors.grey,
                                       ),
-                                      onPressed: provider.togglePasswordVisibility,
+                                      onPressed:
+                                          provider.togglePasswordVisibility,
                                     ),
                                   ),
                                   onChanged: provider.updatePasswordStrength,
@@ -335,11 +356,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                         child: LinearProgressIndicator(
                                           value: provider.passwordStrength,
                                           backgroundColor: Colors.grey[300],
-                                          color: provider.passwordStrength <= 0.33
-                                              ? kPrimaryColor
-                                              : provider.passwordStrength <= 0.66
-                                                  ? Colors.yellow[700]
-                                                  : Colors.green,
+                                          color:
+                                              provider.passwordStrength <= 0.33
+                                                  ? kPrimaryColor
+                                                  : provider.passwordStrength <=
+                                                          0.66
+                                                      ? Colors.yellow[700]
+                                                      : Colors.green,
                                           minHeight: 6,
                                         ),
                                       ),
@@ -365,7 +388,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                 ),
-                
+
                 // --- 2. Sticky Buttons at Bottom ---
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
@@ -395,7 +418,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                             ),
                             SizedBox(width: 10),
-                            Icon(Icons.arrow_back_outlined, color: Colors.white),
+                            Icon(Icons.arrow_back_outlined,
+                                color: Colors.white),
                           ],
                         ),
                       ),

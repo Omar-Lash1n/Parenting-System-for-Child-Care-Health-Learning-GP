@@ -15,13 +15,13 @@ const String kFontFamily = 'IBM Plex Sans Arabic';
 class FadePageRoute<T> extends PageRouteBuilder<T> {
   final Widget child;
   FadePageRoute({required this.child})
-    : super(
-        pageBuilder: (context, animation, secondaryAnimation) => child,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      );
+      : super(
+          pageBuilder: (context, animation, secondaryAnimation) => child,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        );
 }
 
 class DataEntryPage extends StatefulWidget {
@@ -43,6 +43,18 @@ class DataEntryPage extends StatefulWidget {
 }
 
 class _DataEntryPageState extends State<DataEntryPage> {
+  // Cache screen dimensions to avoid rebuilds on keyboard
+  late double _screenHeight;
+  late double _screenWidth;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final size = MediaQuery.of(context).size;
+    _screenHeight = size.height;
+    _screenWidth = size.width;
+  }
+
   @override
   void dispose() {
     // Reset provider state when leaving screen
@@ -52,10 +64,11 @@ class _DataEntryPageState extends State<DataEntryPage> {
 
   Future<void> _selectDate(BuildContext context) async {
     final provider = context.read<ContinueSignupProvider>();
-    
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: provider.selectedDateOfBirth ?? DateTime(DateTime.now().year - 20),
+      initialDate:
+          provider.selectedDateOfBirth ?? DateTime(DateTime.now().year - 20),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
       locale: const Locale('ar'),
@@ -81,9 +94,6 @@ class _DataEntryPageState extends State<DataEntryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-
     const double mainButtonHeight = 55.0;
     const double fieldAndRoleButtonHeight = 50.0;
     const double mainBorderRadius = 50.0;
@@ -112,18 +122,18 @@ class _DataEntryPageState extends State<DataEntryPage> {
                         ),
                         child: Padding(
                           padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth > 600 ? 40.0 : 24.0,
+                            horizontal: _screenWidth > 600 ? 40.0 : 24.0,
                             vertical: 20.0,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
                               // --- Logo and Title ---
-                              SizedBox(height: screenHeight * 0.02),
+                              SizedBox(height: _screenHeight * 0.02),
                               Center(
                                 child: Image.asset(
                                   'images/main-logo.png',
-                                  height: screenHeight * 0.15,
+                                  height: _screenHeight * 0.15,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -138,20 +148,22 @@ class _DataEntryPageState extends State<DataEntryPage> {
                                 fontSize: 16,
                                 color: Colors.grey[600],
                               ),
-                              SizedBox(height: screenHeight * 0.04),
+                              SizedBox(height: _screenHeight * 0.04),
 
                               // --- 1. City Selection ---
                               _buildFieldLabel('المدينة *'),
                               const SizedBox(height: 8),
                               Container(
                                 height: fieldAndRoleButtonHeight,
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0),
                                 decoration: BoxDecoration(
                                   border: Border.all(
                                     color: Colors.grey.shade400,
                                     width: 1.5,
                                   ),
-                                  borderRadius: BorderRadius.circular(fieldBorderRadius),
+                                  borderRadius:
+                                      BorderRadius.circular(fieldBorderRadius),
                                 ),
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<int>(
@@ -169,10 +181,13 @@ class _DataEntryPageState extends State<DataEntryPage> {
                                       Icons.keyboard_arrow_down,
                                       color: Colors.grey,
                                     ),
-                                    onChanged: provider.isLoading ? null : (int? newValue) {
-                                      provider.setCity(newValue);
-                                    },
-                                    items: provider.cities.map<DropdownMenuItem<int>>((
+                                    onChanged: provider.isLoading
+                                        ? null
+                                        : (int? newValue) {
+                                            provider.setCity(newValue);
+                                          },
+                                    items: provider.cities
+                                        .map<DropdownMenuItem<int>>((
                                       Map<String, dynamic> city,
                                     ) {
                                       return DropdownMenuItem<int>(
@@ -198,16 +213,20 @@ class _DataEntryPageState extends State<DataEntryPage> {
                               _buildFieldLabel('تاريخ الميلاد *'),
                               const SizedBox(height: 8),
                               GestureDetector(
-                                onTap: provider.isLoading ? null : () => _selectDate(context),
+                                onTap: provider.isLoading
+                                    ? null
+                                    : () => _selectDate(context),
                                 child: Container(
                                   height: fieldAndRoleButtonHeight,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0),
                                   decoration: BoxDecoration(
                                     border: Border.all(
                                       color: Colors.grey.shade400,
                                       width: 1.5,
                                     ),
-                                    borderRadius: BorderRadius.circular(fieldBorderRadius),
+                                    borderRadius: BorderRadius.circular(
+                                        fieldBorderRadius),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.end,
@@ -215,11 +234,13 @@ class _DataEntryPageState extends State<DataEntryPage> {
                                       Text(
                                         provider.selectedDateOfBirth == null
                                             ? 'اضغط لإدخال تاريخ الميلاد'
-                                            : DateFormat('yyyy/MM/dd').format(provider.selectedDateOfBirth!),
+                                            : DateFormat('yyyy/MM/dd').format(
+                                                provider.selectedDateOfBirth!),
                                         style: TextStyle(
                                           fontFamily: kFontFamily,
                                           fontSize: 15,
-                                          color: provider.selectedDateOfBirth == null
+                                          color: provider.selectedDateOfBirth ==
+                                                  null
                                               ? Colors.grey.shade600
                                               : kFontBlack,
                                         ),
@@ -274,7 +295,8 @@ class _DataEntryPageState extends State<DataEntryPage> {
                         height: mainButtonHeight,
                         child: provider.isLoading
                             ? const Center(
-                                child: CircularProgressIndicator(color: kMainRed),
+                                child:
+                                    CircularProgressIndicator(color: kMainRed),
                               )
                             : ElevatedButton(
                                 onPressed: () {
@@ -290,7 +312,8 @@ class _DataEntryPageState extends State<DataEntryPage> {
                                   backgroundColor: kMainRed,
                                   minimumSize: const Size(double.infinity, 50),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(mainBorderRadius),
+                                    borderRadius:
+                                        BorderRadius.circular(mainBorderRadius),
                                   ),
                                 ),
                                 child: const Text(
@@ -310,16 +333,19 @@ class _DataEntryPageState extends State<DataEntryPage> {
                       SizedBox(
                         height: mainButtonHeight,
                         child: OutlinedButton(
-                          onPressed: provider.isLoading ? null : () {
-                            Navigator.pop(context);
-                          },
+                          onPressed: provider.isLoading
+                              ? null
+                              : () {
+                                  Navigator.pop(context);
+                                },
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(
                               color: Colors.black12,
                               width: 1.5,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(mainBorderRadius),
+                              borderRadius:
+                                  BorderRadius.circular(mainBorderRadius),
                             ),
                             minimumSize: const Size(double.infinity, 50),
                           ),
@@ -350,12 +376,14 @@ class _DataEntryPageState extends State<DataEntryPage> {
                       // --- Login Link ---
                       Center(
                         child: TextButton(
-                          onPressed: provider.isLoading ? null : () {
-                            Navigator.push(
-                              context,
-                              FadePageRoute(child: const LoginScreen()),
-                            );
-                          },
+                          onPressed: provider.isLoading
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    FadePageRoute(child: const LoginScreen()),
+                                  );
+                                },
                           child: RichText(
                             textAlign: TextAlign.center,
                             text: TextSpan(
@@ -391,13 +419,16 @@ class _DataEntryPageState extends State<DataEntryPage> {
     );
   }
 
-  Widget _buildRoleButton(String role, double height, double radius, ContinueSignupProvider provider) {
+  Widget _buildRoleButton(String role, double height, double radius,
+      ContinueSignupProvider provider) {
     bool isSelected = provider.selectedRole == role;
     return Expanded(
       child: GestureDetector(
-        onTap: provider.isLoading ? null : () {
-          provider.setRole(role);
-        },
+        onTap: provider.isLoading
+            ? null
+            : () {
+                provider.setRole(role);
+              },
         child: Container(
           height: height,
           padding: const EdgeInsets.symmetric(vertical: 10),

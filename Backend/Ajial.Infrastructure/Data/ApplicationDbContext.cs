@@ -10,12 +10,12 @@ public class ApplicationDbContext : DbContext
     {
     }
 
-    public DbSet<User> Users { get; set; }= null!;
-    public DbSet<Parent> Parents { get; set; }= null!;
-    public DbSet<City> Cities { get; set; }= null!;
+    public DbSet<User> Users { get; set; } = null!;
+    public DbSet<Parent> Parents { get; set; } = null!;
+    public DbSet<City> Cities { get; set; } = null!;
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
-    public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }= null!;
-    public DbSet<Child> Children { get; set; }= null!;
+    public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; } = null!;
+    public DbSet<Child> Children { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -149,7 +149,36 @@ public class ApplicationDbContext : DbContext
             new City { Id = 2, Name = "Alexandria", NameAr = "الإسكندرية", IsActive = true },
             new City { Id = 3, Name = "Giza", NameAr = "الجيزة", IsActive = true },
             new City { Id = 4, Name = "Shubra El Kheima", NameAr = "شبرا الخيمة", IsActive = true },
-            new City { Id = 5, Name = "Port Said", NameAr = "بورسعيد", IsActive = true }
+            new City { Id = 5, Name = "Port Said", NameAr = "بورسعيد", IsActive = true },
+            new City { Id = 6, Name = "Suez", NameAr = "السويس", IsActive = true },
+            new City { Id = 7, Name = "Mansoura", NameAr = "المنصورة", IsActive = true },
+            new City { Id = 8, Name = "El Mahalla El Kubra", NameAr = "المحلة الكبرى", IsActive = true },
+            new City { Id = 9, Name = "Tanta", NameAr = "طنطا", IsActive = true },
+            new City { Id = 10, Name = "Asyut", NameAr = "أسيوط", IsActive = true },
+            new City { Id = 11, Name = "Fayyum", NameAr = "الفيوم", IsActive = true },
+            new City { Id = 12, Name = "Zagazig", NameAr = "الزقازيق", IsActive = true },
+            new City { Id = 13, Name = "Ismailia", NameAr = "الإسماعيلية", IsActive = true },
+            new City { Id = 14, Name = "Aswan", NameAr = "أسوان", IsActive = true },
+            new City { Id = 15, Name = "6th of October City", NameAr = "السادس من أكتوبر", IsActive = true },
+            new City { Id = 16, Name = "Damanhur", NameAr = "دمنهور", IsActive = true },
+            new City { Id = 17, Name = "Damietta", NameAr = "دمياط", IsActive = true },
+            new City { Id = 18, Name = "Minya", NameAr = "المنيا", IsActive = true },
+            new City { Id = 19, Name = "Beni Suef", NameAr = "بني سويف", IsActive = true },
+            new City { Id = 20, Name = "Luxor", NameAr = "الأقصر", IsActive = true },
+            new City { Id = 21, Name = "Sohag", NameAr = "سوهاج", IsActive = true },
+            new City { Id = 22, Name = "Shibin El Kom", NameAr = "شبين الكوم", IsActive = true },
+            new City { Id = 23, Name = "Qena", NameAr = "قنا", IsActive = true },
+            new City { Id = 24, Name = "Hurghada", NameAr = "الغردقة", IsActive = true },
+            new City { Id = 25, Name = "Arish", NameAr = "العريش", IsActive = true },
+            new City { Id = 26, Name = "Mallawi", NameAr = "ملوي", IsActive = true },
+            new City { Id = 27, Name = "10th of Ramadan City", NameAr = "العاشر من رمضان", IsActive = true },
+            new City { Id = 28, Name = "Bilbais", NameAr = "بلبيس", IsActive = true },
+            new City { Id = 29, Name = "Marsa Matruh", NameAr = "مرسى مطروح", IsActive = true },
+            new City { Id = 30, Name = "Banha", NameAr = "بنها", IsActive = true },
+            new City { Id = 31, Name = "Kafr El Sheikh", NameAr = "كفر الشيخ", IsActive = true },
+            new City { Id = 32, Name = "Sharm El Sheikh", NameAr = "شرم الشيخ", IsActive = true },
+            new City { Id = 33, Name = "New Cairo", NameAr = "القاهرة الجديدة", IsActive = true },
+            new City { Id = 34, Name = "New Administrative Capital", NameAr = "العاصمة الإدارية الجديدة", IsActive = true }
         );
     }
 

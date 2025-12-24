@@ -203,6 +203,8 @@ public class ParentService : IParentService
                 CityNameAr = parent.City.NameAr,
                 DateOfBirth = parent.DateOfBirth,
                 Gender = parent.Gender.ToString(),
+                RoleCode = (int)parent.Gender,
+                Role = GetRoleDisplayName(parent.Gender),
                 IsEmailVerified = parent.User.IsEmailVerified,
                 EmailVerificationStatus = parent.User.IsEmailVerified ? "مؤكد" : "غير مؤكد",
                 Children = childrenDtos // ✅ NEW: Include children list

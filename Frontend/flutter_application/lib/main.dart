@@ -3,8 +3,6 @@ import 'package:Ajial/homepage/homepage.dart';
 import 'package:Ajial/signup-login-pages/login.dart';
 import 'package:flutter/material.dart';
 import 'package:Ajial/child-app/child-sign-in.dart';
-import 'package:Ajial/signup-login-pages/continuesignup.dart';
-import 'package:Ajial/signup-login-pages/signup.dart';
 import 'package:Ajial/splash_screen.dart';
 import 'package:Ajial/profile/parent_profile.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -19,6 +17,7 @@ import 'package:Ajial/providers/verify_email_provider.dart';
 import 'package:Ajial/providers/home_provider.dart';
 import 'package:Ajial/providers/add_child_flow_provider.dart';
 import 'package:Ajial/providers/child_login_provider.dart';
+import 'package:Ajial/providers/parent_profile_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +32,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => HomeProvider()),
         ChangeNotifierProvider(create: (_) => AddChildFlowProvider()),
         ChangeNotifierProvider(create: (_) => ChildLoginProvider()),
+        ChangeNotifierProvider(create: (_) => ParentProfileProvider()),
       ],
       child: const AjialApp(),
     ),
@@ -61,7 +61,8 @@ class AjialApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
 
-      initialRoute: '/profile', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
+      initialRoute:
+          '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
       routes: {
         '/splash': (context) => SplashScreen(),
         '/login': (context) => const LoginScreen(),

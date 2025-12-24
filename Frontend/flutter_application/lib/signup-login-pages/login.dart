@@ -13,13 +13,13 @@ const String kFontFamily = 'IBM Plex Sans Arabic';
 class FadePageRoute<T> extends PageRouteBuilder<T> {
   final Widget child;
   FadePageRoute({required this.child})
-    : super(
-        pageBuilder: (context, animation, secondaryAnimation) => child,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      );
+      : super(
+          pageBuilder: (context, animation, secondaryAnimation) => child,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        );
 }
 
 class LoginScreen extends StatefulWidget {
@@ -36,11 +36,24 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  // Cache screen dimensions to avoid rebuilds on keyboard
+  late double _screenHeight;
+  late double _screenWidth;
+
   @override
   void initState() {
     super.initState();
     // Set up listener for username validation
     _usernameController.addListener(_onUsernameChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Cache these once to avoid MediaQuery rebuilds on keyboard
+    final size = MediaQuery.of(context).size;
+    _screenHeight = size.height;
+    _screenWidth = size.width;
   }
 
   void _onUsernameChanged() {
@@ -60,11 +73,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: Colors.white,
+      // Note: resizeToAvoidBottomInset defaults to true
       body: SafeArea(
         child: Consumer<LoginProvider>(
           builder: (context, provider, _) {
@@ -78,27 +89,28 @@ class _LoginScreenState extends State<LoginScreen> {
                         constraints: const BoxConstraints(maxWidth: 600),
                         child: Padding(
                           padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth > 600 ? 40.0 : 24.0,
+                            horizontal: _screenWidth > 600 ? 40.0 : 24.0,
                             vertical: 20.0,
                           ),
                           child: Form(
                             key: _formKey,
-                            autovalidateMode: AutovalidateMode.onUserInteraction,
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                SizedBox(height: screenHeight * 0.03),
+                                SizedBox(height: _screenHeight * 0.03),
                                 Center(
                                   child: Image.asset(
                                     'images/main-logo.png',
-                                    width: screenHeight * 0.15,
-                                    height: screenHeight * 0.15,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        Icon(
-                                          Icons.group,
-                                          size: screenHeight * 0.15,
-                                          color: kPrimaryColor,
-                                        ),
+                                    width: _screenHeight * 0.15,
+                                    height: _screenHeight * 0.15,
+                                    errorBuilder:
+                                        (context, error, stackTrace) => Icon(
+                                      Icons.group,
+                                      size: _screenHeight * 0.15,
+                                      color: kPrimaryColor,
+                                    ),
                                   ),
                                 ),
                                 const Center(
@@ -124,24 +136,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
-                                SizedBox(height: screenHeight * 0.04),
+                                SizedBox(height: _screenHeight * 0.04),
                                 _buildLabel('اسم المستخدم *'),
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _usernameController,
                                   enabled: !provider.isLoading,
                                   decoration: _buildInputDecoration(
-                                    hintText: 'اكتب اسم المستخدم بدون مسافات...',
-                                    suffixIcon: _usernameController.text.isNotEmpty
-                                        ? IconButton(
-                                            icon: const Icon(
-                                              Icons.close,
-                                              color: Colors.grey,
-                                            ),
-                                            onPressed: () =>
-                                                _usernameController.clear(),
-                                          )
-                                        : null,
+                                    hintText:
+                                        'اكتب اسم المستخدم بدون مسافات...',
+                                    suffixIcon:
+                                        _usernameController.text.isNotEmpty
+                                            ? IconButton(
+                                                icon: const Icon(
+                                                  Icons.close,
+                                                  color: Colors.grey,
+                                                ),
+                                                onPressed: () =>
+                                                    _usernameController.clear(),
+                                              )
+                                            : null,
                                     borderColor: provider.isUsernameValid
                                         ? Colors.green
                                         : null,
@@ -177,7 +191,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                             : Icons.visibility,
                                         color: Colors.grey,
                                       ),
-                                      onPressed: provider.togglePasswordVisibility,
+                                      onPressed:
+                                          provider.togglePasswordVisibility,
                                     ),
                                   ),
                                   validator: (value) {
@@ -200,7 +215,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                             Navigator.push(
                                               context,
                                               FadePageRoute(
-                                                child: const ForgotPasswordScreen(),
+                                                child:
+                                                    const ForgotPasswordScreen(),
                                               ),
                                             );
                                           },
@@ -251,7 +267,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(50),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
                                 ),
                                 child: const Text(
                                   'تسجيل الدخول',

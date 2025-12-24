@@ -13,13 +13,13 @@ const String kFontFamily = 'IBM Plex Sans Arabic';
 class FadePageRoute<T> extends PageRouteBuilder<T> {
   final Widget child;
   FadePageRoute({required this.child})
-    : super(
-        pageBuilder: (context, animation, secondaryAnimation) => child,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      );
+      : super(
+          pageBuilder: (context, animation, secondaryAnimation) => child,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        );
 }
 // --- نهاية الإضافة ---
 
@@ -29,7 +29,7 @@ class EnterNewPasswordScreen extends StatefulWidget {
   final String otpCode; // (الرمز الذي تم إدخاله في الصفحة السابقة)
 
   const EnterNewPasswordScreen({Key? key, required this.otpCode})
-    : super(key: key);
+      : super(key: key);
   // --- *** نهاية التعديل المطلوب *** ---
 
   @override
@@ -56,13 +56,17 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
   bool _isLoading = false;
   // --- نهاية التعديل ---
 
+  // Cache screen dimensions to avoid rebuilds on keyboard
+  late double _screenHeight;
+  late double _screenWidth;
+
   // (دوال التحقق من التطابق كما هي)
   void _validateConfirmation() {
     if (mounted) {
       setState(() {
         _isConfirmValid =
             _confirmPasswordController.text == _passwordController.text &&
-            _confirmPasswordController.text.isNotEmpty;
+                _confirmPasswordController.text.isNotEmpty;
       });
     }
   }
@@ -72,6 +76,14 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
     super.initState();
     _passwordController.addListener(_validateConfirmation);
     _confirmPasswordController.addListener(_validateConfirmation);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final size = MediaQuery.of(context).size;
+    _screenHeight = size.height;
+    _screenWidth = size.width;
   }
 
   @override
@@ -176,9 +188,6 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     // (باقي كود الـ build كما هو، مع إضافة تعطيل للحقول والأزرار أثناء التحميل)
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -191,7 +200,7 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                     constraints: const BoxConstraints(maxWidth: 600),
                     child: Padding(
                       padding: EdgeInsets.symmetric(
-                        horizontal: screenWidth > 600 ? 40.0 : 24.0,
+                        horizontal: _screenWidth > 600 ? 40.0 : 24.0,
                         vertical: 20.0,
                       ),
                       child: Form(
@@ -200,18 +209,18 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            SizedBox(height: screenHeight * 0.03),
+                            SizedBox(height: _screenHeight * 0.03),
                             Center(
                               child: Image.asset(
                                 'images/main-logo.png',
-                                width: screenHeight * 0.15,
-                                height: screenHeight * 0.15,
+                                width: _screenHeight * 0.15,
+                                height: _screenHeight * 0.15,
                                 errorBuilder: (context, error, stackTrace) =>
                                     Icon(
-                                      Icons.group,
-                                      size: screenHeight * 0.15,
-                                      color: kPrimaryColor,
-                                    ),
+                                  Icons.group,
+                                  size: _screenHeight * 0.15,
+                                  color: kPrimaryColor,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -238,7 +247,7 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                                 textAlign: TextAlign.center,
                               ),
                             ),
-                            SizedBox(height: screenHeight * 0.04),
+                            SizedBox(height: _screenHeight * 0.04),
                             _buildLabel('كلمة المرور الجديدة *'),
                             const SizedBox(height: 8),
                             TextFormField(
@@ -289,8 +298,8 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                                         color: _passwordStrength <= 0.33
                                             ? kPrimaryColor
                                             : _passwordStrength <= 0.66
-                                            ? Colors.yellow[700]
-                                            : Colors.green,
+                                                ? Colors.yellow[700]
+                                                : Colors.green,
                                         minHeight: 6,
                                       ),
                                     ),
@@ -337,12 +346,10 @@ class _EnterNewPasswordScreenState extends State<EnterNewPasswordScreen> {
                                     });
                                   },
                                 ),
-                                borderColor: _isConfirmValid
-                                    ? Colors.green
-                                    : null,
-                                focusedBorderColor: _isConfirmValid
-                                    ? Colors.green
-                                    : null,
+                                borderColor:
+                                    _isConfirmValid ? Colors.green : null,
+                                focusedBorderColor:
+                                    _isConfirmValid ? Colors.green : null,
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {

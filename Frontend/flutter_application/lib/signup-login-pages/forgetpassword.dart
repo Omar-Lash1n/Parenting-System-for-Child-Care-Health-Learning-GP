@@ -19,14 +19,28 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
+  // Cache screen dimensions to avoid rebuilds on keyboard
+  late double _screenHeight;
+  late double _screenWidth;
+
   @override
   void initState() {
     super.initState();
     _emailController.addListener(_onEmailChanged);
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final size = MediaQuery.of(context).size;
+    _screenHeight = size.height;
+    _screenWidth = size.width;
+  }
+
   void _onEmailChanged() {
-    context.read<ForgotPasswordProvider>().onEmailChanged(_emailController.text);
+    context
+        .read<ForgotPasswordProvider>()
+        .onEmailChanged(_emailController.text);
     setState(() {}); // For clear button visibility
   }
 
@@ -40,9 +54,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-
     final Color lightPink = kPrimaryColor.withOpacity(0.1);
 
     return Scaffold(
@@ -62,12 +73,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         ),
                         child: Padding(
                           padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth > 600 ? 40.0 : 24.0,
+                            horizontal: _screenWidth > 600 ? 40.0 : 24.0,
                             vertical: 20.0,
                           ),
                           child: Form(
                             key: _formKey,
-                            autovalidateMode: AutovalidateMode.onUserInteraction,
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
@@ -87,26 +99,28 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                         color: kPrimaryColor,
                                         size: 24,
                                       ),
-                                      onPressed: provider.isLoading ? null : () {
-                                        Navigator.pop(context);
-                                      },
+                                      onPressed: provider.isLoading
+                                          ? null
+                                          : () {
+                                              Navigator.pop(context);
+                                            },
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
                                     ),
                                   ),
                                 ),
-                                SizedBox(height: screenHeight * 0.03),
+                                SizedBox(height: _screenHeight * 0.03),
 
                                 // --- Logo ---
                                 Center(
                                   child: Image.asset(
                                     'images/main-logo.png',
-                                    width: screenHeight * 0.15,
-                                    height: screenHeight * 0.15,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        Icon(
+                                    width: _screenHeight * 0.15,
+                                    height: _screenHeight * 0.15,
+                                    errorBuilder:
+                                        (context, error, stackTrace) => Icon(
                                       Icons.group,
-                                      size: screenHeight * 0.15,
+                                      size: _screenHeight * 0.15,
                                       color: kPrimaryColor,
                                     ),
                                   ),
@@ -137,7 +151,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
-                                SizedBox(height: screenHeight * 0.04),
+                                SizedBox(height: _screenHeight * 0.04),
 
                                 // --- Email Field ---
                                 _buildLabel('البريد الالكتروني *'),
@@ -155,10 +169,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                                 _emailController.clear(),
                                           )
                                         : null,
-                                    borderColor:
-                                        provider.isEmailValid ? Colors.green : null,
-                                    focusedBorderColor:
-                                        provider.isEmailValid ? Colors.green : null,
+                                    borderColor: provider.isEmailValid
+                                        ? Colors.green
+                                        : null,
+                                    focusedBorderColor: provider.isEmailValid
+                                        ? Colors.green
+                                        : null,
                                   ),
                                   keyboardType: TextInputType.emailAddress,
                                   validator: (value) {
@@ -179,40 +195,42 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                   ),
                 ),
-                
+
                 // --- 2. Sticky Button at Bottom ---
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                   child: SizedBox(
                     height: 55,
-                    child: provider.isLoading 
-                      ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
-                      : ElevatedButton(
-                        onPressed: () {
-                          provider.submitForgotPassword(
-                            email: _emailController.text,
-                            formKey: _formKey,
-                            context: context,
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: kPrimaryColor,
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(50),
+                    child: provider.isLoading
+                        ? const Center(
+                            child:
+                                CircularProgressIndicator(color: kPrimaryColor))
+                        : ElevatedButton(
+                            onPressed: () {
+                              provider.submitForgotPassword(
+                                email: _emailController.text,
+                                formKey: _formKey,
+                                context: context,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kPrimaryColor,
+                              minimumSize: const Size(double.infinity, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(50),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text(
+                              'تأكيد',
+                              style: TextStyle(
+                                fontFamily: kFontFamily,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: const Text(
-                          'تأكيد',
-                          style: TextStyle(
-                            fontFamily: kFontFamily,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
                   ),
                 ),
               ],

@@ -14,6 +14,15 @@ class RoleSelectionScreen extends StatefulWidget {
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   String? _selectedRole;
 
+  // Cache screen dimensions to avoid rebuilds on keyboard
+  late double _screenHeight;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _screenHeight = MediaQuery.of(context).size.height;
+  }
+
   // تعريف قائمة بيانات الأدوار مع الألوان المخصصة
   final List<Map<String, dynamic>> _rolesData = [
     {
@@ -46,8 +55,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     ); // لون الزر "التالي" الافتراضي
     const Color lightGrey = Color(0xFFF5F5F5); // لون خلفية البطاقة غير المختارة
     const Color textBlack = Colors.black;
-    final size = MediaQuery.of(context).size;
-    final double screenHeight = size.height;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -59,7 +66,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(height: screenHeight * 0.02),
+                SizedBox(height: _screenHeight * 0.02),
                 const Text(
                   "ابدأ رحلتك نحو التميز!",
                   style: TextStyle(
@@ -80,8 +87,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: screenHeight * 0.04),
-
+                SizedBox(height: _screenHeight * 0.04),
                 ..._rolesData.map((roleData) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -100,9 +106,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     ),
                   );
                 }).toList(),
-
                 const Spacer(),
-
                 SizedBox(
                   width: double.infinity,
                   height: 55,
@@ -146,15 +150,16 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           transitionDuration: const Duration(milliseconds: 300),
                           transitionBuilder:
                               (context, animation, secondaryAnimation, child) {
-                                return FadeTransition(
-                                  opacity: CurvedAnimation(
-                                    parent: animation,
-                                    curve: Curves.easeOut,
-                                  ),
-                                  child: child,
-                                );
-                              },
-                          pageBuilder: (context, animation, secondaryAnimation) {
+                            return FadeTransition(
+                              opacity: CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOut,
+                              ),
+                              child: child,
+                            );
+                          },
+                          pageBuilder:
+                              (context, animation, secondaryAnimation) {
                             // هذا هو محتوى الـ AlertDialog نفسه
                             return Center(
                               child: AlertDialog(

@@ -570,6 +570,306 @@ class AuthService {
     final token = await getChildToken();
     return token != null && token.isNotEmpty;
   }
+
+  // ============================================================
+  // ==================== Parent Profile API ====================
+  // ============================================================
+
+  /// جلب بيانات الملف الشخصي للوالد
+  /// GET /Parents/profile
+  Future<Map<String, dynamic>?> getParentProfile() async {
+    final String apiUrl = '$_apiBaseUrl/Parents/profile';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+      print('Get Profile Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in getParentProfile: $e');
+      return null;
+    }
+  }
+
+  /// تحديث بيانات الملف الشخصي
+  /// PUT /Parents/profile
+  Future<(bool, String)> updateParentProfile({
+    String? fullName,
+    String? username,
+    String? email,
+    int? cityId,
+    String? dateOfBirth,
+    int? role,
+  }) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/profile';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.');
+    }
+
+    final Map<String, dynamic> body = {};
+    if (fullName != null) body['fullName'] = fullName;
+    if (username != null) body['username'] = username;
+    if (email != null) body['email'] = email;
+    if (cityId != null) body['cityId'] = cityId;
+    if (dateOfBirth != null) body['dateOfBirth'] = dateOfBirth;
+    if (role != null) body['role'] = role;
+
+    try {
+      final response = await http.put(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        return (
+          true,
+          (responseBody['message'] ?? 'تم التحديث بنجاح').toString()
+        );
+      } else {
+        final errorMsg = responseBody['message'] ??
+            (responseBody['errors'] as List?)?.first ??
+            'حدث خطأ في التحديث';
+        return (false, errorMsg.toString());
+      }
+    } catch (e) {
+      print('Connection Error in updateParentProfile: $e');
+      return (false, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
+    }
+  }
+
+  /// تغيير كلمة المرور
+  /// PUT /Parents/change-password
+  Future<(bool, String)> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmNewPassword,
+  }) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/change-password';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.');
+    }
+
+    try {
+      final response = await http.put(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+          'confirmNewPassword': confirmNewPassword,
+        }),
+      );
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        return (
+          true,
+          (responseBody['data']?['message'] ?? 'تم تغيير كلمة المرور بنجاح')
+              .toString()
+        );
+      } else {
+        final errorMsg = responseBody['message'] ??
+            (responseBody['errors'] as List?)?.first ??
+            'حدث خطأ في تغيير كلمة المرور';
+        return (false, errorMsg.toString());
+      }
+    } catch (e) {
+      print('Connection Error in changePassword: $e');
+      return (false, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
+    }
+  }
+
+  /// رفع صورة الملف الشخصي
+  /// POST /Parents/profile/image
+  /// Works on both Web and Mobile platforms
+  Future<(bool, String, String?)> uploadProfileImage(
+    List<int> imageBytes,
+    String fileName,
+  ) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/profile/image';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.', null);
+    }
+
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+      request.headers.addAll({
+        'Authorization': 'Bearer $token',
+        'accept': 'text/plain',
+      });
+
+      // Determine MIME type from file extension
+      final mimeType = lookupMimeType(fileName) ?? 'image/jpeg';
+      final mimeSplit = mimeType.split('/');
+
+      // Use fromBytes instead of fromPath for web compatibility
+      request.files.add(http.MultipartFile.fromBytes(
+        'image',
+        imageBytes,
+        filename: fileName,
+        contentType: MediaType(mimeSplit[0], mimeSplit[1]),
+      ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        final imageUrl = responseBody['data']?['profileImageUrl']?.toString();
+        return (true, 'تم رفع الصورة بنجاح', imageUrl);
+      } else {
+        final errorMsg = responseBody['message'] ?? 'حدث خطأ في رفع الصورة';
+        return (false, errorMsg.toString(), null);
+      }
+    } catch (e) {
+      print('Connection Error in uploadProfileImage: $e');
+      return (false, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.', null);
+    }
+  }
+
+  /// حذف الحساب
+  /// DELETE /Parents/account
+  Future<(bool, String)> deleteAccount() async {
+    final String apiUrl = '$_apiBaseUrl/Parents/account';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.');
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'text/plain',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        // مسح التوكن والبيانات المحلية
+        await logout();
+        return (
+          true,
+          (responseBody['data']?['message'] ?? 'تم حذف الحساب بنجاح').toString()
+        );
+      } else {
+        final errorMsg = responseBody['message'] ?? 'حدث خطأ في حذف الحساب';
+        return (false, errorMsg.toString());
+      }
+    } catch (e) {
+      print('Connection Error in deleteAccount: $e');
+      return (false, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
+    }
+  }
+
+  /// إرسال إيميل التحقق
+  /// POST /Parents/send-verification-email
+  Future<(bool, String)> sendVerificationEmail() async {
+    final String apiUrl = '$_apiBaseUrl/Parents/send-verification-email';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.');
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'text/plain',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        return (
+          true,
+          (responseBody['data']?['message'] ?? 'تم إرسال رابط التحقق بنجاح')
+              .toString()
+        );
+      } else {
+        final errorMsg =
+            responseBody['message'] ?? 'حدث خطأ في إرسال رابط التحقق';
+        return (false, errorMsg.toString());
+      }
+    } catch (e) {
+      print('Connection Error in sendVerificationEmail: $e');
+      return (false, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
+    }
+  }
+
+  // ============================================================
+  // ==================== Cities API ============================
+  // ============================================================
+
+  /// جلب قائمة المدن
+  /// GET /Cities
+  Future<List<City>> getCities() async {
+    final String apiUrl = '$_apiBaseUrl/Cities';
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          final List<dynamic> citiesData = responseBody['data'];
+          return citiesData.map((json) => City.fromJson(json)).toList();
+        }
+      }
+      print('Get Cities Error: ${response.statusCode} - ${response.body}');
+      return [];
+    } catch (e) {
+      print('Connection Error in getCities: $e');
+      return [];
+    }
+  }
 }
 
 // ============================================================
@@ -621,4 +921,28 @@ class ChildLoginResult {
       return 'ChildLoginResult(success: false, error: $errorMessage, type: $errorType)';
     }
   }
+}
+
+/// نموذج المدينة
+class City {
+  final int id;
+  final String name;
+  final String nameAr;
+
+  City({
+    required this.id,
+    required this.name,
+    required this.nameAr,
+  });
+
+  factory City.fromJson(Map<String, dynamic> json) {
+    return City(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      nameAr: json['nameAr'] ?? '',
+    );
+  }
+
+  @override
+  String toString() => 'City(id: $id, name: $name, nameAr: $nameAr)';
 }

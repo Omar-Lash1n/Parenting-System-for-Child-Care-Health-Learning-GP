@@ -26,6 +26,18 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   final _formKey = GlobalKey<FormState>();
   final _pinController = TextEditingController();
 
+  // Cache screen dimensions to avoid rebuilds on keyboard
+  late double _screenHeight;
+  late double _screenWidth;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final size = MediaQuery.of(context).size;
+    _screenHeight = size.height;
+    _screenWidth = size.width;
+  }
+
   @override
   void dispose() {
     _pinController.dispose();
@@ -35,9 +47,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-
     final Color lightPink = kPrimaryColor.withOpacity(0.1);
 
     final defaultPinTheme = PinTheme(
@@ -72,7 +81,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                         ),
                         child: Padding(
                           padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth > 600 ? 40.0 : 24.0,
+                            horizontal: _screenWidth > 600 ? 40.0 : 24.0,
                             vertical: 20.0,
                           ),
                           child: Form(
@@ -95,21 +104,23 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                                         color: kPrimaryColor,
                                         size: 24,
                                       ),
-                                      onPressed: provider.isLoading ? null : () {
-                                        Navigator.pop(context);
-                                      },
+                                      onPressed: provider.isLoading
+                                          ? null
+                                          : () {
+                                              Navigator.pop(context);
+                                            },
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
                                     ),
                                   ),
                                 ),
-                                SizedBox(height: screenHeight * 0.03),
+                                SizedBox(height: _screenHeight * 0.03),
 
                                 // --- Icon and Headers ---
                                 Icon(
                                   Icons.mark_email_read_outlined,
                                   color: kPrimaryColor,
-                                  size: screenHeight * 0.15,
+                                  size: _screenHeight * 0.15,
                                 ),
                                 const SizedBox(height: 16),
                                 const Text(
@@ -142,7 +153,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
-                                SizedBox(height: screenHeight * 0.04),
+                                SizedBox(height: _screenHeight * 0.04),
 
                                 // --- PIN Input ---
                                 Directionality(
@@ -199,7 +210,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                     ),
                   ),
                 ),
-                
+
                 // --- 2. Sticky Buttons at Bottom ---
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
@@ -210,7 +221,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                         height: 55,
                         child: provider.isLoading
                             ? const Center(
-                                child: CircularProgressIndicator(color: kPrimaryColor))
+                                child: CircularProgressIndicator(
+                                    color: kPrimaryColor))
                             : ElevatedButton(
                                 onPressed: () {
                                   provider.submitOtp(context: context);
@@ -221,7 +233,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(50),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
                                 ),
                                 child: const Text(
                                   'تأكيد الرمز',
@@ -239,8 +252,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                       // --- Resend Button ---
                       provider.isTimerActive
                           ? _buildTimerButton(provider)
-                          : _buildResendButton(provider, isEnabled: !provider.isLoading),
-                      
+                          : _buildResendButton(provider,
+                              isEnabled: !provider.isLoading),
+
                       const SizedBox(height: 16),
                       _buildContactUsButton(isEnabled: !provider.isLoading),
                     ],
@@ -254,23 +268,27 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     );
   }
 
-  Widget _buildResendButton(VerifyEmailProvider provider, {bool isEnabled = true}) {
+  Widget _buildResendButton(VerifyEmailProvider provider,
+      {bool isEnabled = true}) {
     return ElevatedButton.icon(
-      onPressed: isEnabled ? () {
-        print('Resending code to ${widget.email}...');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'تم اعادة ارسال الرمز يرجى التأكد من بريدك الإلكتروني',
-              style: TextStyle(fontFamily: kFontFamily, color: Colors.white),
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        provider.startTimer();
-      } : null,
+      onPressed: isEnabled
+          ? () {
+              print('Resending code to ${widget.email}...');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'تم اعادة ارسال الرمز يرجى التأكد من بريدك الإلكتروني',
+                    style:
+                        TextStyle(fontFamily: kFontFamily, color: Colors.white),
+                  ),
+                  backgroundColor: Colors.green,
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+              provider.startTimer();
+            }
+          : null,
       icon: const Icon(Icons.refresh, color: Colors.black),
       label: const Text(
         'اعادة ارسال الرمز',
@@ -317,9 +335,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   Widget _buildContactUsButton({bool isEnabled = true}) {
     return TextButton(
-      onPressed: isEnabled ? () {
-        // Contact us logic
-      } : null,
+      onPressed: isEnabled
+          ? () {
+              // Contact us logic
+            }
+          : null,
       child: RichText(
         text: const TextSpan(
           style: TextStyle(

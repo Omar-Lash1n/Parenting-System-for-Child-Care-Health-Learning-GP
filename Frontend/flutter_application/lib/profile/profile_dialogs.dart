@@ -3,6 +3,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:Ajial/providers/parent_profile_provider.dart';
+import 'package:Ajial/api/auth_service.dart';
 
 // --- CONSTANTS ---
 const Color kPrimaryColor = Color(0xFFBF092F);
@@ -50,66 +53,227 @@ class ProfileDialogs {
   }
 
   // --- Edit Role Dialog ---
+  // Role codes: 1=أب (Father), 2=أم (Mother), 3=مربي (Educator)
   static void showEditRoleDialog(
     BuildContext context,
-    String currentValue,
-    Function(String) onSave,
+    int currentRoleCode,
+    Function(int) onSave,
   ) {
-    String selectedRole = currentValue;
-    final roles = ['ولي أمر', 'أب', 'أم'];
+    int selectedRoleCode = currentRoleCode;
+
+    // Role options with their codes
+    final roles = [
+      {'code': 1, 'name': 'أب'},
+      {'code': 2, 'name': 'أم'},
+      {'code': 3, 'name': 'مربي'},
+    ];
+
+    bool isLoading = false;
+    String? errorMessage;
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => _buildDialogContainer(
-          context: context,
-          title: 'تغيير الدور',
-          icon: Icons.people,
-          iconColor: kPrimaryColor,
-          content: Column(
-            children: roles
-                .map((role) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: GestureDetector(
-                        onTap: () => setState(() => selectedRole = role),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: selectedRole == role
-                                ? kPrimaryColor.withOpacity(0.1)
-                                : Colors.grey[100],
-                            borderRadius: BorderRadius.circular(25),
-                            border: Border.all(
-                              color: selectedRole == role
-                                  ? kPrimaryColor
-                                  : Colors.grey[300]!,
-                            ),
-                          ),
-                          child: Center(
+        builder: (context, setState) => Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Colors.white,
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed:
+                            isLoading ? null : () => Navigator.pop(context),
+                      ),
+                      const Text(
+                        'تغيير الدور',
+                        style: TextStyle(
+                          fontFamily: kFontFamily,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: kPrimaryColor.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.people,
+                            color: kPrimaryColor, size: 24),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Error message
+                  if (errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: kPrimaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline,
+                              color: kPrimaryColor, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
                             child: Text(
-                              role,
-                              style: TextStyle(
+                              errorMessage!,
+                              style: const TextStyle(
                                 fontFamily: kFontFamily,
-                                fontWeight: selectedRole == role
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: selectedRole == role
-                                    ? kPrimaryColor
-                                    : Colors.black,
+                                color: kPrimaryColor,
+                                fontSize: 13,
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ))
-                .toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Role options
+                  ...roles
+                      .map((roleData) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: GestureDetector(
+                              onTap: isLoading
+                                  ? null
+                                  : () => setState(() => selectedRoleCode =
+                                      roleData['code'] as int),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: selectedRoleCode == roleData['code']
+                                      ? kPrimaryColor.withOpacity(0.1)
+                                      : Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(25),
+                                  border: Border.all(
+                                    color: selectedRoleCode == roleData['code']
+                                        ? kPrimaryColor
+                                        : Colors.grey[300]!,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    roleData['name'] as String,
+                                    style: TextStyle(
+                                      fontFamily: kFontFamily,
+                                      fontWeight:
+                                          selectedRoleCode == roleData['code']
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                      color:
+                                          selectedRoleCode == roleData['code']
+                                              ? kPrimaryColor
+                                              : Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ))
+                      .toList(),
+
+                  const SizedBox(height: 24),
+
+                  // Save Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: isLoading
+                        ? const Center(
+                            child:
+                                CircularProgressIndicator(color: kPrimaryColor),
+                          )
+                        : ElevatedButton(
+                            onPressed: () async {
+                              if (selectedRoleCode == currentRoleCode) {
+                                Navigator.pop(context);
+                                return;
+                              }
+
+                              setState(() {
+                                isLoading = true;
+                                errorMessage = null;
+                              });
+
+                              try {
+                                final provider =
+                                    Provider.of<ParentProfileProvider>(
+                                  context,
+                                  listen: false,
+                                );
+
+                                final (success, message) =
+                                    await provider.updateProfile(
+                                  role: selectedRoleCode,
+                                );
+
+                                if (!context.mounted) return;
+
+                                if (success) {
+                                  onSave(selectedRoleCode);
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        message,
+                                        style: const TextStyle(
+                                            fontFamily: kFontFamily),
+                                      ),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                } else {
+                                  setState(() {
+                                    isLoading = false;
+                                    errorMessage = message;
+                                  });
+                                }
+                              } catch (e) {
+                                setState(() {
+                                  isLoading = false;
+                                  errorMessage = 'حدث خطأ غير متوقع';
+                                });
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kPrimaryColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                            child: const Text(
+                              'حفظ',
+                              style: TextStyle(
+                                fontFamily: kFontFamily,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          onSave: () {
-            onSave(selectedRole);
-            Navigator.pop(context);
-          },
         ),
       ),
     );
@@ -241,55 +405,14 @@ class ProfileDialogs {
   static void showEditCityDialog(
     BuildContext context,
     String currentValue,
-    Function(String) onSave,
+    Function(int) onSave, // Changed to accept cityId
   ) {
-    String selectedCity = currentValue;
-    final cities = [
-      'القاهرة',
-      'الإسكندرية',
-      'الجيزة',
-      'الأقصر',
-      'أسوان',
-      'المنصورة',
-      'طنطا'
-    ];
-
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => _buildDialogContainer(
-          context: context,
-          title: 'تغيير المدينة',
-          icon: Icons.location_on,
-          iconColor: kPrimaryColor,
-          content: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[300]!),
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: selectedCity,
-                isExpanded: true,
-                icon: const Icon(Icons.keyboard_arrow_down),
-                items: cities
-                    .map((city) => DropdownMenuItem(
-                          value: city,
-                          child: Text(city,
-                              style: const TextStyle(fontFamily: kFontFamily)),
-                        ))
-                    .toList(),
-                onChanged: (val) =>
-                    setState(() => selectedCity = val ?? currentValue),
-              ),
-            ),
-          ),
-          onSave: () {
-            onSave(selectedCity);
-            Navigator.pop(context);
-          },
-        ),
+      barrierDismissible: false,
+      builder: (ctx) => _CitySelectionDialog(
+        currentCityName: currentValue,
+        onSave: onSave,
       ),
     );
   }
@@ -333,55 +456,309 @@ class ProfileDialogs {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    bool isLoading = false;
+    bool showCurrentPassword = false;
+    bool showNewPassword = false;
+    bool showConfirmPassword = false;
+    String? errorMessage;
 
     showDialog(
       context: context,
-      builder: (ctx) => _buildDialogContainer(
-        context: context,
-        title: 'تغيير كلمة المرور',
-        icon: Icons.vpn_key,
-        iconColor: Colors.green,
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildPasswordField('كلمة المرور القديمة *',
-                currentPasswordController, 'اكتب كلمة المرور القديمة'),
-            const SizedBox(height: 16),
-            _buildPasswordField('كلمة المرور الجديدة *', newPasswordController,
-                'اكتب كلمة المرور الجديدة'),
-            const SizedBox(height: 16),
-            _buildPasswordField('تأكيد كلمة المرور الجديدة *',
-                confirmPasswordController, 'تأكيد كلمة المرور الجديدة'),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  // TODO: Navigate to forgot password
-                },
-                child: const Text(
-                  'نسيت كلمة المرور؟',
-                  style: TextStyle(
-                    fontFamily: kFontFamily,
-                    color: kPrimaryColor,
-                    fontSize: 12,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Colors.white,
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed:
+                                isLoading ? null : () => Navigator.pop(context),
+                          ),
+                          const Text(
+                            'تغيير كلمة المرور',
+                            style: TextStyle(
+                              fontFamily: kFontFamily,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.vpn_key,
+                                color: Colors.green, size: 24),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Error message
+                      if (errorMessage != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: kPrimaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  color: kPrimaryColor, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  errorMessage!,
+                                  style: const TextStyle(
+                                    fontFamily: kFontFamily,
+                                    color: kPrimaryColor,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Current Password
+                      _buildPasswordFieldWithVisibility(
+                        label: 'كلمة المرور الحالية *',
+                        controller: currentPasswordController,
+                        hint: 'اكتب كلمة المرور الحالية',
+                        isVisible: showCurrentPassword,
+                        onToggle: () => setState(
+                            () => showCurrentPassword = !showCurrentPassword),
+                        enabled: !isLoading,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'كلمة المرور الحالية مطلوبة';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // New Password
+                      _buildPasswordFieldWithVisibility(
+                        label: 'كلمة المرور الجديدة *',
+                        controller: newPasswordController,
+                        hint: 'اكتب كلمة المرور الجديدة',
+                        isVisible: showNewPassword,
+                        onToggle: () =>
+                            setState(() => showNewPassword = !showNewPassword),
+                        enabled: !isLoading,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'كلمة المرور الجديدة مطلوبة';
+                          }
+                          if (value.length < 8) {
+                            return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Confirm New Password
+                      _buildPasswordFieldWithVisibility(
+                        label: 'تأكيد كلمة المرور الجديدة *',
+                        controller: confirmPasswordController,
+                        hint: 'تأكيد كلمة المرور الجديدة',
+                        isVisible: showConfirmPassword,
+                        onToggle: () => setState(
+                            () => showConfirmPassword = !showConfirmPassword),
+                        enabled: !isLoading,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'تأكيد كلمة المرور مطلوب';
+                          }
+                          if (value != newPasswordController.text) {
+                            return 'كلمتا المرور غير متطابقتين';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Save Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                    color: Colors.green),
+                              )
+                            : ElevatedButton(
+                                onPressed: () async {
+                                  if (!formKey.currentState!.validate()) return;
+
+                                  setState(() {
+                                    isLoading = true;
+                                    errorMessage = null;
+                                  });
+
+                                  try {
+                                    final provider =
+                                        Provider.of<ParentProfileProvider>(
+                                      context,
+                                      listen: false,
+                                    );
+
+                                    final (success, message) =
+                                        await provider.changePassword(
+                                      currentPassword:
+                                          currentPasswordController.text,
+                                      newPassword: newPasswordController.text,
+                                      confirmNewPassword:
+                                          confirmPasswordController.text,
+                                    );
+
+                                    if (!context.mounted) return;
+
+                                    if (success) {
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            message,
+                                            style: const TextStyle(
+                                                fontFamily: kFontFamily),
+                                          ),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    } else {
+                                      setState(() {
+                                        isLoading = false;
+                                        errorMessage = message;
+                                      });
+                                    }
+                                  } catch (e) {
+                                    setState(() {
+                                      isLoading = false;
+                                      errorMessage = 'حدث خطأ غير متوقع';
+                                    });
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(25),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'حفظ',
+                                  style: TextStyle(
+                                    fontFamily: kFontFamily,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-          ],
+          ),
         ),
-        onSave: () {
-          // TODO: Validate and save
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('تم تغيير كلمة المرور بنجاح',
-                    style: TextStyle(fontFamily: kFontFamily))),
-          );
-        },
       ),
+    );
+  }
+
+  // Helper for password field with visibility toggle
+  static Widget _buildPasswordFieldWithVisibility({
+    required String label,
+    required TextEditingController controller,
+    required String hint,
+    required bool isVisible,
+    required VoidCallback onToggle,
+    required bool enabled,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: kFontFamily,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: !isVisible,
+          enabled: enabled,
+          validator: validator,
+          style: const TextStyle(fontFamily: kFontFamily),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              fontFamily: kFontFamily,
+              color: Colors.grey[400],
+            ),
+            filled: true,
+            fillColor: Colors.grey[100],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.green, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: kPrimaryColor, width: 1.5),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: kPrimaryColor, width: 1.5),
+            ),
+            suffixIcon: IconButton(
+              icon: Icon(
+                isVisible ? Icons.visibility_off : Icons.visibility,
+                color: Colors.grey,
+              ),
+              onPressed: onToggle,
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+        ),
+      ],
     );
   }
 
@@ -758,6 +1135,269 @@ class ProfileDialogs {
           ),
         ),
       ],
+    );
+  }
+}
+
+// --- City Selection Dialog Widget ---
+class _CitySelectionDialog extends StatefulWidget {
+  final String currentCityName;
+  final Function(int) onSave;
+
+  const _CitySelectionDialog({
+    required this.currentCityName,
+    required this.onSave,
+  });
+
+  @override
+  State<_CitySelectionDialog> createState() => _CitySelectionDialogState();
+}
+
+class _CitySelectionDialogState extends State<_CitySelectionDialog> {
+  List<City> cities = [];
+  City? selectedCity;
+  bool isLoading = true;
+  bool isSaving = false;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCities();
+  }
+
+  Future<void> _loadCities() async {
+    try {
+      final authService = AuthService();
+      final loadedCities = await authService.getCities();
+
+      if (mounted) {
+        setState(() {
+          cities = loadedCities;
+          isLoading = false;
+
+          // Try to find the current city by name
+          if (widget.currentCityName.isNotEmpty) {
+            selectedCity = cities.firstWhere(
+              (city) =>
+                  city.nameAr == widget.currentCityName ||
+                  city.name == widget.currentCityName,
+              orElse: () => cities.isNotEmpty
+                  ? cities.first
+                  : City(id: 0, name: '', nameAr: ''),
+            );
+          } else if (cities.isNotEmpty) {
+            selectedCity = cities.first;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          errorMessage = 'حدث خطأ في تحميل المدن';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: Colors.white,
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: isSaving ? null : () => Navigator.pop(context),
+                  ),
+                  const Text(
+                    'تغيير المدينة',
+                    style: TextStyle(
+                      fontFamily: kFontFamily,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: kPrimaryColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.location_on,
+                        color: kPrimaryColor, size: 24),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Error message
+              if (errorMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline,
+                          color: kPrimaryColor, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          errorMessage!,
+                          style: const TextStyle(
+                            fontFamily: kFontFamily,
+                            color: kPrimaryColor,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Loading or content
+              if (isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(color: kPrimaryColor),
+                )
+              else if (cities.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'لا توجد مدن متاحة',
+                    style: TextStyle(fontFamily: kFontFamily),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<City>(
+                      value: selectedCity,
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down),
+                      items: cities
+                          .map((city) => DropdownMenuItem<City>(
+                                value: city,
+                                child: Text(
+                                  city.nameAr,
+                                  style:
+                                      const TextStyle(fontFamily: kFontFamily),
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: isSaving
+                          ? null
+                          : (val) {
+                              if (val != null) {
+                                setState(() => selectedCity = val);
+                              }
+                            },
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 24),
+
+              // Save Button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: isSaving
+                    ? const Center(
+                        child: CircularProgressIndicator(color: kPrimaryColor),
+                      )
+                    : ElevatedButton(
+                        onPressed: cities.isEmpty || selectedCity == null
+                            ? null
+                            : () async {
+                                setState(() {
+                                  isSaving = true;
+                                  errorMessage = null;
+                                });
+
+                                try {
+                                  final provider =
+                                      Provider.of<ParentProfileProvider>(
+                                    context,
+                                    listen: false,
+                                  );
+
+                                  final (success, message) =
+                                      await provider.updateProfile(
+                                    cityId: selectedCity!.id,
+                                  );
+
+                                  if (!context.mounted) return;
+
+                                  if (success) {
+                                    widget.onSave(selectedCity!.id);
+                                    Navigator.pop(context);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          message,
+                                          style: const TextStyle(
+                                              fontFamily: kFontFamily),
+                                        ),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  } else {
+                                    setState(() {
+                                      isSaving = false;
+                                      errorMessage = message;
+                                    });
+                                  }
+                                } catch (e) {
+                                  setState(() {
+                                    isSaving = false;
+                                    errorMessage = 'حدث خطأ غير متوقع';
+                                  });
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kPrimaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        child: const Text(
+                          'حفظ',
+                          style: TextStyle(
+                            fontFamily: kFontFamily,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
