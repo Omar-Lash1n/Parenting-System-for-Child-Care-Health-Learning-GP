@@ -763,44 +763,6 @@ class AuthService {
     }
   }
 
-  /// حذف الحساب
-  /// DELETE /Parents/account
-  Future<(bool, String)> deleteAccount() async {
-    final String apiUrl = '$_apiBaseUrl/Parents/account';
-    final String? token = await getToken();
-
-    if (token == null) {
-      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.');
-    }
-
-    try {
-      final response = await http.delete(
-        Uri.parse(apiUrl),
-        headers: {
-          'accept': 'text/plain',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      final responseBody = jsonDecode(response.body);
-
-      if (response.statusCode == 200 && responseBody['success'] == true) {
-        // مسح التوكن والبيانات المحلية
-        await logout();
-        return (
-          true,
-          (responseBody['data']?['message'] ?? 'تم حذف الحساب بنجاح').toString()
-        );
-      } else {
-        final errorMsg = responseBody['message'] ?? 'حدث خطأ في حذف الحساب';
-        return (false, errorMsg.toString());
-      }
-    } catch (e) {
-      print('Connection Error in deleteAccount: $e');
-      return (false, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
-    }
-  }
-
   /// إرسال إيميل التحقق
   /// POST /Parents/send-verification-email
   Future<(bool, String)> sendVerificationEmail() async {
@@ -868,6 +830,58 @@ class AuthService {
     } catch (e) {
       print('Connection Error in getCities: $e');
       return [];
+    }
+  }
+
+  /// Delete parent account with confirmation text
+  Future<(bool, String)> deleteAccount(String confirmationText) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/account';
+    final token = await getToken();
+
+    if (token == null) {
+      return (false, 'يرجى تسجيل الدخول أولاً');
+    }
+
+    try {
+      final request = http.Request('DELETE', Uri.parse(apiUrl));
+      request.headers.addAll({
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'accept': 'application/json',
+      });
+      request.body = jsonEncode({'confirmationText': confirmationText});
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true) {
+          // Clear stored token after successful deletion
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('auth_token');
+          return (
+            true,
+            (responseBody['message'] ?? 'تم حذف الحساب بنجاح').toString()
+          );
+        }
+        return (
+          false,
+          (responseBody['message'] ?? 'فشل حذف الحساب').toString()
+        );
+      } else if (response.statusCode == 400) {
+        final responseBody = jsonDecode(response.body);
+        return (
+          false,
+          (responseBody['message'] ?? 'نص التأكيد غير صحيح').toString()
+        );
+      } else if (response.statusCode == 401) {
+        return (false, 'جلسة منتهية، يرجى تسجيل الدخول مرة أخرى');
+      }
+      return (false, 'حدث خطأ، يرجى المحاولة لاحقاً');
+    } catch (e) {
+      print('Delete Account Error: $e');
+      return (false, 'خطأ في الاتصال');
     }
   }
 }

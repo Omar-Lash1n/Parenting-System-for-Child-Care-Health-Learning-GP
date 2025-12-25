@@ -285,117 +285,243 @@ class ProfileDialogs {
     String currentValue,
     Function(String) onSave,
   ) {
-    final dayController = TextEditingController(text: '1990');
-    final yearController = TextEditingController();
+    // Parse current date value (format: yyyy-MM-ddT00:00:00 or yyyy-MM-dd)
+    DateTime initialDate = DateTime(1990, 1, 1);
+    if (currentValue.isNotEmpty) {
+      try {
+        initialDate = DateTime.parse(currentValue);
+      } catch (e) {
+        // If parsing fails, use default date
+        initialDate = DateTime(1990, 1, 1);
+      }
+    }
 
-    String? selectedMonth;
-    final months = [
-      {'val': '01', 'label': 'يناير'},
-      {'val': '02', 'label': 'فبراير'},
-      {'val': '03', 'label': 'مارس'},
-      {'val': '04', 'label': 'أبريل'},
-      {'val': '05', 'label': 'مايو'},
-      {'val': '06', 'label': 'يونيو'},
-      {'val': '07', 'label': 'يوليو'},
-      {'val': '08', 'label': 'أغسطس'},
-      {'val': '09', 'label': 'سبتمبر'},
-      {'val': '10', 'label': 'أكتوبر'},
-      {'val': '11', 'label': 'نوفمبر'},
-      {'val': '12', 'label': 'ديسمبر'},
-    ];
+    bool isLoading = false;
+    String? errorMessage;
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => _buildDialogContainer(
-          context: context,
-          title: 'تغيير تاريخ الميلاد',
-          icon: Icons.cake,
-          iconColor: kPrimaryColor,
-          content: Row(
-            children: [
-              // Day
-              Expanded(
-                child: TextField(
-                  controller: dayController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(2),
-                  ],
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    hintText: 'يوم',
-                    hintStyle: TextStyle(
-                        fontFamily: kFontFamily, color: Colors.grey[400]),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        builder: (context, setState) => Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Colors.white,
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed:
+                            isLoading ? null : () => Navigator.pop(context),
+                      ),
+                      const Text(
+                        'تغيير تاريخ الميلاد',
+                        style: TextStyle(
+                          fontFamily: kFontFamily,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: kPrimaryColor.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.cake,
+                            color: kPrimaryColor, size: 24),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
+                  const SizedBox(height: 24),
 
-              // Month dropdown
-              Expanded(
-                flex: 2,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[400]!),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedMonth,
-                      hint: Text('شهر',
-                          style: TextStyle(
+                  // Error message
+                  if (errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: kPrimaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline,
+                              color: kPrimaryColor, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMessage!,
+                              style: const TextStyle(
+                                fontFamily: kFontFamily,
+                                color: kPrimaryColor,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Selected Date Display
+                  GestureDetector(
+                    onTap: isLoading
+                        ? null
+                        : () async {
+                            final DateTime? picked = await showDatePicker(
+                              context: context,
+                              initialDate: initialDate,
+                              firstDate: DateTime(1920),
+                              lastDate: DateTime.now(),
+                              locale: const Locale('ar'),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: ColorScheme.light(
+                                      primary: kPrimaryColor,
+                                      onPrimary: Colors.white,
+                                      surface: Colors.white,
+                                      onSurface: Colors.black,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                initialDate = picked;
+                              });
+                            }
+                          },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Icon(Icons.calendar_month,
+                              color: kPrimaryColor),
+                          Text(
+                            '${initialDate.day}/${initialDate.month}/${initialDate.year}',
+                            style: const TextStyle(
                               fontFamily: kFontFamily,
-                              color: Colors.grey[400])),
-                      isExpanded: true,
-                      items: months
-                          .map((m) => DropdownMenuItem(
-                                value: m['val'],
-                                child: Text(m['label']!,
-                                    style: const TextStyle(
-                                        fontFamily: kFontFamily)),
-                              ))
-                          .toList(),
-                      onChanged: (val) => setState(() => selectedMonth = val),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
 
-              // Year
-              Expanded(
-                child: TextField(
-                  controller: yearController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(4),
-                  ],
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    hintText: 'سنة',
-                    hintStyle: TextStyle(
-                        fontFamily: kFontFamily, color: Colors.grey[400]),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  const SizedBox(height: 8),
+                  Text(
+                    'اضغط لاختيار التاريخ',
+                    style: TextStyle(
+                      fontFamily: kFontFamily,
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
                   ),
-                ),
+
+                  const SizedBox(height: 24),
+
+                  // Save Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: isLoading
+                        ? const Center(
+                            child:
+                                CircularProgressIndicator(color: kPrimaryColor),
+                          )
+                        : ElevatedButton(
+                            onPressed: () async {
+                              setState(() {
+                                isLoading = true;
+                                errorMessage = null;
+                              });
+
+                              try {
+                                // Format date as yyyy-MM-dd for API
+                                final formattedDate =
+                                    '${initialDate.year}-${initialDate.month.toString().padLeft(2, '0')}-${initialDate.day.toString().padLeft(2, '0')}';
+
+                                final provider =
+                                    Provider.of<ParentProfileProvider>(
+                                  context,
+                                  listen: false,
+                                );
+
+                                final (success, message) =
+                                    await provider.updateProfile(
+                                  dateOfBirth: formattedDate,
+                                );
+
+                                if (!context.mounted) return;
+
+                                if (success) {
+                                  onSave(formattedDate);
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        message,
+                                        style: const TextStyle(
+                                            fontFamily: kFontFamily),
+                                      ),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                } else {
+                                  setState(() {
+                                    isLoading = false;
+                                    errorMessage = message;
+                                  });
+                                }
+                              } catch (e) {
+                                setState(() {
+                                  isLoading = false;
+                                  errorMessage = 'حدث خطأ غير متوقع';
+                                });
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kPrimaryColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                            child: const Text(
+                              'حفظ',
+                              style: TextStyle(
+                                fontFamily: kFontFamily,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-          onSave: () {
-            final result =
-                '${dayController.text}/${selectedMonth ?? '01'}/${yearController.text}';
-            onSave(result);
-            Navigator.pop(context);
-          },
         ),
       ),
     );
@@ -1084,57 +1210,6 @@ class ProfileDialogs {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       ),
-    );
-  }
-
-  static Widget _buildPasswordField(
-      String label, TextEditingController controller, String hint) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: label.replaceAll(' *', ''),
-                style: const TextStyle(
-                  fontFamily: kFontFamily,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-              ),
-              if (label.contains('*'))
-                const TextSpan(
-                  text: ' *',
-                  style: TextStyle(
-                    color: kPrimaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          obscureText: true,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle:
-                TextStyle(fontFamily: kFontFamily, color: Colors.grey[400]),
-            filled: true,
-            fillColor: Colors.grey[100],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(25),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            suffixIcon: const Icon(Icons.visibility_off, color: Colors.grey),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -147,19 +147,6 @@ class ParentProfileProvider extends ChangeNotifier {
     return (success, message);
   }
 
-  // --- Delete Account ---
-  Future<(bool, String)> deleteAccount() async {
-    _isSaving = true;
-    notifyListeners();
-
-    final result = await _authService.deleteAccount();
-
-    _isSaving = false;
-    notifyListeners();
-
-    return result;
-  }
-
   // --- Send Verification Email ---
   Future<(bool, String)> sendVerificationEmail() async {
     _isSaving = true;
@@ -259,6 +246,11 @@ class ParentProfileProvider extends ChangeNotifier {
 
   /// Getter for polling status
   bool get isPollingForVerification => _isPollingForVerification;
+
+  /// Delete the parent account with confirmation text
+  Future<(bool, String)> deleteAccount(String confirmationText) async {
+    return await _authService.deleteAccount(confirmationText);
+  }
 
   @override
   void dispose() {

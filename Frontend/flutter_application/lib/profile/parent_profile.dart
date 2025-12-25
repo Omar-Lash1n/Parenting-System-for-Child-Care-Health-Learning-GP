@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:Ajial/profile/profile_dialogs.dart';
+import 'package:Ajial/profile/change_password_page.dart';
+import 'package:Ajial/profile/change_email_page.dart';
+import 'package:Ajial/profile/delete_account_page.dart';
 import 'package:Ajial/add-child/add-child-flow.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
 
@@ -152,7 +155,6 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
               ),
             ),
           ),
-          bottomNavigationBar: _buildBottomNav(),
         );
       },
     );
@@ -637,8 +639,11 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
             reverse: true,
             itemCount: children.isEmpty ? 1 : children.length + 1,
             itemBuilder: (context, index) {
-              // Add child button at the first position
-              if (index == 0) {
+              // Add child button at the last position (left side)
+              final isAddButton =
+                  children.isEmpty ? index == 0 : index == children.length;
+
+              if (isAddButton) {
                 return GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -678,7 +683,7 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
                 );
               }
               // Display child from API
-              final child = children[index - 1];
+              final child = children[index];
               return Padding(
                 padding: const EdgeInsets.only(left: 16),
                 child: Column(
@@ -803,7 +808,12 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
               'كلمة المرور',
               kGreen,
               Icons.vpn_key_outlined,
-              () => ProfileDialogs.showChangePasswordDialog(context),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ChangePasswordPage(),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             _buildDataRow(
@@ -844,10 +854,8 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
                 context,
                 provider.dateOfBirth,
                 (newValue) async {
-                  final (success, message) =
-                      await provider.updateProfile(dateOfBirth: newValue);
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text(message)));
+                  // Refresh profile to get updated date
+                  await provider.fetchProfile();
                 },
               ),
             ),
@@ -906,17 +914,12 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         GestureDetector(
-          onTap: () => ProfileDialogs.showChangeEmailDialog(
+          onTap: () => Navigator.push(
             context,
-            provider.email,
-            (newValue) async {
-              final (success, message) =
-                  await provider.updateProfile(email: newValue);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(message)));
-            },
-          ),
+            MaterialPageRoute(
+              builder: (context) => const ChangeEmailPage(),
+            ),
+          ).then((_) => provider.fetchProfile()),
           child: const Icon(Icons.edit_outlined, size: 24),
         ),
         Expanded(
@@ -1024,7 +1027,7 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
               ],
             )
           else
-            const Icon(Icons.arrow_back_ios, size: 12),
+            const SizedBox.shrink(), // Empty space instead of arrow
           Text(
             title,
             style: const TextStyle(
@@ -1074,36 +1077,12 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
           width: double.infinity,
           height: 50,
           child: OutlinedButton(
-            onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('حذف الحساب',
-                      style: TextStyle(fontFamily: kFontFamily)),
-                  content: const Text(
-                      'هل أنت متأكد من حذف الحساب؟ هذا الإجراء لا يمكن التراجع عنه.',
-                      style: TextStyle(fontFamily: kFontFamily)),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('إلغاء')),
-                    TextButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('حذف',
-                            style: TextStyle(color: Colors.red))),
-                  ],
-                ),
-              );
-              if (confirmed == true) {
-                final (success, message) = await provider.deleteAccount();
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text(message)));
-                if (success) {
-                  Navigator.pushNamedAndRemoveUntil(
-                      context, '/login', (route) => false);
-                }
-              }
-            },
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DeleteAccountPage(),
+              ),
+            ),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: kRedDelete.withOpacity(0.5)),
               shape: RoundedRectangleBorder(
@@ -1118,74 +1097,6 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
                 color: kRedDelete,
               ),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --- Bottom Navigation ---
-  Widget _buildBottomNav() {
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 15,
-          ),
-        ],
-      ),
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem('الملف الشخصى', Icons.person, true),
-            _buildNavItem('مجتمع', Icons.people_outline, false),
-            _buildNavItem('موارد', Icons.grid_view_rounded, false),
-            _buildNavItem('الرئيسية', Icons.home_outlined, false),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(String label, IconData icon, bool isActive) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (isActive)
-          Container(
-            width: 74,
-            height: 4,
-            decoration: const BoxDecoration(
-              color: kPrimaryColor,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(5)),
-            ),
-          ),
-        const SizedBox(height: 8),
-        Opacity(
-          opacity: isActive ? 1.0 : 0.5,
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                color: isActive ? kPrimaryColor : Colors.black,
-                size: 24,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: kFontFamily,
-                  fontSize: 12,
-                  fontWeight: isActive ? FontWeight.w500 : FontWeight.w300,
-                ),
-              ),
-            ],
           ),
         ),
       ],

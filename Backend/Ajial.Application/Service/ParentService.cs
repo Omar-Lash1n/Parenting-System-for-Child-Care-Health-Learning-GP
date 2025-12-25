@@ -471,6 +471,15 @@ public class ParentService : IParentService
                 }
 
                 user.Email = trimmedEmail;
+
+                // Reset email verification status - user must verify new email
+                if (user.IsEmailVerified)
+                {
+                    user.IsEmailVerified = false;
+                    user.EmailVerifiedAt = null;
+                    _logger.LogInformation("Email verification reset for user {UserId} due to email change", userId);
+                }
+
                 fieldsUpdated.Add("email");
                 _logger.LogInformation("Updating email for user {UserId}", userId);
             }
