@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:Ajial/child-app/child-home.dart';
+import 'package:Ajial/child-app/home/child_home_page.dart';
 
 // --- الثوابت والألوان ---
 const String kFontFamily = 'IBM Plex Sans Arabic';
@@ -226,7 +227,11 @@ class SuccessDialog extends StatelessWidget {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const ChildHomeScreen(),
+                      builder: (context) => ChildHomePage(
+                        childName: childName,
+                        initialStars: 0,
+                        isFirstLogin: true,
+                      ),
                     ),
                   );
                 },

@@ -17,7 +17,12 @@ import 'package:Ajial/providers/verify_email_provider.dart';
 import 'package:Ajial/providers/home_provider.dart';
 import 'package:Ajial/providers/add_child_flow_provider.dart';
 import 'package:Ajial/providers/child_login_provider.dart';
+<<<<<<< HEAD
 import 'package:Ajial/providers/parent_profile_provider.dart';
+=======
+import 'package:Ajial/child-app/home/child_home_provider.dart';
+import 'package:Ajial/child-app/home/child_home_page.dart';
+>>>>>>> lashin-frontend
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +37,11 @@ void main() async {
         ChangeNotifierProvider(create: (_) => HomeProvider()),
         ChangeNotifierProvider(create: (_) => AddChildFlowProvider()),
         ChangeNotifierProvider(create: (_) => ChildLoginProvider()),
+<<<<<<< HEAD
         ChangeNotifierProvider(create: (_) => ParentProfileProvider()),
+=======
+        ChangeNotifierProvider(create: (_) => ChildHomeProvider()),
+>>>>>>> lashin-frontend
       ],
       child: const AjialApp(),
     ),
@@ -67,6 +76,7 @@ class AjialApp extends StatelessWidget {
         '/splash': (context) => SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/child-login': (context) => const ChildLoginScreen(),
+        '/child-home': (context) => const ChildHomePage(),
         '/home': (context) => HomeScreen(),
         '/add-child': (context) => const AddChildFlow(),
         '/profile': (context) => const ParentProfilePage(),
@@ -74,3 +84,4 @@ class AjialApp extends StatelessWidget {
     );
   }
 }
+
