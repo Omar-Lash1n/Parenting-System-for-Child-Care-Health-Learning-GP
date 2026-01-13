@@ -1,5 +1,6 @@
 ﻿using Ajial.Application.DTOs.Child;
 using Ajial.Application.DTOs.Common;
+using Ajial.Application.DTOs.VoiceNote;
 using Ajial.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,13 +13,16 @@ namespace Ajial.API.Controllers;
 public class ChildController : ControllerBase
 {
     private readonly IChildService _childService;
+    private readonly IVoiceNoteService _voiceNoteService;
     private readonly ILogger<ChildController> _logger;
 
     public ChildController(
         IChildService childService,
+        IVoiceNoteService voiceNoteService,
         ILogger<ChildController> logger)
     {
         _childService = childService;
+        _voiceNoteService = voiceNoteService;
         _logger = logger;
     }
 
@@ -48,7 +52,7 @@ public class ChildController : ControllerBase
         {
             // Get authenticated parent's user ID from JWT token
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            
+
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
             {
                 _logger.LogWarning("Unauthorized attempt to add child. Invalid user ID claim");
@@ -58,7 +62,7 @@ public class ChildController : ControllerBase
                 ));
             }
 
-            _logger.LogInformation("Parent {ParentId} attempting to add child: {ChildName}", 
+            _logger.LogInformation("Parent {ParentId} attempting to add child: {ChildName}",
                 parentUserId, request.FullName);
 
             var result = await _childService.AddChildAsync(request, parentUserId);
@@ -139,6 +143,118 @@ public class ChildController : ControllerBase
             return StatusCode(500, ApiResponse<bool>.FailureResponse(
                 "حدث خطأ في الخادم",
                 new List<string> { "حدث خطأ غير متوقع" }
+            ));
+        }
+    }
+
+    /// <summary>
+    /// تسجيل ملاحظة صوتية - Upload voice note
+    /// </summary>
+    /// <remarks>
+    /// Allows authenticated children to record and store voice notes.
+    /// This serves as a psychological outlet for children to express their feelings.
+    /// 
+    /// Supported audio formats: .mp3, .wav, .m4a, .ogg, .webm
+    /// Maximum file size: 10 MB
+    /// </remarks>
+    [HttpPost("voice-note")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ApiResponse<UploadVoiceNoteResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<UploadVoiceNoteResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UploadVoiceNote([FromForm] UploadVoiceNoteRequestDto request)
+    {
+        try
+        {
+            // Get authenticated child's ID from JWT token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid childId))
+            {
+                _logger.LogWarning("Unauthorized attempt to upload voice note. Invalid user ID claim");
+                return Unauthorized(ApiResponse<UploadVoiceNoteResponseDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول أولاً" }
+                ));
+            }
+
+            _logger.LogInformation("Child {ChildId} attempting to upload voice note", childId);
+
+            var result = await _voiceNoteService.UploadVoiceNoteAsync(request, childId);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("Failed to upload voice note. Errors: {Errors}",
+                    string.Join(", ", result.Errors));
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("Voice note uploaded successfully with ID: {VoiceNoteId}",
+                result.Data?.VoiceNoteId);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in UploadVoiceNote endpoint");
+            return StatusCode(500, ApiResponse<UploadVoiceNoteResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+            ));
+        }
+    }
+
+    /// <summary>
+    /// جلب قائمة الملاحظات الصوتية - Get voice notes list
+    /// </summary>
+    /// <remarks>
+    /// Returns all voice notes belonging to the authenticated child.
+    /// Each child can only see their own voice notes.
+    /// </remarks>
+    [HttpGet("voice-notes")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<List<VoiceNoteItemDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<VoiceNoteItemDto>>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetVoiceNotes()
+    {
+        try
+        {
+            // Get authenticated child's ID from JWT token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid childId))
+            {
+                _logger.LogWarning("Unauthorized attempt to get voice notes. Invalid user ID claim");
+                return Unauthorized(ApiResponse<List<VoiceNoteItemDto>>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول أولاً" }
+                ));
+            }
+
+            _logger.LogInformation("Child {ChildId} retrieving voice notes", childId);
+
+            var result = await _voiceNoteService.GetVoiceNotesAsync(childId);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("Failed to get voice notes. Errors: {Errors}",
+                    string.Join(", ", result.Errors));
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("Retrieved {Count} voice notes for child {ChildId}",
+                result.Data?.Count ?? 0, childId);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetVoiceNotes endpoint");
+            return StatusCode(500, ApiResponse<List<VoiceNoteItemDto>>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
             ));
         }
     }

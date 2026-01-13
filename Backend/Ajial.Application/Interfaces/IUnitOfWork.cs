@@ -11,6 +11,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<PasswordResetToken> PasswordResetTokens { get; }  // ✅ NEW
     IRepository<EmailVerificationToken> EmailVerificationTokens { get; }
     IChildRepository Children { get; }
+    IVoiceNoteRepository VoiceNotes { get; }
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

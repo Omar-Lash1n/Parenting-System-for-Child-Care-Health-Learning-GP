@@ -168,4 +168,39 @@ public class AzureBlobImageService : IImageService
             throw new ArgumentException("نوع الصورة غير صحيح");
         }
     }
+
+    /// <summary>
+    /// Upload voice note to Azure Blob Storage
+    /// </summary>
+    public async Task<string> UploadVoiceNoteAsync(IFormFile voiceNote, Guid childId, string fileName)
+    {
+        try
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
+            await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+            // Store in voice-notes/{childId}/ subfolder
+            var blobName = $"voice-notes/{childId}/{fileName}";
+
+            var blobClient = containerClient.GetBlobClient(blobName);
+
+            var blobHttpHeaders = new BlobHttpHeaders
+            {
+                ContentType = voiceNote.ContentType,
+                CacheControl = "public, max-age=31536000"
+            };
+
+            using var stream = voiceNote.OpenReadStream();
+            await blobClient.UploadAsync(stream, new BlobUploadOptions
+            {
+                HttpHeaders = blobHttpHeaders
+            });
+
+            return blobClient.Uri.ToString();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"فشل في رفع الملاحظة الصوتية: {ex.Message}", ex);
+        }
+    }
 }

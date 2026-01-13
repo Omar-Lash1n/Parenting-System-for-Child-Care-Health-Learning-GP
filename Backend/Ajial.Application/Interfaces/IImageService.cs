@@ -8,4 +8,5 @@ public interface IImageService
     Task<bool> DeleteImageAsync(string imageUrl);
     string GetDefaultChildAvatar(string gender);
     Task<string> UploadParentImageAsync(IFormFile image, Guid parentId);
+    Task<string> UploadVoiceNoteAsync(IFormFile voiceNote, Guid childId, string fileName);
 }

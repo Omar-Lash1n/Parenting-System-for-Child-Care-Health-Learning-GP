@@ -79,6 +79,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IParentService, ParentService>();
 builder.Services.AddScoped<IChildService, ChildService>();        // ✅ NEW - Child Management
+builder.Services.AddScoped<IVoiceNoteService, VoiceNoteService>(); // ✅ Voice Note Upload
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
@@ -127,7 +128,7 @@ builder.Services.AddAuthentication(options =>
         OnTokenValidated = context =>
         {
             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-            logger.LogInformation("Token validated for user: {User}", 
+            logger.LogInformation("Token validated for user: {User}",
                 context.Principal?.Identity?.Name ?? "Unknown");
             return Task.CompletedTask;
         }
@@ -155,11 +156,11 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     logger = services.GetRequiredService<ILogger<Program>>();
-    
+
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
-        
+
         if (context.Database.GetPendingMigrations().Any())
         {
             logger.LogInformation("🔄 Applying pending migrations...");
@@ -175,7 +176,7 @@ using (var scope = app.Services.CreateScope())
         logger.LogInformation("📦 Registered Services:");
         logger.LogInformation("  - IChildService: ChildService");
         logger.LogInformation("  - IImageService: AzureBlobImageService");
-        logger.LogInformation("  - Azure Storage Container: {Container}", 
+        logger.LogInformation("  - Azure Storage Container: {Container}",
             app.Configuration["AzureStorage:ContainerName"] ?? "child-images");
     }
     catch (Exception ex)
@@ -223,7 +224,7 @@ logger = app.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("🚀 Ajial API Started Successfully!");
 logger.LogInformation("📍 Environment: {Environment}", app.Environment.EnvironmentName);
 logger.LogInformation("🔗 Swagger UI: https://localhost:7001/swagger");
-logger.LogInformation("🗄️  Database: {Database}", 
+logger.LogInformation("🗄️  Database: {Database}",
     app.Configuration.GetConnectionString("AzureConnection")?.Split(';')[0]);
 
 app.Run();

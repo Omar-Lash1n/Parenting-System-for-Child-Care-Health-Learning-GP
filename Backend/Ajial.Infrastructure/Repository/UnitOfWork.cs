@@ -17,6 +17,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<PasswordResetToken> PasswordResetTokens { get; private set; }
     public IRepository<EmailVerificationToken> EmailVerificationTokens { get; private set; }
     public IChildRepository Children { get; private set; }
+    public IVoiceNoteRepository VoiceNotes { get; private set; }
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -28,6 +29,7 @@ public class UnitOfWork : IUnitOfWork
         PasswordResetTokens = new Repository<PasswordResetToken>(_context);
         EmailVerificationTokens = new Repository<EmailVerificationToken>(_context);
         Children = new ChildRepository(_context);
+        VoiceNotes = new VoiceNoteRepository(_context);
     }
 
     public async Task<int> SaveChangesAsync()

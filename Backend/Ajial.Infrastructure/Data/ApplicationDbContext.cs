@@ -16,6 +16,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
     public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; } = null!;
     public DbSet<Child> Children { get; set; } = null!;
+    public DbSet<VoiceNote> VoiceNotes { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -136,6 +137,49 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(c => c.ParentId);
 
             entity.HasIndex(c => c.IsActive);
+        });
+
+        // VoiceNote Configuration
+        modelBuilder.Entity<VoiceNote>(entity =>
+        {
+            entity.HasKey(v => v.Id);
+
+            entity.Property(v => v.Title)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(v => v.BlobUrl)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(v => v.FileName)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(v => v.ContentType)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(v => v.FileSizeBytes)
+                .IsRequired();
+
+            entity.Property(v => v.CreatedAt)
+                .IsRequired();
+
+            entity.Property(v => v.IsActive)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            // Relationship with Child
+            entity.HasOne(v => v.Child)
+                .WithMany()
+                .HasForeignKey(v => v.ChildId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Indexes
+            entity.HasIndex(v => v.ChildId);
+            entity.HasIndex(v => v.IsActive);
+            entity.HasIndex(v => v.CreatedAt);
         });
 
         // Seed Cities
