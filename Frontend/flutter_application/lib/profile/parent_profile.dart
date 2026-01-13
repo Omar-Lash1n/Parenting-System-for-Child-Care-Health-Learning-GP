@@ -167,13 +167,16 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // Settings Icon
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.black.withOpacity(0.5)),
+        GestureDetector(
+          onTap: () => Navigator.pushNamed(context, '/settings'),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.black.withOpacity(0.5)),
+            ),
+            child: const Icon(Icons.settings_outlined, size: 24),
           ),
-          child: const Icon(Icons.settings_outlined, size: 24),
         ),
         // Greeting
         Text(

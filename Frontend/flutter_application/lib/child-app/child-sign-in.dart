@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:Ajial/child-app/child-home.dart';
 import 'package:Ajial/child-app/home/child_home_page.dart';
+import 'package:Ajial/role_selection.dart';
 
 // --- الثوابت والألوان ---
 const String kFontFamily = 'IBM Plex Sans Arabic';
@@ -1045,7 +1046,13 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
                           GestureDetector(
                             onTap: () {
                               _playClick();
-                              Navigator.pop(context);
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const RoleSelectionScreen(),
+                                ),
+                              );
                             },
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,

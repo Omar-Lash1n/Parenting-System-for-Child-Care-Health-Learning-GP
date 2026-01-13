@@ -18,7 +18,9 @@ import 'package:Ajial/providers/home_provider.dart';
 import 'package:Ajial/providers/add_child_flow_provider.dart';
 import 'package:Ajial/providers/child_login_provider.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
+import 'package:Ajial/providers/settings_provider.dart';
 import 'package:Ajial/child-app/home/child_home_provider.dart';
+import 'package:Ajial/profile/settings_page.dart';
 import 'package:Ajial/child-app/home/child_home_page.dart';
 
 void main() async {
@@ -36,6 +38,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ChildLoginProvider()),
         ChangeNotifierProvider(create: (_) => ParentProfileProvider()),
         ChangeNotifierProvider(create: (_) => ChildHomeProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
       child: const AjialApp(),
     ),
@@ -64,8 +67,7 @@ class AjialApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
 
-      initialRoute:
-          '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
+      initialRoute: '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
       routes: {
         '/splash': (context) => SplashScreen(),
         '/login': (context) => const LoginScreen(),
@@ -74,8 +76,8 @@ class AjialApp extends StatelessWidget {
         '/home': (context) => HomeScreen(),
         '/add-child': (context) => const AddChildFlow(),
         '/profile': (context) => const ParentProfilePage(),
+        '/settings': (context) => const SettingsPage(),
       },
     );
   }
 }
-
