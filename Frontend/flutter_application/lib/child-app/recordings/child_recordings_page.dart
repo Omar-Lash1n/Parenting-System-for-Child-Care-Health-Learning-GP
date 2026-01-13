@@ -64,40 +64,49 @@ class _RecordingsPageContent extends StatelessWidget {
                 // --- Main Content ---
                 Column(
                   children: [
+                    // --- Fixed Header (Sticky) ---
+                    SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: size.width * 0.04,
+                        ),
+                        child: Column(
+                          children: [
+                            SizedBox(height: size.height * 0.02),
+                            // --- Header ---
+                            _buildHeader(context, provider),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
                     // --- Scrollable Content ---
                     Expanded(
-                      child: SafeArea(
-                        bottom: false,
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: size.width * 0.04,
-                          ),
-                          child: Column(
-                            children: [
-                              SizedBox(height: size.height * 0.02),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: size.width * 0.04,
+                        ),
+                        child: Column(
+                          children: [
+                            SizedBox(height: size.height * 0.02),
 
-                              // --- Header ---
-                              _buildHeader(context, provider),
+                            // --- Recordings List or Empty State ---
+                            Expanded(
+                              child: provider.isLoading
+                                  ? _buildLoadingState()
+                                  : provider.errorMessage != null
+                                      ? _buildErrorState(provider.errorMessage!)
+                                      : provider.recordings.isEmpty
+                                          ? _buildEmptyState()
+                                          : _buildRecordingsList(provider),
+                            ),
 
-                              SizedBox(height: size.height * 0.02),
+                            // --- Start Recording Button ---
+                            _buildStartButton(context),
 
-                              // --- Recordings List or Empty State ---
-                              Expanded(
-                                child: provider.isLoading
-                                    ? _buildLoadingState()
-                                    : provider.errorMessage != null
-                                        ? _buildErrorState(provider.errorMessage!)
-                                        : provider.recordings.isEmpty
-                                            ? _buildEmptyState()
-                                            : _buildRecordingsList(provider),
-                              ),
-
-                              // --- Start Recording Button ---
-                              _buildStartButton(context),
-
-                              SizedBox(height: size.height * 0.02),
-                            ],
-                          ),
+                            SizedBox(height: size.height * 0.02),
+                          ],
                         ),
                       ),
                     ),

@@ -134,33 +134,42 @@ class _ChildHomePageState extends State<ChildHomePage>
                 // --- Main Layout with Fixed Grass ---
                 Column(
                   children: [
+                    // --- Fixed Header (Sticky) ---
+                    SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: size.width * 0.04,
+                        ),
+                        child: Column(
+                          children: [
+                            SizedBox(height: size.height * 0.02),
+                            // --- Header (RTL: Name on right, Stars on left) ---
+                            _buildHeader(provider, size),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
                     // --- Scrollable Content Area ---
                     Expanded(
-                      child: SafeArea(
-                        bottom: false, // Don't add safe area at bottom
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: size.width * 0.04,
-                            ),
-                            child: Column(
-                              children: [
-                                SizedBox(height: size.height * 0.02),
-                                
-                                // --- Header (RTL: Name on right, Stars on left) ---
-                                _buildHeader(provider, size),
-                                
-                                SizedBox(height: size.height * 0.02),
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: size.width * 0.04,
+                          ),
+                          child: Column(
+                            children: [
+                              SizedBox(height: size.height * 0.02),
 
-                                // --- Cards ---
-                                _buildCardsContent(provider, size),
-                                
-                                // --- Logout Button ---
-                                SizedBox(height: size.height * 0.02),
-                                _buildLogoutButton(),
-                                SizedBox(height: size.height * 0.02),
-                              ],
-                            ),
+                              // --- Cards ---
+                              _buildCardsContent(provider, size),
+                              
+                              // --- Logout Button ---
+                              SizedBox(height: size.height * 0.02),
+                              _buildLogoutButton(),
+                              SizedBox(height: size.height * 0.02),
+                            ],
                           ),
                         ),
                       ),
