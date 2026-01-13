@@ -30,10 +30,15 @@ class ChildRecordingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => RecordingsProvider()..initialize(
-        name: childName,
-        stars: currentStars,
-      ),
+      create: (_) {
+        final provider = RecordingsProvider();
+        // Initialize async (will fetch from API)
+        provider.initialize(
+          name: childName,
+          stars: currentStars,
+        );
+        return provider;
+      },
       child: const _RecordingsPageContent(),
     );
   }
@@ -78,9 +83,13 @@ class _RecordingsPageContent extends StatelessWidget {
 
                               // --- Recordings List or Empty State ---
                               Expanded(
-                                child: provider.recordings.isEmpty
-                                    ? _buildEmptyState()
-                                    : _buildRecordingsList(provider),
+                                child: provider.isLoading
+                                    ? _buildLoadingState()
+                                    : provider.errorMessage != null
+                                        ? _buildErrorState(provider.errorMessage!)
+                                        : provider.recordings.isEmpty
+                                            ? _buildEmptyState()
+                                            : _buildRecordingsList(provider),
                               ),
 
                               // --- Start Recording Button ---
@@ -208,6 +217,60 @@ class _RecordingsPageContent extends StatelessWidget {
             size: 30,
             color: Colors.black,
           ),
+        ),
+      ),
+    );
+  }
+
+  // --- Loading State ---
+  Widget _buildLoadingState() {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(
+            color: kBlueButton,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'جاري تحميل التسجيلات...',
+            style: TextStyle(
+              fontFamily: kFontFamily,
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Error State ---
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 60,
+              color: kRedButton,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: const TextStyle(
+                fontFamily: kFontFamily,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

@@ -884,6 +884,226 @@ class AuthService {
       return (false, 'خطأ في الاتصال');
     }
   }
+
+  // ============================================================
+  // ==================== Voice Notes API =======================
+  // ============================================================
+
+  /// رفع تسجيل صوتي للطفل (باستخدام File - للموبايل فقط)
+  /// POST /api/Child/voice-note
+  /// Requires child JWT token
+  Future<UploadVoiceNoteResult> uploadVoiceNote({
+    required File audioFile,
+    String? title,
+  }) async {
+    final String apiUrl = '$_apiBaseUrl/Child/voice-note';
+    final String? childToken = await getChildToken();
+
+    if (childToken == null) {
+      return UploadVoiceNoteResult(
+        success: false,
+        message: 'يجب تسجيل الدخول أولاً',
+      );
+    }
+
+    try {
+      // إنشاء طلب Multipart
+      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+
+      // إضافة الهيدرز
+      request.headers.addAll({
+        'Authorization': 'Bearer $childToken',
+        'accept': 'application/json',
+      });
+
+      // إضافة ملف الصوت
+      final mimeTypeData = lookupMimeType(audioFile.path)?.split('/');
+      request.files.add(await http.MultipartFile.fromPath(
+        'VoiceNote',
+        audioFile.path,
+        contentType: mimeTypeData != null
+            ? MediaType(mimeTypeData[0], mimeTypeData[1])
+            : MediaType('audio', 'm4a'),
+      ));
+
+      // إضافة العنوان (اختياري)
+      if (title != null && title.isNotEmpty && title.length <= 100) {
+        request.fields['Title'] = title;
+      }
+
+      print('📤 Uploading voice note...');
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('📥 Upload Response: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        final data = responseBody['data'];
+        return UploadVoiceNoteResult(
+          success: true,
+          message: responseBody['message'] ?? 'تم رفع الملاحظة الصوتية بنجاح',
+          voiceNote: data != null ? VoiceNote.fromJson(data) : null,
+        );
+      } else {
+        // التعامل مع الأخطاء
+        String errorMessage = 'حدث خطأ غير معروف';
+        
+        if (responseBody['errors'] != null &&
+            (responseBody['errors'] as List).isNotEmpty) {
+          errorMessage = (responseBody['errors'] as List).first.toString();
+        } else if (responseBody['message'] != null) {
+          errorMessage = responseBody['message'].toString();
+        }
+
+        return UploadVoiceNoteResult(
+          success: false,
+          message: errorMessage,
+        );
+      }
+    } catch (e) {
+      print('❌ Error uploading voice note: $e');
+      return UploadVoiceNoteResult(
+        success: false,
+        message: 'تأكد من الاتصال بالإنترنت',
+      );
+    }
+  }
+
+  /// رفع تسجيل صوتي باستخدام Bytes (يعمل على Web و Mobile)
+  /// POST /api/Child/voice-note
+  /// Requires child JWT token
+  Future<UploadVoiceNoteResult> uploadVoiceNoteFromBytes({
+    required List<int> audioBytes,
+    required String fileName,
+    String? title,
+  }) async {
+    final String apiUrl = '$_apiBaseUrl/Child/voice-note';
+    final String? childToken = await getChildToken();
+
+    if (childToken == null) {
+      return UploadVoiceNoteResult(
+        success: false,
+        message: 'يجب تسجيل الدخول أولاً',
+      );
+    }
+
+    try {
+      // إنشاء طلب Multipart
+      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+
+      // إضافة الهيدرز
+      request.headers.addAll({
+        'Authorization': 'Bearer $childToken',
+        'accept': 'application/json',
+      });
+
+      // تحديد نوع الملف
+      final mimeType = lookupMimeType(fileName) ?? 'audio/m4a';
+      final mimeSplit = mimeType.split('/');
+
+      // إضافة ملف الصوت من Bytes
+      request.files.add(http.MultipartFile.fromBytes(
+        'VoiceNote',
+        audioBytes,
+        filename: fileName,
+        contentType: MediaType(mimeSplit[0], mimeSplit[1]),
+      ));
+
+      // إضافة العنوان (اختياري)
+      if (title != null && title.isNotEmpty && title.length <= 100) {
+        request.fields['Title'] = title;
+      }
+
+      print('📤 Uploading voice note from bytes (${audioBytes.length} bytes)...');
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('📥 Upload Response: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        final data = responseBody['data'];
+        return UploadVoiceNoteResult(
+          success: true,
+          message: responseBody['message'] ?? 'تم رفع الملاحظة الصوتية بنجاح',
+          voiceNote: data != null ? VoiceNote.fromJson(data) : null,
+        );
+      } else {
+        // التعامل مع الأخطاء
+        String errorMessage = 'حدث خطأ غير معروف';
+        
+        if (responseBody['errors'] != null &&
+            (responseBody['errors'] as List).isNotEmpty) {
+          errorMessage = (responseBody['errors'] as List).first.toString();
+        } else if (responseBody['message'] != null) {
+          errorMessage = responseBody['message'].toString();
+        }
+
+        return UploadVoiceNoteResult(
+          success: false,
+          message: errorMessage,
+        );
+      }
+    } catch (e) {
+      print('❌ Error uploading voice note from bytes: $e');
+      return UploadVoiceNoteResult(
+        success: false,
+        message: 'تأكد من الاتصال بالإنترنت',
+      );
+    }
+  }
+
+  /// جلب جميع التسجيلات الصوتية للطفل
+  /// GET /api/Child/voice-notes
+  /// Requires child JWT token
+  Future<(bool success, String message, List<VoiceNote> voiceNotes)> getVoiceNotes() async {
+    final String apiUrl = '$_apiBaseUrl/Child/voice-notes';
+    final String? childToken = await getChildToken();
+
+    if (childToken == null) {
+      return (false, 'يجب تسجيل الدخول أولاً', <VoiceNote>[]);
+    }
+
+    try {
+      print('📤 Fetching voice notes...');
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Authorization': 'Bearer $childToken',
+          'accept': 'application/json',
+        },
+      );
+
+      print('📥 Get Voice Notes Response: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        final List<dynamic> data = responseBody['data'] ?? [];
+        final List<VoiceNote> voiceNotes = 
+            data.map((e) => VoiceNote.fromJson(e)).toList();
+        
+        final String successMessage = (responseBody['message'] ?? 'تم جلب الملاحظات الصوتية بنجاح').toString();
+        return (
+          true,
+          successMessage,
+          voiceNotes,
+        );
+      } else {
+        String errorMessage = responseBody['message'] ?? 'حدث خطأ في جلب التسجيلات';
+        return (false, errorMessage, <VoiceNote>[]);
+      }
+    } catch (e) {
+      print('❌ Error fetching voice notes: $e');
+      return (false, 'تأكد من الاتصال بالإنترنت', <VoiceNote>[]);
+    }
+  }
 }
 
 // ============================================================
@@ -959,4 +1179,62 @@ class City {
 
   @override
   String toString() => 'City(id: $id, name: $name, nameAr: $nameAr)';
+}
+
+/// نموذج الملاحظة الصوتية
+class VoiceNote {
+  final String voiceNoteId;
+  final String title;
+  final String blobUrl;
+  final int? fileSizeBytes;
+  final DateTime createdAt;
+
+  VoiceNote({
+    required this.voiceNoteId,
+    required this.title,
+    required this.blobUrl,
+    this.fileSizeBytes,
+    required this.createdAt,
+  });
+
+  factory VoiceNote.fromJson(Map<String, dynamic> json) {
+    return VoiceNote(
+      voiceNoteId: json['voiceNoteId']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'تسجيل صوتي',
+      blobUrl: json['blobUrl']?.toString() ?? '',
+      fileSizeBytes: json['fileSizeBytes'] as int?,
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt'].toString())
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'voiceNoteId': voiceNoteId,
+      'title': title,
+      'blobUrl': blobUrl,
+      'fileSizeBytes': fileSizeBytes,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+  @override
+  String toString() => 'VoiceNote(id: $voiceNoteId, title: $title)';
+}
+
+/// نتيجة رفع الملاحظة الصوتية
+class UploadVoiceNoteResult {
+  final bool success;
+  final String message;
+  final VoiceNote? voiceNote;
+
+  UploadVoiceNoteResult({
+    required this.success,
+    required this.message,
+    this.voiceNote,
+  });
+
+  @override
+  String toString() => 'UploadVoiceNoteResult(success: $success, message: $message)';
 }
