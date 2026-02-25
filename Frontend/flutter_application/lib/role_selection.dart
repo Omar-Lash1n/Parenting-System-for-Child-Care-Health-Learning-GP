@@ -1,6 +1,6 @@
 import 'package:Ajial/child-app/child-sign-in.dart';
 import 'package:flutter/material.dart';
-// تأكد من استيراد ParentWelcomeScreen بشكل صحيح
+// Import ParentWelcomeScreen for parent navigation
 import 'ParentWelcomeScreen.dart';
 
 // تعريف كلاس للصفحة الجديدة
@@ -116,7 +116,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         // إذا تم اختيار دور، قم بالمعالجة أو الانتقال
                         print("الدور المختار: $_selectedRole");
                         if (_selectedRole == "parent") {
-                          // الانتقال إلى ParentWelcomeScreen عند اختيار "parent"
+                          // Navigate to ParentWelcomeScreen when parent is selected
                           Navigator.of(context).pushReplacement(
                             MaterialPageRoute(
                               builder: (context) => const ParentWelcomeScreen(),

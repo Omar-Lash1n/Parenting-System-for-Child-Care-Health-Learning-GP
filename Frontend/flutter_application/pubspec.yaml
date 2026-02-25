@@ -26,6 +26,7 @@ dependencies:
   image_picker: ^1.1.2 # (تحديث للنسخة الأحدث)
   path: ^1.9.0 # (تحديث)
   mime: ^2.0.0 # (تحديث) # (اختياري للتعامل مع أنواع الملفات)
+  shimmer: ^3.0.0
 
 dependency_overrides:
   record_linux: ^1.2.1
