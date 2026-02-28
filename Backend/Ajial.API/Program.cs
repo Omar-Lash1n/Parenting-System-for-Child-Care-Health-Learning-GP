@@ -80,6 +80,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IParentService, ParentService>();
 builder.Services.AddScoped<IChildService, ChildService>();        // ✅ NEW - Child Management
 builder.Services.AddScoped<IVoiceNoteService, VoiceNoteService>(); // ✅ Voice Note Upload
+builder.Services.AddScoped<IVaccinationService, VaccinationService>(); // ✅ Vaccination Feature
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
