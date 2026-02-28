@@ -44,7 +44,7 @@ public class AuthController : ControllerBase
             }
 
             var result = await _authService.RegisterParentAsync(request);
-            
+
             return CreatedAtAction(
                 nameof(RegisterParent),
                 ApiResponse<RegisterParentResponse>.SuccessResponse(
@@ -63,7 +63,7 @@ public class AuthController : ControllerBase
                 "حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة مرة أخرى"));
         }
     }
-    
+
     [HttpPost("login/parent")]
     [ProducesResponseType(typeof(ApiResponse<LoginResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LoginResponseDto>), StatusCodes.Status400BadRequest)]
@@ -79,8 +79,8 @@ public class AuthController : ControllerBase
 
             if (!result.Success)
             {
-                _logger.LogWarning("Login failed for username: {Username}. Errors: {Errors}", 
-                    request.Username, 
+                _logger.LogWarning("Login failed for username: {Username}. Errors: {Errors}",
+                    request.Username,
                     string.Join(", ", result.Errors));
 
                 // Return 401 for authentication failures
@@ -92,8 +92,8 @@ public class AuthController : ControllerBase
                 return BadRequest(result);
             }
 
-            _logger.LogInformation("Login successful for username: {Username}, UserId: {UserId}", 
-                request.Username, 
+            _logger.LogInformation("Login successful for username: {Username}, UserId: {UserId}",
+                request.Username,
                 result.Data?.UserId);
 
             return Ok(result);
@@ -106,13 +106,13 @@ public class AuthController : ControllerBase
                 new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
             ));
         }
-        
-        
-        
-        
+
+
+
+
     }
-    
-    
+
+
     /// <summary>
     /// تسجيل دخول الطفل باستخدام معرف الدخول وكلمة المرور البصرية (5 فواكه)
     /// Child login using login ID and visual password (5 fruits)
@@ -163,118 +163,170 @@ public class AuthController : ControllerBase
         }
     }
 
-// Add these methods to AuthController
+    // Add these methods to AuthController
 
-/// <summary>
-/// طلب إعادة تعيين كلمة المرور (إرسال رمز عبر البريد الإلكتروني)
-/// </summary>
-[HttpPost("forgot-password")]
-[ProducesResponseType(typeof(ApiResponse<ForgotPasswordResponseDto>), StatusCodes.Status200OK)]
-[ProducesResponseType(typeof(ApiResponse<ForgotPasswordResponseDto>), StatusCodes.Status400BadRequest)]
-public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
-{
-    try
+    /// <summary>
+    /// طلب إعادة تعيين كلمة المرور (إرسال رمز عبر البريد الإلكتروني)
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(ApiResponse<ForgotPasswordResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ForgotPasswordResponseDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
     {
-        _logger.LogInformation("Password reset requested for email: {Email}", request.Email);
-
-        var result = await _authService.ForgotPasswordAsync(request);
-
-        if (!result.Success)
+        try
         {
-            _logger.LogWarning("Password reset request failed for email: {Email}. Errors: {Errors}",
-                request.Email,
-                string.Join(", ", result.Errors));
+            _logger.LogInformation("Password reset requested for email: {Email}", request.Email);
 
-            return BadRequest(result);
+            var result = await _authService.ForgotPasswordAsync(request);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("Password reset request failed for email: {Email}. Errors: {Errors}",
+                    request.Email,
+                    string.Join(", ", result.Errors));
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("Password reset email sent to: {Email}", request.Email);
+
+            return Ok(result);
         }
-
-        _logger.LogInformation("Password reset email sent to: {Email}", request.Email);
-
-        return Ok(result);
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Error in ForgotPassword endpoint for email: {Email}", request.Email);
-        return StatusCode(500, ApiResponse<ForgotPasswordResponseDto>.FailureResponse(
-            "حدث خطأ في الخادم",
-            new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
-        ));
-    }
-}
-
-/// <summary>
-/// التحقق من صحة رمز OTP (6 أرقام) دون تغيير كلمة المرور
-/// </summary>
-[HttpPost("verify-otp")]
-[ProducesResponseType(typeof(ApiResponse<VerifyOtpResponseDto>), StatusCodes.Status200OK)]
-[ProducesResponseType(typeof(ApiResponse<VerifyOtpResponseDto>), StatusCodes.Status400BadRequest)]
-public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto request)
-{
-    try
-    {
-        _logger.LogInformation("OTP verification attempt for token: {Token}", 
-            request.Token?.Substring(0, 2) + "****"); // Log only first 2 digits for security
-
-        var result = await _authService.VerifyOtpAsync(request);
-
-        if (!result.Success)
+        catch (Exception ex)
         {
-            _logger.LogWarning("OTP verification failed. Errors: {Errors}",
-                string.Join(", ", result.Errors));
-
-            return BadRequest(result);
+            _logger.LogError(ex, "Error in ForgotPassword endpoint for email: {Email}", request.Email);
+            return StatusCode(500, ApiResponse<ForgotPasswordResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+            ));
         }
-
-        _logger.LogInformation("OTP verification successful");
-
-        return Ok(result);
     }
-    catch (Exception ex)
+
+    /// <summary>
+    /// التحقق من صحة رمز OTP (6 أرقام) دون تغيير كلمة المرور
+    /// </summary>
+    [HttpPost("verify-otp")]
+    [ProducesResponseType(typeof(ApiResponse<VerifyOtpResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<VerifyOtpResponseDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto request)
     {
-        _logger.LogError(ex, "Error in VerifyOtp endpoint");
-        return StatusCode(500, ApiResponse<VerifyOtpResponseDto>.FailureResponse(
-            "حدث خطأ في الخادم",
-            new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
-        ));
-    }
-}
-
-//
-
-//test
-/// <summary>
-/// إعادة تعيين كلمة المرور باستخدام الرمز
-/// </summary>
-[HttpPost("reset-password")]
-[ProducesResponseType(typeof(ApiResponse<ResetPasswordResponseDto>), StatusCodes.Status200OK)]
-[ProducesResponseType(typeof(ApiResponse<ResetPasswordResponseDto>), StatusCodes.Status400BadRequest)]
-public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request)
-{
-    try
-    {
-        _logger.LogInformation("Password reset attempt with token");
-
-        var result = await _authService.ResetPasswordAsync(request);
-
-        if (!result.Success)
+        try
         {
-            _logger.LogWarning("Password reset failed. Errors: {Errors}",
-                string.Join(", ", result.Errors));
+            _logger.LogInformation("OTP verification attempt for token: {Token}",
+                request.Token?.Substring(0, 2) + "****"); // Log only first 2 digits for security
 
-            return BadRequest(result);
+            var result = await _authService.VerifyOtpAsync(request);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("OTP verification failed. Errors: {Errors}",
+                    string.Join(", ", result.Errors));
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("OTP verification successful");
+
+            return Ok(result);
         }
-
-        _logger.LogInformation("Password reset successful for user");
-
-        return Ok(result);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in VerifyOtp endpoint");
+            return StatusCode(500, ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+            ));
+        }
     }
-    catch (Exception ex)
+
+    //
+
+    //test
+    /// <summary>
+    /// إعادة تعيين كلمة المرور باستخدام الرمز
+    /// </summary>
+    [HttpPost("reset-password")]
+    [ProducesResponseType(typeof(ApiResponse<ResetPasswordResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ResetPasswordResponseDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request)
     {
-        _logger.LogError(ex, "Error in ResetPassword endpoint");
-        return StatusCode(500, ApiResponse<ResetPasswordResponseDto>.FailureResponse(
-            "حدث خطأ في الخادم",
-            new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
-        ));
+        try
+        {
+            _logger.LogInformation("Password reset attempt with token");
+
+            var result = await _authService.ResetPasswordAsync(request);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("Password reset failed. Errors: {Errors}",
+                    string.Join(", ", result.Errors));
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("Password reset successful for user");
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in ResetPassword endpoint");
+            return StatusCode(500, ApiResponse<ResetPasswordResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+            ));
+        }
     }
-}
+
+    /// <summary>
+    /// تسجيل خروج الطفل - Child logout (sets IsActive to false)
+    /// </summary>
+    /// <remarks>
+    /// Call this when the child logs out from the app.
+    /// This clears the LastActivityAt timestamp so the parent sees IsActive = false (grey dot).
+    /// Requires the child's JWT token.
+    /// </remarks>
+    [HttpPost("logout/child")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> LogoutChild()
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid childId))
+            {
+                _logger.LogWarning("Unauthorized child logout attempt - invalid user ID claim");
+                return Unauthorized(ApiResponse<string>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول أولاً" }
+                ));
+            }
+
+            _logger.LogInformation("Child logout requested for child ID: {ChildId}", childId);
+
+            var result = await _authService.LogoutChildAsync(childId);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("Child logout failed for child {ChildId}. Errors: {Errors}",
+                    childId, string.Join(", ", result.Errors));
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("Child {ChildId} logged out successfully", childId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in LogoutChild endpoint");
+            return StatusCode(500, ApiResponse<string>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+            ));
+        }
+    }
 }

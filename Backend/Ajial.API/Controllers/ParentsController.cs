@@ -655,6 +655,83 @@ public class ParentsController : ControllerBase
     }
 
     /// <summary>
+    /// Get all children for the logged-in parent (for "All Children" view)
+    /// جلب جميع أطفال ولي الأمر المسجل
+    /// </summary>
+    /// <remarks>
+    /// Returns a list of all children associated with the authenticated parent.
+    /// 
+    /// Each child includes:
+    /// - **ChildId**: Unique identifier
+    /// - **FullName**: Child's full name
+    /// - **PhotoUrl**: Profile image URL (nullable)
+    /// - **Age**: Calculated from BirthDate
+    /// - **IsActive**: true if child has been active within the last 5 minutes (green dot in UI)
+    /// - **HasAccount**: true if the child has login credentials
+    /// - **PrizeCount**: Number of achievements (currently defaults to 0)
+    /// 
+    /// Requires authentication — returns data for the logged-in parent only.
+    /// </remarks>
+    [HttpGet("children")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<GetParentChildrenResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<GetParentChildrenResponseDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<GetParentChildrenResponseDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<GetParentChildrenResponseDto>), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetParentChildren()
+    {
+        try
+        {
+            // Get user ID from JWT token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                _logger.LogWarning("Unauthorized children access attempt - invalid user ID claim");
+                return Unauthorized(ApiResponse<GetParentChildrenResponseDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول للوصول إلى بيانات الأطفال" }
+                ));
+            }
+
+            _logger.LogInformation("Children list requested by user ID: {UserId}", userId);
+
+            var result = await _parentService.GetParentChildrenAsync(userId);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning(
+                    "Failed to retrieve children for user {UserId}. Errors: {Errors}",
+                    userId,
+                    string.Join(", ", result.Errors)
+                );
+
+                if (result.Errors.Any(e => e.Contains("غير موجود")))
+                {
+                    return NotFound(result);
+                }
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation(
+                "Successfully returned {Count} children for user {UserId}",
+                result.Data?.TotalCount ?? 0, userId
+            );
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetParentChildren endpoint");
+            return StatusCode(500, ApiResponse<GetParentChildrenResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع أثناء جلب بيانات الأطفال" }
+            ));
+        }
+    }
+
+    /// <summary>
     /// Generate HTML page for email verification result
     /// </summary>
     private string GenerateVerificationHtmlPage(bool isSuccess, string title, string message, string email)
