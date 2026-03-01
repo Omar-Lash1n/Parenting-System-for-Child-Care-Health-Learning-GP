@@ -32,7 +32,9 @@ public class VaccinationService : IVaccinationService
             {
                 ChildId = child!.Id,
                 FullName = child.FullName.Split(' ')[0],
-                ProfileImageUrl = child.ProfileImageUrl
+                ProfileImageUrl = child.ProfileImageUrl,
+                HasCompletedVaccinationSurvey = child.HasCompletedVaccinationSurvey,
+                HasCompletedAdditionalVaccinationSurvey = child.HasCompletedAdditionalVaccinationSurvey
             };
 
             return ApiResponse<VaccinationWelcomeResponseDto>.SuccessResponse(
@@ -201,6 +203,10 @@ public class VaccinationService : IVaccinationService
                     await _unitOfWork.ChildVaccinations.AddAsync(newRecord);
                 }
             }
+
+            // Mark the main survey as completed
+            child!.HasCompletedVaccinationSurvey = true;
+            await _unitOfWork.Children.UpdateAsync(child);
 
             await _unitOfWork.SaveAsync();
 
@@ -400,4 +406,227 @@ public class VaccinationService : IVaccinationService
             ? string.Join(" و ", parts)
             : "حديث الولادة";
     }
+
+    // ────────────────────────────────────────────
+    // 4. Get Additional Vaccination Survey
+    // ────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<ApiResponse<GetAdditionalVaccinationSurveyResponseDto>> GetAdditionalVaccinationSurveyAsync(
+        Guid childId, Guid parentUserId)
+    {
+        try
+        {
+            var (parent, child, error) = await ValidateParentChildAsync<GetAdditionalVaccinationSurveyResponseDto>(childId, parentUserId);
+            if (error != null) return error;
+
+            // Calculate age in months to derive years
+            var (ageMonths, _) = CalculateAgeInMonthsAndDays(child!.BirthDate);
+            int ageYears = ageMonths / 12;
+
+            // Only available for children 4+ years old
+            if (ageYears < 4)
+            {
+                return ApiResponse<GetAdditionalVaccinationSurveyResponseDto>.FailureResponse(
+                    "هذه الصفحة غير متاحة",
+                    new List<string> { "التطعيمات الإضافية تظهر فقط للأطفال الذين بلغوا أربع سنوات فأكثر" }
+                );
+            }
+
+            // Load only Additional category milestones
+            var milestones = (await _unitOfWork.VaccinationMilestones.FindAsync(
+                m => m.Category == "Additional" && m.IsActive
+            )).OrderBy(m => m.SortOrder).ToList();
+
+            // Load existing ChildVaccination records for additional milestones
+            var milestoneIds = milestones.Select(m => m.Id).ToHashSet();
+            var existingRecords = (await _unitOfWork.ChildVaccinations.FindAsync(
+                cv => cv.ChildId == childId && milestoneIds.Contains(cv.VaccinationMilestoneId)
+            )).ToDictionary(cv => cv.VaccinationMilestoneId);
+
+            // Build milestone DTOs — simple enable/disable, no auto-select
+            var milestoneDtos = milestones.Select(m =>
+            {
+                int milestoneAgeYears = m.AgeInMonths / 12;
+                bool isDisabled = milestoneAgeYears > ageYears;
+
+                // No auto-select: default is always false unless saved in DB
+                bool isTaken = existingRecords.TryGetValue(m.Id, out var record)
+                    ? record.IsTaken
+                    : false;
+
+                return new AdditionalVaccinationMilestoneDto
+                {
+                    MilestoneId = m.Id,
+                    NameAr = m.NameAr,
+                    NameEn = m.NameEn,
+                    AgeInYears = milestoneAgeYears,
+                    VaccinesAr = m.VaccinesAr,
+                    VaccinesEn = m.VaccinesEn,
+                    IsDisabled = isDisabled,
+                    IsTaken = isTaken
+                };
+            }).ToList();
+
+            var response = new GetAdditionalVaccinationSurveyResponseDto
+            {
+                ChildId = child.Id,
+                ChildName = child.FullName.Split(' ')[0],
+                ChildImageUrl = child.ProfileImageUrl,
+                AgeYears = ageYears,
+                AgeFormatted = FormatYearsArabic(ageYears),
+                Milestones = milestoneDtos
+            };
+
+            return ApiResponse<GetAdditionalVaccinationSurveyResponseDto>.SuccessResponse(
+                response,
+                $"تم جلب التطعيمات الإضافية - {child.FullName}"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<GetAdditionalVaccinationSurveyResponseDto>.FailureResponse(
+                "حدث خطأ أثناء جلب التطعيمات الإضافية",
+                new List<string> { ex.Message }
+            );
+        }
+    }
+
+    // ────────────────────────────────────────────
+    // 5. Submit Additional Vaccination Survey
+    // ────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<ApiResponse<SubmitVaccinationSurveyResponseDto>> SubmitAdditionalVaccinationSurveyAsync(
+        SubmitVaccinationSurveyRequestDto request, Guid parentUserId)
+    {
+        try
+        {
+            var (parent, child, error) = await ValidateParentChildAsync<SubmitVaccinationSurveyResponseDto>(request.ChildId, parentUserId);
+            if (error != null) return error;
+
+            var (ageMonths, _) = CalculateAgeInMonthsAndDays(child!.BirthDate);
+            int ageYears = ageMonths / 12;
+
+            if (ageYears < 4)
+            {
+                return ApiResponse<SubmitVaccinationSurveyResponseDto>.FailureResponse(
+                    "هذه الصفحة غير متاحة",
+                    new List<string> { "التطعيمات الإضافية تظهر فقط للأطفال الذين بلغوا أربع سنوات فأكثر" }
+                );
+            }
+
+            // Load milestones (Additional only) for validation
+            var milestones = (await _unitOfWork.VaccinationMilestones.FindAsync(
+                m => m.Category == "Additional" && m.IsActive
+            )).ToDictionary(m => m.Id);
+
+            // Validate: cannot mark a future milestone as taken
+            foreach (var selection in request.Selections)
+            {
+                if (!milestones.TryGetValue(selection.MilestoneId, out var milestone))
+                {
+                    return ApiResponse<SubmitVaccinationSurveyResponseDto>.FailureResponse(
+                        "تطعيم غير صالح",
+                        new List<string> { $"التطعيم رقم {selection.MilestoneId} غير موجود في التطعيمات الإضافية" }
+                    );
+                }
+
+                int milestoneAgeYears = milestone.AgeInMonths / 12;
+                if (milestoneAgeYears > ageYears && selection.IsTaken)
+                {
+                    return ApiResponse<SubmitVaccinationSurveyResponseDto>.FailureResponse(
+                        "لا يمكن تسجيل تطعيم مستقبلي",
+                        new List<string> { $"لا يمكن تسجيل {milestone.NameAr} لأن عمر الطفل لم يصل بعد" }
+                    );
+                }
+            }
+
+            // Load existing records and upsert
+            var milestoneIds = request.Selections.Select(s => s.MilestoneId).ToHashSet();
+            var existingRecords = (await _unitOfWork.ChildVaccinations.FindAsync(
+                cv => cv.ChildId == request.ChildId && milestoneIds.Contains(cv.VaccinationMilestoneId)
+            )).ToDictionary(cv => cv.VaccinationMilestoneId);
+
+            var now = DateTime.UtcNow;
+
+            foreach (var selection in request.Selections)
+            {
+                if (existingRecords.TryGetValue(selection.MilestoneId, out var existing))
+                {
+                    existing.IsTaken = selection.IsTaken;
+                    existing.UpdatedAt = now;
+                    await _unitOfWork.ChildVaccinations.UpdateAsync(existing);
+                }
+                else
+                {
+                    var newRecord = new ChildVaccination
+                    {
+                        Id = Guid.NewGuid(),
+                        ChildId = request.ChildId,
+                        VaccinationMilestoneId = selection.MilestoneId,
+                        IsTaken = selection.IsTaken,
+                        RecordedAt = now,
+                        UpdatedAt = now
+                    };
+                    await _unitOfWork.ChildVaccinations.AddAsync(newRecord);
+                }
+            }
+
+            // Mark the additional survey as completed
+            child!.HasCompletedAdditionalVaccinationSurvey = true;
+            await _unitOfWork.Children.UpdateAsync(child);
+
+            await _unitOfWork.SaveAsync();
+
+            int takenCount = request.Selections.Count(s => s.IsTaken);
+
+            var response = new SubmitVaccinationSurveyResponseDto
+            {
+                ChildId = request.ChildId,
+                TotalMilestones = request.Selections.Count,
+                TakenCount = takenCount,
+                Message = $"تم تسجيل {takenCount} تطعيم إضافي من أصل {request.Selections.Count} بنجاح"
+            };
+
+            return ApiResponse<SubmitVaccinationSurveyResponseDto>.SuccessResponse(
+                response,
+                "تم حفظ التطعيمات الإضافية بنجاح"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<SubmitVaccinationSurveyResponseDto>.FailureResponse(
+                "حدث خطأ أثناء حفظ التطعيمات الإضافية",
+                new List<string> { ex.Message }
+            );
+        }
+    }
+
+    // ────────────────────────────────────────────
+    // Additional helper: Format years in Arabic
+    // ────────────────────────────────────────────
+
+    private static string FormatYearsArabic(int years) => years switch
+    {
+        1 => "سنة واحدة",
+        2 => "سنتين",
+        3 => "ثلاث سنوات",
+        4 => "أربع سنوات",
+        5 => "خمس سنوات",
+        6 => "ست سنوات",
+        7 => "سبع سنوات",
+        8 => "ثماني سنوات",
+        9 => "تسع سنوات",
+        10 => "عشر سنوات",
+        11 => "إحدى عشرة سنة",
+        12 => "اثنتا عشرة سنة",
+        13 => "ثلاث عشرة سنة",
+        14 => "أربع عشرة سنة",
+        15 => "خمس عشرة سنة",
+        16 => "ست عشرة سنة",
+        17 => "سبع عشرة سنة",
+        18 => "ثماني عشرة سنة",
+        _ => $"{years} سنة"
+    };
 }

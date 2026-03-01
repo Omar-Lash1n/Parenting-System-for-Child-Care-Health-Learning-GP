@@ -23,4 +23,17 @@ public interface IVaccinationService
     /// </summary>
     Task<ApiResponse<SubmitVaccinationSurveyResponseDto>> SubmitVaccinationSurveyAsync(
         SubmitVaccinationSurveyRequestDto request, Guid parentUserId);
+
+    /// <summary>
+    /// استبيان التطعيمات الإضافية - Get additional vaccination survey (4-15 year milestones)
+    /// يظهر فقط للأطفال أعمارهم 4 سنوات فأكثر
+    /// </summary>
+    Task<ApiResponse<GetAdditionalVaccinationSurveyResponseDto>> GetAdditionalVaccinationSurveyAsync(
+        Guid childId, Guid parentUserId);
+
+    /// <summary>
+    /// تقديم استبيان التطعيمات الإضافية - Submit additional vaccination survey
+    /// </summary>
+    Task<ApiResponse<SubmitVaccinationSurveyResponseDto>> SubmitAdditionalVaccinationSurveyAsync(
+        SubmitVaccinationSurveyRequestDto request, Guid parentUserId);
 }

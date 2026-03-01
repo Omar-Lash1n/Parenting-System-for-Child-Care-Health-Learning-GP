@@ -214,6 +214,11 @@ public class ApplicationDbContext : DbContext
             entity.Property(v => v.IsActive)
                 .IsRequired()
                 .HasDefaultValue(true);
+
+            entity.Property(v => v.Category)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("Main");
         });
 
         // ChildVaccination Configuration
@@ -306,7 +311,8 @@ public class ApplicationDbContext : DbContext
                 VaccinesAr = "كبدي ب رضع, شلل اطفال فموي, طعم بي سي جي",
                 VaccinesEn = "Hepatitis B, Oral Polio Vaccine, BCG",
                 SortOrder = 1,
-                IsActive = true
+                IsActive = true,
+                Category = "Main"
             },
             new VaccinationMilestone
             {
@@ -317,7 +323,8 @@ public class ApplicationDbContext : DbContext
                 VaccinesAr = "شلل اطفال (فموي), الطعم الخماسي",
                 VaccinesEn = "Oral Polio Vaccine, Pentavalent Vaccine",
                 SortOrder = 2,
-                IsActive = true
+                IsActive = true,
+                Category = "Main"
             },
             new VaccinationMilestone
             {
@@ -328,7 +335,8 @@ public class ApplicationDbContext : DbContext
                 VaccinesAr = "شلل اطفال (فموي), الطعم الخماسي, شلل اطفال (حقن)",
                 VaccinesEn = "Oral Polio Vaccine, Pentavalent Vaccine, IPV",
                 SortOrder = 3,
-                IsActive = true
+                IsActive = true,
+                Category = "Main"
             },
             new VaccinationMilestone
             {
@@ -339,7 +347,8 @@ public class ApplicationDbContext : DbContext
                 VaccinesAr = "شلل اطفال (فموي), الطعم الخماسي, شلل اطفال (حقن)",
                 VaccinesEn = "Oral Polio Vaccine, Pentavalent Vaccine, IPV",
                 SortOrder = 4,
-                IsActive = true
+                IsActive = true,
+                Category = "Main"
             },
             new VaccinationMilestone
             {
@@ -350,7 +359,8 @@ public class ApplicationDbContext : DbContext
                 VaccinesAr = "شلل اطفال (فموي)",
                 VaccinesEn = "Oral Polio Vaccine",
                 SortOrder = 5,
-                IsActive = true
+                IsActive = true,
+                Category = "Main"
             },
             new VaccinationMilestone
             {
@@ -361,7 +371,8 @@ public class ApplicationDbContext : DbContext
                 VaccinesAr = "شلل اطفال (فموي), الثلاثى الفيروسي",
                 VaccinesEn = "Oral Polio Vaccine, MMR",
                 SortOrder = 6,
-                IsActive = true
+                IsActive = true,
+                Category = "Main"
             },
             new VaccinationMilestone
             {
@@ -372,7 +383,81 @@ public class ApplicationDbContext : DbContext
                 VaccinesAr = "شلل اطفال (فموي), الثلاثى الفيروسي",
                 VaccinesEn = "Oral Polio Vaccine, MMR",
                 SortOrder = 7,
-                IsActive = true
+                IsActive = true,
+                Category = "Main"
+            },
+            // ── Additional Milestones (4–15 years) ──
+            new VaccinationMilestone
+            {
+                Id = 8,
+                NameAr = "تطعيم أولى حضانة",
+                NameEn = "KG1 Vaccination",
+                AgeInMonths = 48, // 4 years
+                VaccinesAr = "المكورات السحائية الثنائى",
+                VaccinesEn = "Meningococcal Vaccine",
+                SortOrder = 8,
+                IsActive = true,
+                Category = "Additional"
+            },
+            new VaccinationMilestone
+            {
+                Id = 9,
+                NameAr = "تطعيم أولى ابتدائى",
+                NameEn = "Grade 1 Vaccination",
+                AgeInMonths = 72, // 6 years
+                VaccinesAr = "المكورات السحائية الثنائى",
+                VaccinesEn = "Meningococcal Vaccine",
+                SortOrder = 9,
+                IsActive = true,
+                Category = "Additional"
+            },
+            new VaccinationMilestone
+            {
+                Id = 10,
+                NameAr = "تطعيم ثانية ابتدائى",
+                NameEn = "Grade 2 Vaccination",
+                AgeInMonths = 84, // 7 years
+                VaccinesAr = "الثنائى البكتيري",
+                VaccinesEn = "DT Vaccine",
+                SortOrder = 10,
+                IsActive = true,
+                Category = "Additional"
+            },
+            new VaccinationMilestone
+            {
+                Id = 11,
+                NameAr = "تطعيم رابعة ابتدائى",
+                NameEn = "Grade 4 Vaccination",
+                AgeInMonths = 120, // 10 years
+                VaccinesAr = "الثنائى البكتيري",
+                VaccinesEn = "DT Vaccine",
+                SortOrder = 11,
+                IsActive = true,
+                Category = "Additional"
+            },
+            new VaccinationMilestone
+            {
+                Id = 12,
+                NameAr = "تطعيم أولى إعدادي",
+                NameEn = "Grade 7 Vaccination",
+                AgeInMonths = 144, // 12 years
+                VaccinesAr = "المكورات السحائية الثنائى",
+                VaccinesEn = "Meningococcal Vaccine",
+                SortOrder = 12,
+                IsActive = true,
+                Category = "Additional"
+            },
+            new VaccinationMilestone
+            {
+                Id = 13,
+                NameAr = "تطعيم أولى ثانوي",
+                NameEn = "Grade 10 Vaccination",
+                AgeInMonths = 180, // 15 years
+                VaccinesAr = "المكورات السحائية الثنائى",
+                VaccinesEn = "Meningococcal Vaccine",
+                SortOrder = 13,
+                IsActive = true,
+                Category = "Additional"
             }
         );
     }

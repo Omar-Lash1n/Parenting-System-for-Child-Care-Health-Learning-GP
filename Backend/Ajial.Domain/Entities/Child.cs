@@ -26,6 +26,18 @@ public class Child
     public DateTime? LastActivityAt { get; set; }
 
     /// <summary>
+    /// هل أكمل ولي الأمر استبيان التطعيمات الأساسية؟
+    /// Set to true after the parent submits POST /api/Vaccination/survey
+    /// </summary>
+    public bool HasCompletedVaccinationSurvey { get; set; } = false;
+
+    /// <summary>
+    /// هل أكمل ولي الأمر استبيان التطعيمات الإضافية؟ (4-15 سنة)
+    /// Set to true after the parent submits POST /api/Vaccination/additional-survey
+    /// </summary>
+    public bool HasCompletedAdditionalVaccinationSurvey { get; set; } = false;
+
+    /// <summary>
     /// سجل التطعيمات - Vaccination records for this child
     /// </summary>
     public ICollection<ChildVaccination> Vaccinations { get; set; } = new List<ChildVaccination>();

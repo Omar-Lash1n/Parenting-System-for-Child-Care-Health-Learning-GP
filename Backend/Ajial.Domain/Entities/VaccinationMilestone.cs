@@ -43,4 +43,9 @@ public class VaccinationMilestone
     /// حالة التفعيل
     /// </summary>
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// تصنيف التطعيم: "Main" للتطعيمات الأساسية (0-18 شهر), "Additional" للتطعيمات الإضافية (4-15 سنة)
+    /// </summary>
+    public string Category { get; set; } = "Main";
 }
