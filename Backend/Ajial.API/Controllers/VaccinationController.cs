@@ -22,15 +22,19 @@ public class VaccinationController : ControllerBase
         _logger = logger;
     }
 
+    // ────────────────────────────────────────────
+    // 1. Welcome Page
+    // ────────────────────────────────────────────
+
     /// <summary>
     /// صفحة ترحيب التطعيمات - Get vaccination welcome page for a child
     /// </summary>
     /// <remarks>
-    /// Returns the child's name and profile image for the vaccination welcome screen.
+    /// Returns the child's first name and profile image for the vaccination welcome screen.
     /// 
     /// This is the first page the parent sees when entering the vaccination section
     /// for a specific child. It displays:
-    /// - **FullName**: اسم الطفل الكامل
+    /// - **FullName**: الاسم الأول للطفل
     /// - **ProfileImageUrl**: رابط صورة الطفل (nullable - use default avatar if null)
     /// 
     /// Requires authentication — the child must belong to the logged-in parent.
@@ -46,7 +50,6 @@ public class VaccinationController : ControllerBase
     {
         try
         {
-            // Get parent's user ID from JWT token
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
@@ -71,9 +74,7 @@ public class VaccinationController : ControllerBase
                     childId, string.Join(", ", result.Errors));
 
                 if (result.Errors.Any(e => e.Contains("غير موجود")))
-                {
                     return NotFound(result);
-                }
 
                 return BadRequest(result);
             }
@@ -90,6 +91,156 @@ public class VaccinationController : ControllerBase
             return StatusCode(500, ApiResponse<VaccinationWelcomeResponseDto>.FailureResponse(
                 "حدث خطأ في الخادم",
                 new List<string> { "حدث خطأ غير متوقع أثناء جلب بيانات التطعيمات" }
+            ));
+        }
+    }
+
+    // ────────────────────────────────────────────
+    // 2. Get Vaccination Survey
+    // ────────────────────────────────────────────
+
+    /// <summary>
+    /// استبيان التطعيمات - Get vaccination survey for a child
+    /// </summary>
+    /// <remarks>
+    /// Returns the 7 vaccination milestones with dynamic status based on the child's age.
+    /// 
+    /// **Age is returned as months + days** (e.g., AgeMonths=4, AgeDays=12, AgeFormatted="4 شهور و 12 يوم")
+    /// 
+    /// **Business Rules:**
+    /// - **Rule A (Past)**: VaccineAge &lt; ChildAge → Auto-Selected ✅ (user can uncheck)
+    /// - **Rule B (Current)**: VaccineAge == ChildAge → Unselected (user can select)
+    /// - **Rule C (Future)**: VaccineAge &gt; ChildAge → Disabled 🔒
+    /// - **Rule D (18+)**: Child is 18+ months → All enabled &amp; auto-selected
+    /// 
+    /// Requires authentication — the child must belong to the logged-in parent.
+    /// </remarks>
+    /// <param name="childId">معرّف الطفل - Child's unique identifier</param>
+    [HttpGet("survey/{childId}")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<GetVaccinationSurveyResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<GetVaccinationSurveyResponseDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<GetVaccinationSurveyResponseDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<GetVaccinationSurveyResponseDto>), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetVaccinationSurvey(Guid childId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                _logger.LogWarning("Unauthorized vaccination survey access attempt - invalid user ID claim");
+                return Unauthorized(ApiResponse<GetVaccinationSurveyResponseDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول للوصول إلى استبيان التطعيمات" }
+                ));
+            }
+
+            _logger.LogInformation(
+                "Vaccination survey requested by parent {UserId} for child {ChildId}",
+                userId, childId);
+
+            var result = await _vaccinationService.GetVaccinationSurveyAsync(childId, userId);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning(
+                    "Failed to get vaccination survey for child {ChildId}. Errors: {Errors}",
+                    childId, string.Join(", ", result.Errors));
+
+                if (result.Errors.Any(e => e.Contains("غير موجود")))
+                    return NotFound(result);
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation(
+                "Vaccination survey returned for child {ChildId} (age: {AgeMonths}m {AgeDays}d). Milestones: {Count}",
+                childId, result.Data?.AgeMonths, result.Data?.AgeDays, result.Data?.Milestones?.Count);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetVaccinationSurvey endpoint for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<GetVaccinationSurveyResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع أثناء جلب استبيان التطعيمات" }
+            ));
+        }
+    }
+
+    // ────────────────────────────────────────────
+    // 3. Submit Vaccination Survey
+    // ────────────────────────────────────────────
+
+    /// <summary>
+    /// تقديم استبيان التطعيمات - Submit vaccination survey results
+    /// </summary>
+    /// <remarks>
+    /// Saves the parent's vaccination selections for a specific child.
+    /// 
+    /// **Rules:**
+    /// - Cannot submit a **future** (disabled) milestone as taken
+    /// - Existing records are **updated** (upsert), not duplicated
+    /// - Records are persisted for use in the "Kid Vaccination File" endpoint
+    /// 
+    /// Requires authentication — the child must belong to the logged-in parent.
+    /// </remarks>
+    /// <param name="request">قائمة اختيارات التطعيمات - Vaccination selections</param>
+    [HttpPost("survey")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<SubmitVaccinationSurveyResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<SubmitVaccinationSurveyResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<SubmitVaccinationSurveyResponseDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<SubmitVaccinationSurveyResponseDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<SubmitVaccinationSurveyResponseDto>), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> SubmitVaccinationSurvey([FromBody] SubmitVaccinationSurveyRequestDto request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                _logger.LogWarning("Unauthorized vaccination survey submit attempt - invalid user ID claim");
+                return Unauthorized(ApiResponse<SubmitVaccinationSurveyResponseDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول لتسجيل التطعيمات" }
+                ));
+            }
+
+            _logger.LogInformation(
+                "Vaccination survey submission by parent {UserId} for child {ChildId}. Selections: {Count}",
+                userId, request.ChildId, request.Selections?.Count ?? 0);
+
+            var result = await _vaccinationService.SubmitVaccinationSurveyAsync(request, userId);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning(
+                    "Failed to submit vaccination survey for child {ChildId}. Errors: {Errors}",
+                    request.ChildId, string.Join(", ", result.Errors));
+
+                if (result.Errors.Any(e => e.Contains("غير موجود")))
+                    return NotFound(result);
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation(
+                "Vaccination survey submitted for child {ChildId}. Taken: {Taken}/{Total}",
+                request.ChildId, result.Data?.TakenCount, result.Data?.TotalMilestones);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in SubmitVaccinationSurvey endpoint for child {ChildId}", request.ChildId);
+            return StatusCode(500, ApiResponse<SubmitVaccinationSurveyResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع أثناء حفظ استبيان التطعيمات" }
             ));
         }
     }

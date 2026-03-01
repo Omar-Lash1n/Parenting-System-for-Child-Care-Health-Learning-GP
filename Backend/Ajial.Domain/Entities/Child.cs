@@ -24,4 +24,9 @@ public class Child
     /// آخر وقت تفاعل فيه الطفل مع التطبيق
     /// </summary>
     public DateTime? LastActivityAt { get; set; }
+
+    /// <summary>
+    /// سجل التطعيمات - Vaccination records for this child
+    /// </summary>
+    public ICollection<ChildVaccination> Vaccinations { get; set; } = new List<ChildVaccination>();
 }
