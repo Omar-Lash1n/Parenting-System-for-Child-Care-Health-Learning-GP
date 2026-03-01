@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using Ajial.Application.DTOs.Common;
 using Ajial.Application.DTOs.Parent;
+using Ajial.Application.DTOs.Child;
 using Ajial.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,11 +13,16 @@ namespace Ajial.API.Controllers;
 public class ParentsController : ControllerBase
 {
     private readonly IParentService _parentService;
+    private readonly IChildService _childService;
     private readonly ILogger<ParentsController> _logger;
 
-    public ParentsController(IParentService parentService, ILogger<ParentsController> logger)
+    public ParentsController(
+        IParentService parentService,
+        IChildService childService,
+        ILogger<ParentsController> logger)
     {
         _parentService = parentService;
+        _childService = childService;
         _logger = logger;
     }
 
@@ -845,5 +851,47 @@ public class ParentsController : ControllerBase
     </div>
 </body>
 </html>";
+    }
+
+    /// <summary>
+    /// جلب ملخص بيانات ملف الطفل - Get child profile summary 
+    /// </summary>
+    /// <param name="childId">معرف الطفل</param>
+    [HttpGet("child/{childId}/profile-summary")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ChildProfileSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ChildProfileSummaryDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetChildProfileSummary(Guid childId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                _logger.LogWarning("Unauthorized attempt to get child profile summary. Invalid user ID claim");
+                return Unauthorized(ApiResponse<ChildProfileSummaryDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            _logger.LogInformation("Parent {ParentId} retrieving profile summary for child {ChildId}", parentUserId, childId);
+
+            var result = await _childService.GetChildProfileSummaryAsync(childId, parentUserId);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting profile summary for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<ChildProfileSummaryDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع" }
+            ));
+        }
     }
 }

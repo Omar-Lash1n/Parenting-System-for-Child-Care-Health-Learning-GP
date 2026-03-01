@@ -231,7 +231,7 @@ public class AuthService : IAuthService
                     user.FullName
                 );
             }
-            catch (Exception emailEx)
+            catch (Exception)
             {
                 // فشل إرسال الإيميل
                 return ApiResponse<ForgotPasswordResponseDto>.FailureResponse(
