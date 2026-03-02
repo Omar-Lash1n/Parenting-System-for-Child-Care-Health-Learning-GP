@@ -26,6 +26,7 @@ import 'package:Ajial/child-app/home/child_home_provider.dart';
 import 'package:Ajial/profile/settings_page.dart';
 import 'package:Ajial/profile/my_child_profile.dart';
 import 'package:Ajial/profile/child_data_profile.dart';
+import 'package:Ajial/profile/child_data_profile_form.dart';
 import 'package:Ajial/child-app/home/child_home_page.dart';
 
 void main() async {
@@ -76,7 +77,7 @@ class AjialApp extends StatelessWidget {
       ),
 
       initialRoute:
-          '/child-profile', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
+          '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
       routes: {
         '/splash': (context) => SplashScreen(),
         '/login': (context) => const LoginScreen(),
@@ -88,6 +89,7 @@ class AjialApp extends StatelessWidget {
         '/settings': (context) => const SettingsPage(),
         '/child-profile': (context) => const MyChildProfilePage(),
         '/child-data': (context) => const ChildDataProfilePage(),
+        '/child-data-form': (context) => const ChildDataProfileFormPage(),
       },
     );
   }

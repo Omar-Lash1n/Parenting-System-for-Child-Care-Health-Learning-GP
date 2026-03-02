@@ -2,9 +2,16 @@
 // Child Data Profile Screen - Following Figma CSS Specifications
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:Ajial/providers/child_data_provider.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
+import 'package:Ajial/profile/confirm_delete_child.dart';
+import 'package:Ajial/providers/confirm_delete_provider.dart';
+import 'package:Ajial/profile/child_data_profile_form.dart';
+import 'package:Ajial/profile/change_child_password.dart';
+import 'package:Ajial/profile/making_child_account.dart';
+import 'package:Ajial/providers/child_profile_provider.dart';
 
 // --- CONSTANTS ---
 const Color _kPrimaryRed = Color(0xFFBF092F);
@@ -39,15 +46,29 @@ class ChildDataProfilePage extends StatelessWidget {
                           const SizedBox(height: 8),
                           _buildHeader(context, provider),
                           const SizedBox(height: 24),
-                          _buildProgressCard(provider),
+                          _buildProgressCard(context, provider),
                           const SizedBox(height: 24),
-                          _buildPersonalSection(provider),
+                          _buildPersonalSection(context, provider),
                           const SizedBox(height: 24),
-                          _buildMedicalSection(provider),
+                          _buildMedicalSection(context, provider),
                           const SizedBox(height: 24),
-                          _buildAccountSection(provider),
+                          _buildAccountSection(context, provider),
                           const SizedBox(height: 24),
-                          _buildDangerZone(provider),
+                          // Rewards section (only when account exists)
+                          if (provider.isOlderChild &&
+                              provider.isAccountCreated)
+                            _buildRewardsSection(provider),
+                          if (provider.isOlderChild &&
+                              provider.isAccountCreated)
+                            const SizedBox(height: 24),
+                          // Account settings (only when account exists)
+                          if (provider.isOlderChild &&
+                              provider.isAccountCreated)
+                            _buildAccountSettingsSection(context, provider),
+                          if (provider.isOlderChild &&
+                              provider.isAccountCreated)
+                            const SizedBox(height: 24),
+                          _buildDangerZone(context, provider),
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -120,12 +141,36 @@ class ChildDataProfilePage extends StatelessWidget {
               Container(
                 width: 32,
                 height: 32,
-                decoration: BoxDecoration(
-                  color: _kPrimaryRed.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(Icons.child_care, size: 16, color: _kPrimaryRed),
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: _kPrimaryRed.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.child_care,
+                            size: 16, color: _kPrimaryRed),
+                      ),
+                    ),
+                    // Green online dot
+                    if (provider.isAccountActive)
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF01A449),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(width: 4),
@@ -150,7 +195,7 @@ class ChildDataProfilePage extends StatelessWidget {
   // ============================================================
   // B. PROGRESS CARD (LTR wrapper for progress bar direction)
   // ============================================================
-  Widget _buildProgressCard(ChildDataProvider provider) {
+  Widget _buildProgressCard(BuildContext context, ChildDataProvider provider) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(17),
@@ -241,21 +286,31 @@ class ChildDataProfilePage extends StatelessWidget {
             const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerRight,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _kOrange,
-                  borderRadius: BorderRadius.circular(50),
-                ),
-                child: Text(
-                  ChildDataStrings.fillDataButton,
-                  textDirection: TextDirection.rtl,
-                  style: const TextStyle(
-                    fontFamily: _kFontFamily,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const ChildDataProfileFormPage(prefill: false),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _kOrange,
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: Text(
+                    ChildDataStrings.fillDataButton,
+                    textDirection: TextDirection.rtl,
+                    style: const TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -270,45 +325,54 @@ class ChildDataProfilePage extends StatelessWidget {
   // C. SECTION HEADER (reusable)
   // RTL context: first child → RIGHT, second child → LEFT
   // ============================================================
-  Widget _buildSectionHeader(String title) {
-    return Container(
-      width: double.infinity,
-      height: 47,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: _kSectionBg,
-        borderRadius: BorderRadius.circular(50),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // FIRST in RTL → RIGHT: Section title
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: _kFontFamily,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-            ),
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const ChildDataProfileFormPage(),
           ),
-          // SECOND in RTL → LEFT: "View All" + arrow
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                ChildDataStrings.viewAll,
-                style: const TextStyle(
-                  fontFamily: _kFontFamily,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.black,
-                ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        height: 47,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: _kSectionBg,
+          borderRadius: BorderRadius.circular(50),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // FIRST in RTL → RIGHT: Section title
+            Text(
+              title,
+              style: const TextStyle(
+                fontFamily: _kFontFamily,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
               ),
-              const Icon(Icons.chevron_left, size: 24, color: Colors.black),
-            ],
-          ),
-        ],
+            ),
+            // SECOND in RTL → LEFT: "Edit All" + arrow (flipped)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  ChildDataStrings.editAll,
+                  style: const TextStyle(
+                    fontFamily: _kFontFamily,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.black,
+                  ),
+                ),
+                const Icon(Icons.chevron_right, size: 24, color: Colors.black),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -317,7 +381,7 @@ class ChildDataProfilePage extends StatelessWidget {
   // D. PROFILE INFO ROW (reusable)
   // RTL context: first child → RIGHT, second child → LEFT
   // ============================================================
-  Widget _buildProfileInfoRow(ProfileInfoItem item) {
+  Widget _buildProfileInfoRow(ProfileInfoItem item, VoidCallback onEdit) {
     return SizedBox(
       height: 50,
       child: Row(
@@ -349,8 +413,15 @@ class ChildDataProfilePage extends StatelessWidget {
               ),
             ],
           ),
-          // SECOND in RTL → LEFT: Edit icon
-          const Icon(Icons.edit_outlined, size: 24, color: Colors.black),
+          // SECOND in RTL → LEFT: Edit icon → bottom sheet
+          Padding(
+            padding: const EdgeInsets.only(left: 10),
+            child: GestureDetector(
+              onTap: onEdit,
+              child: const Icon(Icons.edit_outlined,
+                  size: 24, color: Colors.black),
+            ),
+          ),
         ],
       ),
     );
@@ -359,37 +430,86 @@ class ChildDataProfilePage extends StatelessWidget {
   // ============================================================
   // E. PERSONAL PROFILE SECTION
   // ============================================================
-  Widget _buildPersonalSection(ChildDataProvider provider) {
+  Widget _buildPersonalSection(
+      BuildContext context, ChildDataProvider provider) {
     final items = provider.personalItems;
+    final editActions = [
+      () => _showTextEditSheet(
+              context, ChildDataStrings.nameLabel, provider.name, (v) {
+            provider.setName(v);
+            _syncToProfile(context, provider);
+          }),
+      () => _showDobEditSheet(context, provider),
+      () => _showGenderEditSheet(context, provider),
+    ];
     return Column(
       children: [
-        _buildSectionHeader(ChildDataStrings.personalProfileHeader),
+        _buildSectionHeader(context, ChildDataStrings.personalProfileHeader),
         const SizedBox(height: 12),
-        ...items.map(
-          (item) => Padding(
+        ...List.generate(items.length, (i) {
+          return Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: _buildProfileInfoRow(item),
-          ),
-        ),
+            child: _buildProfileInfoRow(items[i], editActions[i]),
+          );
+        }),
       ],
     );
+  }
+
+  /// Push name, age, account state from ChildDataProvider → ChildProfileProvider
+  void _syncToProfile(BuildContext context, ChildDataProvider p) {
+    final profileProv =
+        Provider.of<ChildProfileProvider>(context, listen: false);
+    profileProv.setChildData(
+      name: p.name.isNotEmpty ? p.name : p.childName,
+      age: p.age,
+    );
+    profileProv.setAgeInYears(p.childAgeInYears);
+    profileProv.setAccountCreated(p.isAccountCreated);
   }
 
   // ============================================================
   // F. MEDICAL PROFILE SECTION
   // ============================================================
-  Widget _buildMedicalSection(ChildDataProvider provider) {
+  Widget _buildMedicalSection(
+      BuildContext context, ChildDataProvider provider) {
     final items = provider.medicalItems;
+    final editActions = [
+      () => _showMeasurementEditSheet(
+          context,
+          ChildDataStrings.heightLabel,
+          ChildDataStrings.formHeightHint,
+          ChildDataStrings.formUnitCm,
+          provider.heightVal,
+          (v) => provider.setHeight(v)),
+      () => _showMeasurementEditSheet(
+          context,
+          ChildDataStrings.weightLabel,
+          ChildDataStrings.formWeightHint,
+          ChildDataStrings.formUnitKg,
+          provider.weightVal,
+          (v) => provider.setWeight(v)),
+      () => _showMeasurementEditSheet(
+          context,
+          ChildDataStrings.headCircumferenceLabel,
+          ChildDataStrings.formHeadCircHint,
+          ChildDataStrings.formUnitCm,
+          provider.headCircumference,
+          (v) => provider.setHeadCircumference(v)),
+      () => _showBloodTypeEditSheet(context, provider),
+      () => _showTextEditSheet(
+          context, ChildDataStrings.medicalHistoryLabel, '', (v) {}),
+    ];
     return Column(
       children: [
-        _buildSectionHeader(ChildDataStrings.medicalProfileHeader),
+        _buildSectionHeader(context, ChildDataStrings.medicalProfileHeader),
         const SizedBox(height: 12),
-        ...items.map(
-          (item) => Padding(
+        ...List.generate(items.length, (i) {
+          return Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: _buildProfileInfoRow(item),
-          ),
-        ),
+            child: _buildProfileInfoRow(items[i], editActions[i]),
+          );
+        }),
       ],
     );
   }
@@ -397,10 +517,185 @@ class ChildDataProfilePage extends StatelessWidget {
   // ============================================================
   // G. ACCOUNT SECTION
   // ============================================================
-  Widget _buildAccountSection(ChildDataProvider provider) {
+  Widget _buildAccountSection(
+      BuildContext context, ChildDataProvider provider) {
+    // If account exists, show active status
+    if (provider.isOlderChild && provider.isAccountCreated) {
+      return Column(
+        children: [
+          Container(
+            width: double.infinity,
+            height: 47,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: _kSectionBg,
+              borderRadius: BorderRadius.circular(50),
+            ),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                ChildDataStrings.accountHeader(provider.childName),
+                style: const TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(17),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: _kBorderLight),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF01A449),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  provider.isAccountActive ? 'الحساب مفعل' : 'الحساب معطل',
+                  style: TextStyle(
+                    fontFamily: _kFontFamily,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: provider.isAccountActive
+                        ? const Color(0xFF01A449)
+                        : _kDangerRed,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Original: not old enough OR old enough but no account yet
+    if (provider.isOlderChild && !provider.isAccountCreated) {
+      // Age >= 4 but no account → show "create account" card
+      return Column(
+        children: [
+          Container(
+            width: double.infinity,
+            height: 47,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: _kSectionBg,
+              borderRadius: BorderRadius.circular(50),
+            ),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                ChildDataStrings.accountHeader(provider.childName),
+                style: const TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(17),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: _kBorderLight),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ChildDataStrings.accountCardTitle(provider.childName),
+                  style: const TextStyle(
+                    fontFamily: _kFontFamily,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: _kTextDark,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  ChildDataStrings.accountCardDescription(provider.childName),
+                  style: const TextStyle(
+                    fontFamily: _kFontFamily,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: _kTextGrey,
+                    height: 1.25,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () async {
+                    final result = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => const MakingChildAccountPage(),
+                      ),
+                    );
+                    if (result == true) {
+                      _syncToProfile(context, provider);
+                    }
+                  },
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _kPrimaryRed,
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: Text(
+                      ChildDataStrings.createAccountButton,
+                      style: const TextStyle(
+                        fontFamily: _kFontFamily,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Not old enough (< 4 years)
     return Column(
       children: [
-        // Header (right-aligned title, no "view all")
         Container(
           width: double.infinity,
           height: 47,
@@ -423,7 +718,6 @@ class ChildDataProfilePage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        // Card
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(17),
@@ -440,7 +734,6 @@ class ChildDataProfilePage extends StatelessWidget {
             ],
           ),
           child: Column(
-            // start = RIGHT in RTL
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -466,7 +759,6 @@ class ChildDataProfilePage extends StatelessWidget {
                 textAlign: TextAlign.right,
               ),
               const SizedBox(height: 12),
-              // Create Account button (dimmed)
               Opacity(
                 opacity: 0.5,
                 child: Container(
@@ -495,10 +787,374 @@ class ChildDataProfilePage extends StatelessWidget {
   }
 
   // ============================================================
+  // G2. REWARDS SECTION (Stars, Badges)
+  // ============================================================
+  Widget _buildRewardsSection(ChildDataProvider provider) {
+    return Column(
+      children: [
+        // Rewards header (inline, no "edit all" button)
+        Container(
+          width: double.infinity,
+          height: 47,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: _kSectionBg,
+            borderRadius: BorderRadius.circular(50),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                ChildDataStrings.rewardsHeader,
+                style: const TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                ),
+              ),
+              Text(
+                ChildDataStrings.editAll,
+                style: const TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _kBorderLight),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Stars
+              Expanded(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFE8401).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: const Color(0xFFFE8401).withOpacity(0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.star,
+                          size: 28, color: Color(0xFFFE8401)),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${provider.starsCount}',
+                            style: const TextStyle(
+                              fontFamily: _kFontFamily,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Text(
+                            ChildDataStrings.starsUnit,
+                            style: TextStyle(
+                              fontFamily: _kFontFamily,
+                              fontSize: 12,
+                              color: Colors.black.withOpacity(0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Badges
+              Expanded(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF01A449).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: const Color(0xFF01A449).withOpacity(0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.workspace_premium,
+                          size: 28, color: Color(0xFF01A449)),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${provider.badgesCount}',
+                            style: const TextStyle(
+                              fontFamily: _kFontFamily,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Text(
+                            ChildDataStrings.badgesUnit,
+                            style: TextStyle(
+                              fontFamily: _kFontFamily,
+                              fontSize: 12,
+                              color: Colors.black.withOpacity(0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // G3. ACCOUNT SETTINGS SECTION (Edit ID, Change Password, Deactivate)
+  // ============================================================
+  Widget _buildAccountSettingsSection(
+      BuildContext context, ChildDataProvider provider) {
+    return Column(
+      children: [
+        // Section header
+        Container(
+          width: double.infinity,
+          height: 47,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: _kSectionBg,
+            borderRadius: BorderRadius.circular(50),
+          ),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              ChildDataStrings.accountSettingsHeader(provider.childName),
+              style: const TextStyle(
+                fontFamily: _kFontFamily,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Settings rows
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _kBorderLight),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Edit Child Code
+              _buildSettingsRow(
+                icon: Icons.person_outline,
+                iconColor: const Color(0xFF008CFF),
+                iconBgColor: const Color(0xFF008CFF).withOpacity(0.1),
+                label: ChildDataStrings.childCodeLabel,
+                value: provider.childCode,
+                onEdit: () {
+                  final ctrl = TextEditingController(text: provider.childCode);
+                  _showEditBottomSheet(
+                    context,
+                    title: ChildDataStrings.childCodeLabel,
+                    content: Column(
+                      children: [
+                        Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                                color: Colors.black.withOpacity(0.25)),
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          child: TextField(
+                            controller: ctrl,
+                            textAlign: TextAlign.right,
+                            textDirection: TextDirection.rtl,
+                            keyboardType: TextInputType.number,
+                            maxLength: 4,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            style: const TextStyle(
+                                fontFamily: _kFontFamily, fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: 'أدخل 4 أرقام',
+                              counterText: '',
+                              hintStyle: TextStyle(
+                                fontFamily: _kFontFamily,
+                                fontSize: 14,
+                                color: Colors.black.withOpacity(0.5),
+                              ),
+                              border: InputBorder.none,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildSheetSaveButton(context, () {
+                          if (ctrl.text.length != 4) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('يجب أن يتكون الكود من 4 أرقام',
+                                    style: TextStyle(fontFamily: _kFontFamily)),
+                              ),
+                            );
+                            return;
+                          }
+                          provider.setChildCode(ctrl.text);
+                          Navigator.of(context).pop();
+                        }),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              Divider(color: Colors.black.withOpacity(0.05), height: 1),
+
+              // Change Password
+              _buildSettingsRow(
+                icon: Icons.vpn_key,
+                iconColor: const Color(0xFF01A449),
+                iconBgColor: const Color(0xFF01A449).withOpacity(0.1),
+                label: ChildDataStrings.changePasswordLabel,
+                value: '•••••',
+                onEdit: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ChangeChildPasswordPage(),
+                    ),
+                  );
+                },
+              ),
+              Divider(color: Colors.black.withOpacity(0.05), height: 1),
+
+              // Deactivate Account
+              _buildSettingsRow(
+                icon: Icons.block,
+                iconColor: _kDangerRed,
+                iconBgColor: _kDangerRed.withOpacity(0.1),
+                label: ChildDataStrings.deactivateAccountLabel,
+                value: '',
+                isDestructive: true,
+                onEdit: () {
+                  provider.deactivateAccount();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('تم تعطيل الحساب',
+                          style: TextStyle(fontFamily: _kFontFamily)),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettingsRow({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required String label,
+    required String value,
+    required VoidCallback onEdit,
+    bool isDestructive = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(child: Icon(icon, size: 18, color: iconColor)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: _kFontFamily,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isDestructive ? _kDangerRed : Colors.black,
+              ),
+            ),
+          ),
+          if (value.isNotEmpty)
+            Text(
+              value,
+              style: TextStyle(
+                fontFamily: _kFontFamily,
+                fontSize: 14,
+                color: Colors.black.withOpacity(0.5),
+              ),
+            ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onEdit,
+            child: Icon(
+              isDestructive ? Icons.arrow_forward_ios : Icons.edit,
+              size: 16,
+              color: isDestructive ? _kDangerRed : _kOrange,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
   // H. DANGER ZONE
   // RTL context: first child → RIGHT
   // ============================================================
-  Widget _buildDangerZone(ChildDataProvider provider) {
+  Widget _buildDangerZone(BuildContext context, ChildDataProvider provider) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -594,14 +1250,13 @@ class ChildDataProfilePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 23.3),
-          // Delete button
+          // Delete button — opens confirmation popup
           SizedBox(
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
-                // TODO: Show confirmation dialog
-              },
+              onPressed: () =>
+                  _showDeleteConfirmPopup(context, provider.childName),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _kDangerRed,
                 shape: RoundedRectangleBorder(
@@ -621,6 +1276,640 @@ class ChildDataProfilePage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // POPUP: Delete confirmation
+  // ============================================================
+  void _showDeleteConfirmPopup(BuildContext context, String childName) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.4),
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: 318,
+              height: 301,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 15,
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // ── X close button (top-RIGHT) ──────────────
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.close, size: 20),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // ── Red exclamation icon ───────────────────────────
+                  Positioned(
+                    top: 39,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        width: 75,
+                        height: 75,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF0035).withOpacity(0.10),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.priority_high_rounded,
+                            size: 39,
+                            color: Color(0xFFFF0035),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // ── Title + Subtitle ───────────────────────────────
+                  Positioned(
+                    top: 122,
+                    left: 15,
+                    right: 15,
+                    child: Column(
+                      children: [
+                        Text(
+                          ConfirmDeleteStrings.popupTitle
+                              .replaceAll('انس', childName),
+                          style: const TextStyle(
+                            fontFamily: _kFontFamily,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          ConfirmDeleteStrings.popupSubtitle,
+                          style: const TextStyle(
+                            fontFamily: _kFontFamily,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w300,
+                            color: Colors.black,
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ── Buttons row ────────────────────────────────────
+                  Positioned(
+                    bottom: 24,
+                    left: 24,
+                    right: 24,
+                    child: Row(
+                      children: [
+                        // LEFT (second in RTL) — outline Cancel
+                        Expanded(
+                          child: SizedBox(
+                            height: 50,
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                    color: Colors.black.withOpacity(0.5)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                              ),
+                              child: const Text(
+                                'رجوع',
+                                style: TextStyle(
+                                  fontFamily: _kFontFamily,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // RIGHT (first in RTL) — red OK → navigate
+                        Expanded(
+                          child: SizedBox(
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.of(ctx).pop(); // close popup
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => ConfirmDeleteChildPage(
+                                      childName: childName,
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFF0035),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'استمرار',
+                                style: TextStyle(
+                                  fontFamily: _kFontFamily,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // BOTTOM SHEET HELPERS (Figma CSS: 34px top radius, white, shadow)
+  // ============================================================
+
+  void _showEditBottomSheet(BuildContext context,
+      {required String title, required Widget content}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(34)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 15,
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Title + X button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.of(ctx).pop(),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.close, size: 20),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              content,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Text field bottom sheet (Name, History) ─────────────────
+  void _showTextEditSheet(BuildContext context, String title,
+      String initialValue, void Function(String) onSave) {
+    final controller = TextEditingController(text: initialValue);
+    _showEditBottomSheet(
+      context,
+      title: title,
+      content: Column(
+        children: [
+          Container(
+            height: 50,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.black.withOpacity(0.25)),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            child: TextField(
+              controller: controller,
+              textAlign: TextAlign.right,
+              textDirection: TextDirection.rtl,
+              style: const TextStyle(fontFamily: _kFontFamily, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: title,
+                hintStyle: TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 14,
+                  color: Colors.black.withOpacity(0.5),
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildSheetSaveButton(context, () {
+            onSave(controller.text);
+            Navigator.of(context).pop();
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ── Measurement field bottom sheet (Height, Weight, Head Circ) ───
+  void _showMeasurementEditSheet(
+    BuildContext context,
+    String title,
+    String hint,
+    String unit,
+    String initialValue,
+    void Function(String) onSave,
+  ) {
+    final controller = TextEditingController(text: initialValue);
+    _showEditBottomSheet(
+      context,
+      title: title,
+      content: Column(
+        children: [
+          Container(
+            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.black.withOpacity(0.25)),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    textAlign: TextAlign.right,
+                    textDirection: TextDirection.rtl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+                    ],
+                    style:
+                        const TextStyle(fontFamily: _kFontFamily, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: hint,
+                      hintStyle: TextStyle(
+                        fontFamily: _kFontFamily,
+                        fontSize: 14,
+                        color: Colors.black.withOpacity(0.5),
+                      ),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                Opacity(
+                  opacity: 0.5,
+                  child: Text(
+                    unit,
+                    style: const TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 14,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildSheetSaveButton(context, () {
+            onSave(controller.text);
+            Navigator.of(context).pop();
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ── DOB bottom sheet (Day + Month dropdown + Year) ──────────
+  void _showDobEditSheet(BuildContext context, ChildDataProvider provider) {
+    final dayC = TextEditingController(text: provider.dobDay);
+    final yearC = TextEditingController(text: provider.dobYear);
+    String? selectedMonth =
+        provider.dobMonth.isNotEmpty ? provider.dobMonth : null;
+
+    _showEditBottomSheet(
+      context,
+      title: ChildDataStrings.formDobLabel.replaceAll('*', '').trim(),
+      content: StatefulBuilder(
+        builder: (ctx, setSheetState) => Column(
+          children: [
+            Row(
+              children: [
+                // Day
+                Expanded(
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black.withOpacity(0.25)),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: TextField(
+                      controller: dayC,
+                      textAlign: TextAlign.center,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: const TextStyle(
+                          fontFamily: _kFontFamily, fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: ChildDataStrings.formDobDay,
+                        hintStyle: TextStyle(
+                          fontFamily: _kFontFamily,
+                          fontSize: 14,
+                          color: Colors.black.withOpacity(0.5),
+                        ),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 11),
+                // Month dropdown
+                Expanded(
+                  child: Container(
+                    height: 50,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black.withOpacity(0.25)),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedMonth,
+                        isExpanded: true,
+                        icon: Icon(Icons.keyboard_arrow_down,
+                            size: 20, color: Colors.black.withOpacity(0.5)),
+                        style: const TextStyle(
+                          fontFamily: _kFontFamily,
+                          fontSize: 14,
+                          color: Colors.black,
+                        ),
+                        hint: Text(
+                          ChildDataStrings.formDobMonth,
+                          style: TextStyle(
+                            fontFamily: _kFontFamily,
+                            fontSize: 14,
+                            color: Colors.black.withOpacity(0.5),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        items: ChildDataProvider.monthNames.map((m) {
+                          return DropdownMenuItem(
+                              value: m, child: Center(child: Text(m)));
+                        }).toList(),
+                        onChanged: (v) =>
+                            setSheetState(() => selectedMonth = v),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 11),
+                // Year
+                Expanded(
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black.withOpacity(0.25)),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: TextField(
+                      controller: yearC,
+                      textAlign: TextAlign.center,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: const TextStyle(
+                          fontFamily: _kFontFamily, fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: ChildDataStrings.formDobYear,
+                        hintStyle: TextStyle(
+                          fontFamily: _kFontFamily,
+                          fontSize: 14,
+                          color: Colors.black.withOpacity(0.5),
+                        ),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildSheetSaveButton(context, () {
+              provider.setDob(dayC.text, selectedMonth ?? '', yearC.text);
+              _syncToProfile(context, provider);
+              Navigator.of(context).pop();
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Gender toggle bottom sheet ──────────────────────────────
+  void _showGenderEditSheet(BuildContext context, ChildDataProvider provider) {
+    int selected = provider.selectedGenderIndex;
+    _showEditBottomSheet(
+      context,
+      title: ChildDataStrings.formGenderLabel.replaceAll('*', '').trim(),
+      content: StatefulBuilder(
+        builder: (ctx, setSheetState) => Column(
+          children: [
+            Row(
+              children: [
+                _buildGenderSheetBtn(ChildDataStrings.formGenderMale, 0,
+                    selected, (i) => setSheetState(() => selected = i)),
+                const SizedBox(width: 11),
+                _buildGenderSheetBtn(ChildDataStrings.formGenderFemale, 1,
+                    selected, (i) => setSheetState(() => selected = i)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildSheetSaveButton(context, () {
+              provider.setGender(selected);
+              Navigator.of(context).pop();
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderSheetBtn(
+      String label, int index, int selected, void Function(int) onTap) {
+    final isSelected = selected == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(index),
+        child: Container(
+          height: 50,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFFD90000).withOpacity(0.05)
+                : Colors.white,
+            border: Border.all(
+              color: isSelected ? _kPrimaryRed : Colors.black.withOpacity(0.25),
+            ),
+            borderRadius: BorderRadius.circular(50),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: _kFontFamily,
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                color:
+                    isSelected ? Colors.black : Colors.black.withOpacity(0.5),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Blood type dropdown bottom sheet ────────────────────────
+  void _showBloodTypeEditSheet(
+      BuildContext context, ChildDataProvider provider) {
+    final bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+    String? selected =
+        provider.bloodType.isNotEmpty ? provider.bloodType : null;
+
+    _showEditBottomSheet(
+      context,
+      title: ChildDataStrings.bloodTypeLabel,
+      content: StatefulBuilder(
+        builder: (ctx, setSheetState) => Column(
+          children: [
+            Container(
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.black.withOpacity(0.25)),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: selected,
+                  isExpanded: true,
+                  icon: Icon(Icons.keyboard_arrow_down,
+                      size: 20, color: Colors.black.withOpacity(0.5)),
+                  style: const TextStyle(
+                    fontFamily: _kFontFamily,
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
+                  hint: Text(
+                    ChildDataStrings.formBloodTypeHint,
+                    style: TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 14,
+                      color: Colors.black.withOpacity(0.5),
+                    ),
+                  ),
+                  items: bloodTypes.map((t) {
+                    return DropdownMenuItem(
+                        value: t, child: Center(child: Text(t)));
+                  }).toList(),
+                  onChanged: (v) => setSheetState(() => selected = v),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildSheetSaveButton(context, () {
+              if (selected != null) provider.setBloodType(selected!);
+              Navigator.of(context).pop();
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Reusable red save button for bottom sheets ──────────────
+  Widget _buildSheetSaveButton(BuildContext context, VoidCallback onTap) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _kPrimaryRed,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(50),
+          ),
+          elevation: 0,
+        ),
+        child: Text(
+          ChildDataStrings.bottomSheetSave,
+          style: const TextStyle(
+            fontFamily: _kFontFamily,
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }

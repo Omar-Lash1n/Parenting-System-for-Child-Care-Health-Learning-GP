@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:Ajial/providers/child_profile_provider.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
+import 'package:Ajial/profile/child_data_profile_form.dart';
+import 'package:Ajial/profile/making_child_account.dart';
+import 'package:Ajial/providers/child_data_provider.dart';
 
 // --- CONSTANTS ---
 const Color _kPrimaryRed = Color(0xFFBF092F);
@@ -41,7 +44,11 @@ class MyChildProfilePage extends StatelessWidget {
                           const SizedBox(height: 16),
                           _buildHeroSection(provider),
                           const SizedBox(height: 16),
-                          _buildProgressCard(provider),
+                          // Account card for 4+ (between hero and progress)
+                          if (provider.isOlderChild)
+                            _buildAccountCard(context, provider),
+                          if (provider.isOlderChild) const SizedBox(height: 12),
+                          _buildProgressCard(context, provider),
                           const SizedBox(height: 12),
                           _buildDashboardGrid(context, provider),
                           const SizedBox(height: 16),
@@ -162,31 +169,35 @@ class MyChildProfilePage extends StatelessWidget {
   // B. CENTRAL HERO SECTION
   // ============================================================
   Widget _buildHeroSection(ChildProfileProvider provider) {
+    final isOlder = provider.isOlderChild;
+    final frameImage =
+        isOlder ? 'images/decorative_old.png' : 'images/decorative_little.png';
+
     return Column(
       children: [
         // --- Large Avatar with decorative frame ---
         SizedBox(
-          width: 142,
-          height: 142,
+          width: 150,
+          height: 154,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Outer container (for frame overlay later)
-              Container(
-                width: 130,
-                height: 130,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
+              // Decorative frame
+              Image.asset(
+                frameImage,
+                width: 150,
+                height: 150,
+                fit: BoxFit.contain,
               ),
 
               // Inner avatar circle
               Container(
-                width: 103.85,
-                height: 103.85,
+                width: 104,
+                height: 104,
                 decoration: BoxDecoration(
-                  color: _kPrimaryRed.withOpacity(0.05),
+                  color: isOlder
+                      ? const Color(0xFFF6E4D0)
+                      : _kPrimaryRed.withOpacity(0.05),
                   shape: BoxShape.circle,
                 ),
                 child: provider.profileImageUrl != null &&
@@ -194,8 +205,8 @@ class MyChildProfilePage extends StatelessWidget {
                     ? ClipOval(
                         child: Image.network(
                           provider.profileImageUrl!,
-                          width: 103.85,
-                          height: 103.85,
+                          width: 104,
+                          height: 104,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => const Center(
                             child: Icon(
@@ -238,6 +249,31 @@ class MyChildProfilePage extends StatelessWidget {
                   ),
                 ),
               ),
+
+              // Green online indicator (only if account active)
+              if (isOlder && provider.isAccountActive)
+                Positioned(
+                  left: 112,
+                  top: 99,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 15,
+                        height: 15,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF01A449),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -267,14 +303,168 @@ class MyChildProfilePage extends StatelessWidget {
             color: Colors.black,
           ),
         ),
+
+        // Gamification stats (only if account created)
+        if (isOlder && provider.isAccountCreated) ...[
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Badges pill
+              _buildStatPill(
+                icon: Icons.workspace_premium,
+                iconColor: const Color(0xFF01A449),
+                bgColor: const Color(0xFF01A449).withOpacity(0.05),
+                borderColor: const Color(0xFF01A449).withOpacity(0.25),
+                text: '${provider.badgesCount} وسام',
+              ),
+              const SizedBox(width: 12),
+              // Stars pill
+              _buildStatPill(
+                icon: Icons.star,
+                iconColor: const Color(0xFFFE8401),
+                bgColor: const Color(0xFFFE8401).withOpacity(0.05),
+                borderColor: const Color(0xFFFE8401).withOpacity(0.25),
+                text: '${provider.starsCount} نجمة',
+              ),
+            ],
+          ),
+        ],
       ],
     );
+  }
+
+  Widget _buildStatPill({
+    required IconData icon,
+    required Color iconColor,
+    required Color bgColor,
+    required Color borderColor,
+    required String text,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(50),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            text,
+            style: const TextStyle(
+              fontFamily: _kFontFamily,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(icon, size: 24, color: iconColor),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // B2. ACCOUNT CARD (4+ years, between hero and progress)
+  // ============================================================
+  Widget _buildAccountCard(
+      BuildContext context, ChildProfileProvider provider) {
+    if (!provider.isAccountCreated) {
+      // Scenario A: No account → Red gradient invite card
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(17),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.centerRight,
+            end: Alignment.centerLeft,
+            colors: [
+              Color(0xFFBF092F),
+              Color(0xB3BF092F), // 70% opacity
+            ],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              ChildDataStrings.accountCardTitle(provider.childName),
+              style: const TextStyle(
+                fontFamily: _kFontFamily,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.right,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              ChildDataStrings.accountCardDescription(provider.childName),
+              style: const TextStyle(
+                fontFamily: _kFontFamily,
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                color: Colors.white,
+                height: 1.25,
+              ),
+              textAlign: TextAlign.right,
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () async {
+                final result = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => const MakingChildAccountPage(),
+                  ),
+                );
+                if (result == true) {
+                  provider.setAccountCreated(true);
+                }
+              },
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                child: const Text(
+                  'انشاء حساب',
+                  style: TextStyle(
+                    fontFamily: _kFontFamily,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _kPrimaryRed,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    // Scenario B: Account exists → no additional card needed
+    // (stars/badges already shown in hero section)
+    return const SizedBox.shrink();
   }
 
   // ============================================================
   // C. PROGRESS CARD
   // ============================================================
-  Widget _buildProgressCard(ChildProfileProvider provider) {
+  Widget _buildProgressCard(
+      BuildContext context, ChildProfileProvider provider) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(17),
@@ -382,7 +572,12 @@ class MyChildProfilePage extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: GestureDetector(
                 onTap: () {
-                  // TODO: Navigate to fill data
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const ChildDataProfileFormPage(prefill: true),
+                    ),
+                  );
                 },
                 child: Container(
                   padding:
