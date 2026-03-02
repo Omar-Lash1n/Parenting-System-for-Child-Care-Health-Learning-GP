@@ -279,8 +279,10 @@ public class ChildService : IChildService
                 AgeMonths = months,
                 AgeDays = days,
                 ProfileImageUrl = child.ProfileImageUrl,
-                ProfileCompletionPercentage = 0
+                ProfileCompletionPercentage = CalculateProfileCompletion(child)
             };
+
+            ApplyAccountStatus(summary, child, firstName);
 
             return ApiResponse<ChildProfileSummaryDto>.SuccessResponse(
                 summary,
@@ -318,5 +320,283 @@ public class ChildService : IChildService
         if (years < 0) return (0, 0, 0);
 
         return (years, months, days);
+    }
+
+    private void ApplyAccountStatus<T>(T dto, Child child, string firstName)
+        where T : class
+    {
+        // Determine age in full years
+        var (ageYears, _, _) = CalculateExactAge(child.BirthDate);
+        bool isEligible = ageYears >= 4;
+        bool hasAccount = !string.IsNullOrEmpty(child.ChildLoginId);
+
+        string message;
+        string action;
+
+        if (!isEligible)
+        {
+            message = $"يبدو ان {firstName} لم يتم 4 اعوام";
+            action = "not_eligible";
+        }
+        else if (hasAccount)
+        {
+            message = $"يبدو ان {firstName} اتم 4 اعوام بحمدالله";
+            action = "view_account";
+        }
+        else
+        {
+            message = $"يبدو ان {firstName} اتم 4 اعوام بحمدالله";
+            action = "create_account";
+        }
+
+        // Use reflection-free approach via dynamic cast
+        if (dto is ChildProfileSummaryDto summaryDto)
+        {
+            summaryDto.IsEligibleForAccount = isEligible;
+            summaryDto.HasAccount = hasAccount;
+            summaryDto.AccountStatusMessage = message;
+            summaryDto.AccountAction = action;
+        }
+        else if (dto is ChildFileDataDto fileDto)
+        {
+            fileDto.IsEligibleForAccount = isEligible;
+            fileDto.HasAccount = hasAccount;
+            fileDto.AccountStatusMessage = message;
+            fileDto.AccountAction = action;
+        }
+    }
+
+    private int CalculateProfileCompletion(Child child)
+    {
+        int totalFields = 8;
+        int filledFields = 0;
+
+        // Personal Profile fields (always filled from child creation)
+        if (!string.IsNullOrWhiteSpace(child.FullName)) filledFields++;   // name
+        if (child.BirthDate != default) filledFields++;                    // age
+        if (!string.IsNullOrWhiteSpace(child.Gender)) filledFields++;      // type
+
+        // Medical Profile fields
+        if (child.Height.HasValue) filledFields++;
+        if (child.Weight.HasValue) filledFields++;
+        if (child.HeadCircumference.HasValue) filledFields++;
+        if (!string.IsNullOrWhiteSpace(child.BloodType)) filledFields++;
+        if (!string.IsNullOrWhiteSpace(child.MedicalHistory)) filledFields++;
+
+        return (int)Math.Round((double)filledFields / totalFields * 100);
+    }
+
+    private async Task<(Parent? parent, Child? child, string? error)> ValidateParentChildAccessAsync(Guid childId, Guid parentUserId)
+    {
+        var parent = await _unitOfWork.Parents.GetFirstOrDefaultAsync(p => p.UserId == parentUserId);
+        if (parent == null)
+            return (null, null, "حساب ولي الأمر غير موجود");
+
+        var child = await _unitOfWork.Children.GetByIdAsync(childId);
+        if (child == null || child.ParentId != parent.Id)
+            return (parent, null, "الطفل غير موجود أو لا ينتمي لهذا الحساب");
+
+        return (parent, child, null);
+    }
+
+    public async Task<ApiResponse<ChildFileDataDto>> GetChildFileDataAsync(Guid childId, Guid parentUserId)
+    {
+        try
+        {
+            var (parent, child, error) = await ValidateParentChildAccessAsync(childId, parentUserId);
+            if (error != null)
+            {
+                return ApiResponse<ChildFileDataDto>.FailureResponse(
+                    "فشل في جلب بيانات الطفل",
+                    new List<string> { error }
+                );
+            }
+
+            var (years, months, days) = CalculateExactAge(child!.BirthDate);
+
+            string firstName = string.IsNullOrWhiteSpace(child.FullName)
+                ? ""
+                : child.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+
+            var dto = new ChildFileDataDto
+            {
+                ChildId = child.Id,
+                FirstName = firstName,
+                FullName = child.FullName,
+                ProfileImageUrl = child.ProfileImageUrl,
+                AgeYears = years,
+                AgeMonths = months,
+                AgeDays = days,
+                Gender = child.Gender,
+                Height = child.Height.HasValue ? $"{child.Height} سم" : null,
+                Weight = child.Weight.HasValue ? $"{child.Weight} كجم" : null,
+                HeadCircumference = child.HeadCircumference.HasValue ? $"{child.HeadCircumference} سم" : null,
+                BloodType = child.BloodType,
+                MedicalHistory = child.MedicalHistory,
+                ProfileCompletionPercentage = CalculateProfileCompletion(child)
+            };
+
+            ApplyAccountStatus(dto, child, firstName);
+
+            return ApiResponse<ChildFileDataDto>.SuccessResponse(
+                dto,
+                "تم جلب بيانات ملف الطفل بنجاح"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ChildFileDataDto>.FailureResponse(
+                "حدث خطأ أثناء جلب بيانات ملف الطفل",
+                new List<string> { ex.Message }
+            );
+        }
+    }
+
+    public async Task<ApiResponse<UpdateChildMedicalDataResponseDto>> UpdateChildMedicalDataAsync(
+        Guid childId, Guid parentUserId, UpdateChildMedicalDataDto request)
+    {
+        try
+        {
+            var (parent, child, error) = await ValidateParentChildAccessAsync(childId, parentUserId);
+            if (error != null)
+            {
+                return ApiResponse<UpdateChildMedicalDataResponseDto>.FailureResponse(
+                    "فشل في تحديث بيانات الطفل",
+                    new List<string> { error }
+                );
+            }
+
+            var fieldsUpdated = new List<string>();
+
+            // ── Personal Profile fields ──
+            if (!string.IsNullOrWhiteSpace(request.FullName))
+            {
+                child!.FullName = request.FullName.Trim();
+                fieldsUpdated.Add("FullName");
+            }
+
+            if (request.BirthDate.HasValue)
+            {
+                child!.BirthDate = request.BirthDate.Value;
+                // Recalculate age in years
+                child.Age = DateTime.Today.Year - request.BirthDate.Value.Year;
+                if (request.BirthDate.Value.Date > DateTime.Today.AddYears(-child.Age)) child.Age--;
+                fieldsUpdated.Add("BirthDate");
+            }
+
+            // ── Medical Profile fields ──
+            if (request.Height.HasValue)
+            {
+                child!.Height = request.Height.Value;
+                fieldsUpdated.Add("Height");
+            }
+
+            if (request.Weight.HasValue)
+            {
+                child!.Weight = request.Weight.Value;
+                fieldsUpdated.Add("Weight");
+            }
+
+            if (request.HeadCircumference.HasValue)
+            {
+                child!.HeadCircumference = request.HeadCircumference.Value;
+                fieldsUpdated.Add("HeadCircumference");
+            }
+
+            if (request.BloodType != null)
+            {
+                child!.BloodType = request.BloodType;
+                fieldsUpdated.Add("BloodType");
+            }
+
+            if (request.MedicalHistory != null)
+            {
+                child!.MedicalHistory = request.MedicalHistory;
+                fieldsUpdated.Add("MedicalHistory");
+            }
+
+            if (fieldsUpdated.Count == 0)
+            {
+                return ApiResponse<UpdateChildMedicalDataResponseDto>.FailureResponse(
+                    "لم يتم تقديم أي بيانات للتحديث",
+                    new List<string> { "يرجى إرسال حقل واحد على الأقل للتحديث" }
+                );
+            }
+
+            child!.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.Children.UpdateAsync(child);
+            await _unitOfWork.SaveAsync();
+
+            var response = new UpdateChildMedicalDataResponseDto
+            {
+                ChildId = child.Id,
+                FieldsUpdated = fieldsUpdated,
+                ProfileCompletionPercentage = CalculateProfileCompletion(child)
+            };
+
+            return ApiResponse<UpdateChildMedicalDataResponseDto>.SuccessResponse(
+                response,
+                "تم تحديث البيانات الطبية بنجاح"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<UpdateChildMedicalDataResponseDto>.FailureResponse(
+                "حدث خطأ أثناء تحديث البيانات الطبية",
+                new List<string> { ex.Message }
+            );
+        }
+    }
+
+    public async Task<ApiResponse<DeleteChildResponseDto>> DeleteChildAsync(Guid childId, Guid parentUserId)
+    {
+        try
+        {
+            var (parent, child, error) = await ValidateParentChildAccessAsync(childId, parentUserId);
+            if (error != null)
+            {
+                return ApiResponse<DeleteChildResponseDto>.FailureResponse(
+                    "فشل في حذف الطفل",
+                    new List<string> { error }
+                );
+            }
+
+            string childName = child!.FullName;
+
+            // Delete profile image if it exists and is not a default avatar
+            if (!string.IsNullOrEmpty(child.ProfileImageUrl) &&
+                !child.ProfileImageUrl.Contains("default"))
+            {
+                try
+                {
+                    await _imageService.DeleteImageAsync(child.ProfileImageUrl);
+                }
+                catch
+                {
+                    // Continue with deletion even if image cleanup fails
+                }
+            }
+
+            await _unitOfWork.Children.DeleteAsync(child);
+            await _unitOfWork.SaveAsync();
+
+            var response = new DeleteChildResponseDto
+            {
+                ChildId = childId,
+                ChildName = childName
+            };
+
+            return ApiResponse<DeleteChildResponseDto>.SuccessResponse(
+                response,
+                $"تم حذف ملف {childName} بنجاح"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<DeleteChildResponseDto>.FailureResponse(
+                "حدث خطأ أثناء حذف الطفل",
+                new List<string> { ex.Message }
+            );
+        }
     }
 }

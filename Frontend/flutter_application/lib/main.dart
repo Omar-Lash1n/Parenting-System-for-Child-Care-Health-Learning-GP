@@ -19,13 +19,10 @@ import 'package:Ajial/providers/add_child_flow_provider.dart';
 import 'package:Ajial/providers/child_login_provider.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
 import 'package:Ajial/providers/settings_provider.dart';
-<<<<<<< HEAD
 import 'package:Ajial/providers/family_provider.dart';
-=======
 import 'package:Ajial/providers/child_profile_provider.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
 import 'package:Ajial/providers/child_data_provider.dart';
->>>>>>> 504b0dc9a36d92da0e2a97d09e5152111c393298
 import 'package:Ajial/child-app/home/child_home_provider.dart';
 import 'package:Ajial/profile/settings_page.dart';
 import 'package:Ajial/profile/my_child_profile.dart';
@@ -50,13 +47,10 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ParentProfileProvider()),
         ChangeNotifierProvider(create: (_) => ChildHomeProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
-<<<<<<< HEAD
         ChangeNotifierProvider(create: (_) => FamilyProvider()),
-=======
         ChangeNotifierProvider(create: (_) => ChildProfileProvider()),
         ChangeNotifierProvider(create: (_) => NavBarProvider()),
         ChangeNotifierProvider(create: (_) => ChildDataProvider()),
->>>>>>> 504b0dc9a36d92da0e2a97d09e5152111c393298
       ],
       child: const AjialApp(),
     ),

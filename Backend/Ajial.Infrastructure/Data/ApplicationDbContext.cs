@@ -125,6 +125,13 @@ public class ApplicationDbContext : DbContext
                 .IsRequired()
                 .HasDefaultValue(true);
 
+            // Medical Profile Properties
+            entity.Property(c => c.Height).HasColumnType("float");
+            entity.Property(c => c.Weight).HasColumnType("float");
+            entity.Property(c => c.HeadCircumference).HasColumnType("float");
+            entity.Property(c => c.BloodType).HasMaxLength(10);
+            entity.Property(c => c.MedicalHistory).HasMaxLength(1000);
+
             // Relationship with Parent
             entity.HasOne(c => c.Parent)
                 .WithMany(p => p.Children)
