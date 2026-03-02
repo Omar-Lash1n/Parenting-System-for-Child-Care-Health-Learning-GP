@@ -687,74 +687,85 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
               }
               // Display child from API
               final child = children[index];
-              return Padding(
-                padding: const EdgeInsets.only(left: 16),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 74,
-                      height: 74,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: kBlue.withOpacity(0.1),
-                        border: Border.all(
-                            color: const Color(0xFFD9D9D9), width: 1.23),
-                      ),
-                      child: child['profileImageUrl'] != null &&
-                              child['profileImageUrl'].toString().isNotEmpty
-                          ? ClipOval(
-                              child: Image.network(
-                                child['profileImageUrl'],
-                                width: 74,
-                                height: 74,
-                                fit: BoxFit.cover,
-                                loadingBuilder:
-                                    (context, childWidget, loadingProgress) {
-                                  if (loadingProgress == null)
-                                    return childWidget;
-                                  return Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      value:
-                                          loadingProgress.expectedTotalBytes !=
-                                                  null
-                                              ? loadingProgress
-                                                      .cumulativeBytesLoaded /
-                                                  loadingProgress
-                                                      .expectedTotalBytes!
-                                              : null,
-                                      color: kBlue,
-                                    ),
-                                  );
-                                },
-                                errorBuilder: (_, __, ___) => Center(
-                                  child: Text(
-                                    child['fullName']?[0] ?? 'ط',
-                                    style: TextStyle(
-                                      fontFamily: kFontFamily,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w700,
-                                      color: kBlue,
+              return GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/vaccination-welcome',
+                    arguments: {
+                      'childId': child['childId'],
+                    },
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 74,
+                        height: 74,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: kBlue.withOpacity(0.1),
+                          border: Border.all(
+                              color: const Color(0xFFD9D9D9), width: 1.23),
+                        ),
+                        child: child['profileImageUrl'] != null &&
+                                child['profileImageUrl'].toString().isNotEmpty
+                            ? ClipOval(
+                                child: Image.network(
+                                  child['profileImageUrl'],
+                                  width: 74,
+                                  height: 74,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder:
+                                      (context, childWidget, loadingProgress) {
+                                    if (loadingProgress == null)
+                                      return childWidget;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        value: loadingProgress
+                                                    .expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                    .cumulativeBytesLoaded /
+                                                loadingProgress
+                                                    .expectedTotalBytes!
+                                            : null,
+                                        color: kBlue,
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (_, __, ___) => Center(
+                                    child: Text(
+                                      child['fullName']?[0] ?? 'ط',
+                                      style: TextStyle(
+                                        fontFamily: kFontFamily,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w700,
+                                        color: kBlue,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            )
-                          : Center(
-                              child: Text(child['fullName']?[0] ?? 'ط',
-                                  style: TextStyle(
-                                      fontFamily: kFontFamily,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w700,
-                                      color: kBlue))),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(child['fullName'] ?? '',
-                        style: const TextStyle(
-                            fontFamily: kFontFamily,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500)),
-                  ],
+                              )
+                            : Center(
+                                child: Text(child['fullName']?[0] ?? 'ط',
+                                    style: TextStyle(
+                                        fontFamily: kFontFamily,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w700,
+                                        color: kBlue))),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(child['fullName'] ?? '',
+                          style: const TextStyle(
+                              fontFamily: kFontFamily,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500)),
+                    ],
+                  ),
                 ),
               );
             },

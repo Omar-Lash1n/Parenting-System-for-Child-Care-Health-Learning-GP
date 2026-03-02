@@ -950,7 +950,7 @@ class AuthService {
       } else {
         // التعامل مع الأخطاء
         String errorMessage = 'حدث خطأ غير معروف';
-        
+
         if (responseBody['errors'] != null &&
             (responseBody['errors'] as List).isNotEmpty) {
           errorMessage = (responseBody['errors'] as List).first.toString();
@@ -1017,7 +1017,11 @@ class AuthService {
         request.fields['Title'] = title;
       }
 
-      print('📤 Uploading voice note from bytes (${audioBytes.length} bytes)...');
+      print(
+          '📤 Uploading voice note from bytes (${audioBytes.length} bytes)...');
+
+      print(
+          '📤 Uploading voice note from bytes (${audioBytes.length} bytes)...');
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
@@ -1036,7 +1040,7 @@ class AuthService {
       } else {
         // التعامل مع الأخطاء
         String errorMessage = 'حدث خطأ غير معروف';
-        
+
         if (responseBody['errors'] != null &&
             (responseBody['errors'] as List).isNotEmpty) {
           errorMessage = (responseBody['errors'] as List).first.toString();
@@ -1061,7 +1065,8 @@ class AuthService {
   /// جلب جميع التسجيلات الصوتية للطفل
   /// GET /api/Child/voice-notes
   /// Requires child JWT token
-  Future<(bool success, String message, List<VoiceNote> voiceNotes)> getVoiceNotes() async {
+  Future<(bool success, String message, List<VoiceNote> voiceNotes)>
+      getVoiceNotes() async {
     final String apiUrl = '$_apiBaseUrl/Child/voice-notes';
     final String? childToken = await getChildToken();
 
@@ -1086,22 +1091,234 @@ class AuthService {
 
       if (response.statusCode == 200 && responseBody['success'] == true) {
         final List<dynamic> data = responseBody['data'] ?? [];
-        final List<VoiceNote> voiceNotes = 
+        final List<VoiceNote> voiceNotes =
             data.map((e) => VoiceNote.fromJson(e)).toList();
-        
-        final String successMessage = (responseBody['message'] ?? 'تم جلب الملاحظات الصوتية بنجاح').toString();
+
+        final String successMessage =
+            (responseBody['message'] ?? 'تم جلب الملاحظات الصوتية بنجاح')
+                .toString();
         return (
           true,
           successMessage,
           voiceNotes,
         );
       } else {
-        String errorMessage = responseBody['message'] ?? 'حدث خطأ في جلب التسجيلات';
+        String errorMessage =
+            responseBody['message'] ?? 'حدث خطأ في جلب التسجيلات';
         return (false, errorMessage, <VoiceNote>[]);
       }
     } catch (e) {
       print('❌ Error fetching voice notes: $e');
       return (false, 'تأكد من الاتصال بالإنترنت', <VoiceNote>[]);
+    }
+  }
+
+  // ============================================================
+  // ==================== Vaccination API =======================
+  // ============================================================
+
+  /// جلب بيانات صفحة ترحيب التطعيمات للطفل
+  /// GET /api/Vaccination/welcome/{childId}
+  /// Requires parent JWT token
+  Future<Map<String, dynamic>?> getVaccinationWelcome(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/welcome/$childId';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+      print(
+          'Get Vaccination Welcome Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in getVaccinationWelcome: $e');
+      return null;
+    }
+  }
+
+  /// جلب بيانات استبيان التطعيمات للطفل
+  /// GET /api/Vaccination/survey/{childId}
+  /// Requires parent JWT token
+  Future<Map<String, dynamic>?> getVaccinationSurvey(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/survey/$childId';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+      print(
+          'Get Vaccination Survey Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in getVaccinationSurvey: $e');
+      return null;
+    }
+  }
+
+  /// إرسال اختيارات استبيان التطعيمات
+  /// POST /api/Vaccination/survey
+  /// Requires parent JWT token
+  ///
+  /// [childId] — the child's UUID
+  /// [selections] — list of {milestoneId: int, isTaken: bool}
+  Future<Map<String, dynamic>?> submitVaccinationSurvey({
+    required String childId,
+    required List<Map<String, dynamic>> selections,
+  }) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/survey';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final body = jsonEncode({
+        'childId': childId,
+        'selections': selections,
+      });
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true) {
+          print('Vaccination Survey submitted successfully');
+          return responseBody['data'] as Map<String, dynamic>?;
+        }
+      }
+      print(
+          'Submit Vaccination Survey Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in submitVaccinationSurvey: $e');
+      return null;
+    }
+  }
+
+  /// جلب بيانات استبيان التطعيمات الإضافية للطفل
+  /// GET /api/Vaccination/additional-survey/{childId}
+  /// Requires parent JWT token
+  Future<Map<String, dynamic>?> getAdditionalSurvey(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/additional-survey/$childId';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+      print(
+          'Get Additional Survey Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in getAdditionalSurvey: $e');
+      return null;
+    }
+  }
+
+  /// إرسال اختيارات استبيان التطعيمات الإضافية
+  /// POST /api/Vaccination/additional-survey
+  /// Requires parent JWT token
+  Future<Map<String, dynamic>?> submitAdditionalSurvey({
+    required String childId,
+    required List<Map<String, dynamic>> selections,
+  }) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/additional-survey';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final body = jsonEncode({
+        'childId': childId,
+        'selections': selections,
+      });
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true) {
+          print('Additional Survey submitted successfully');
+          return responseBody['data'] as Map<String, dynamic>?;
+        }
+      }
+      print(
+          'Submit Additional Survey Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in submitAdditionalSurvey: $e');
+      return null;
     }
   }
 }
@@ -1203,7 +1420,7 @@ class VoiceNote {
       title: json['title']?.toString() ?? 'تسجيل صوتي',
       blobUrl: json['blobUrl']?.toString() ?? '',
       fileSizeBytes: json['fileSizeBytes'] as int?,
-      createdAt: json['createdAt'] != null 
+      createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'].toString())
           : DateTime.now(),
     );
@@ -1236,5 +1453,6 @@ class UploadVoiceNoteResult {
   });
 
   @override
-  String toString() => 'UploadVoiceNoteResult(success: $success, message: $message)';
+  String toString() =>
+      'UploadVoiceNoteResult(success: $success, message: $message)';
 }
