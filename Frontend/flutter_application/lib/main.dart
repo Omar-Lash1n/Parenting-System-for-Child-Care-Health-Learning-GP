@@ -19,9 +19,11 @@ import 'package:Ajial/providers/add_child_flow_provider.dart';
 import 'package:Ajial/providers/child_login_provider.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
 import 'package:Ajial/providers/settings_provider.dart';
+import 'package:Ajial/providers/family_provider.dart';
 import 'package:Ajial/child-app/home/child_home_provider.dart';
 import 'package:Ajial/profile/settings_page.dart';
 import 'package:Ajial/child-app/home/child_home_page.dart';
+import 'package:Ajial/family/family_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +41,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ParentProfileProvider()),
         ChangeNotifierProvider(create: (_) => ChildHomeProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => FamilyProvider()),
       ],
       child: const AjialApp(),
     ),
@@ -77,6 +80,7 @@ class AjialApp extends StatelessWidget {
         '/add-child': (context) => const AddChildFlow(),
         '/profile': (context) => const ParentProfilePage(),
         '/settings': (context) => const SettingsPage(),
+        '/family': (context) => const FamilyPage(),
       },
     );
   }
