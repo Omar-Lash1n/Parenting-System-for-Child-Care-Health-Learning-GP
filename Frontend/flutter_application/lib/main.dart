@@ -19,8 +19,14 @@ import 'package:Ajial/providers/add_child_flow_provider.dart';
 import 'package:Ajial/providers/child_login_provider.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
 import 'package:Ajial/providers/settings_provider.dart';
+import 'package:Ajial/providers/child_profile_provider.dart';
+import 'package:Ajial/providers/nav_bar_provider.dart';
+import 'package:Ajial/providers/child_data_provider.dart';
 import 'package:Ajial/child-app/home/child_home_provider.dart';
 import 'package:Ajial/profile/settings_page.dart';
+import 'package:Ajial/profile/my_child_profile.dart';
+import 'package:Ajial/profile/child_data_profile.dart';
+import 'package:Ajial/profile/child_data_profile_form.dart';
 import 'package:Ajial/child-app/home/child_home_page.dart';
 
 void main() async {
@@ -39,6 +45,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ParentProfileProvider()),
         ChangeNotifierProvider(create: (_) => ChildHomeProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => ChildProfileProvider()),
+        ChangeNotifierProvider(create: (_) => NavBarProvider()),
+        ChangeNotifierProvider(create: (_) => ChildDataProvider()),
       ],
       child: const AjialApp(),
     ),
@@ -67,7 +76,8 @@ class AjialApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
 
-      initialRoute: '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
+      initialRoute:
+          '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
       routes: {
         '/splash': (context) => SplashScreen(),
         '/login': (context) => const LoginScreen(),
@@ -77,6 +87,9 @@ class AjialApp extends StatelessWidget {
         '/add-child': (context) => const AddChildFlow(),
         '/profile': (context) => const ParentProfilePage(),
         '/settings': (context) => const SettingsPage(),
+        '/child-profile': (context) => const MyChildProfilePage(),
+        '/child-data': (context) => const ChildDataProfilePage(),
+        '/child-data-form': (context) => const ChildDataProfileFormPage(),
       },
     );
   }
