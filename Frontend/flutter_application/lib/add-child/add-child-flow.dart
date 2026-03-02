@@ -59,7 +59,7 @@ class _AddChildFlowState extends State<AddChildFlow> {
   // --- Submit to Backend ---
   Future<void> _submitDataToBackend() async {
     final provider = context.read<AddChildFlowProvider>();
-    
+
     final success = await provider.submitDataToBackend(
       name: _nameController.text,
       day: _dayController.text,
@@ -77,7 +77,7 @@ class _AddChildFlowState extends State<AddChildFlow> {
 
   void _validateAndProceed(int stepIndex) {
     final provider = context.read<AddChildFlowProvider>();
-    
+
     bool isValid = provider.validateStep(
       stepIndex: stepIndex,
       name: _nameController.text,
@@ -118,7 +118,7 @@ class _AddChildFlowState extends State<AddChildFlow> {
   // --- Image Picker ---
   void _showImageSourceDialog() {
     final provider = context.read<AddChildFlowProvider>();
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -389,7 +389,8 @@ class _AddChildFlowState extends State<AddChildFlow> {
     ]));
   }
 
-  Widget _buildGenderOption(String label, String val, IconData icon, AddChildFlowProvider provider) {
+  Widget _buildGenderOption(
+      String label, String val, IconData icon, AddChildFlowProvider provider) {
     bool selected = provider.selectedGender == val;
     return GestureDetector(
         onTap: () => provider.setGender(val),
@@ -415,39 +416,6 @@ class _AddChildFlowState extends State<AddChildFlow> {
             ])));
   }
 
-  Widget _buildMonthDropdown(AddChildFlowProvider provider) {
-    Color borderColor = Colors.grey[300]!;
-    if (provider.dateError != null)
-      borderColor = Colors.red;
-    else if (provider.selectedMonth != null) borderColor = Colors.green;
-    return Container(
-        height: 55,
-        padding: const EdgeInsets.symmetric(horizontal: 15),
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: borderColor)),
-        child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-                value: provider.selectedMonth,
-                hint: Text("شهر",
-                    style: TextStyle(
-                        color: Colors.grey[400], fontFamily: kFontFamily)),
-                isExpanded: true,
-                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-                items: provider.monthsList.map((month) {
-                  return DropdownMenuItem<String>(
-                      value: month['val'],
-                      child: Text(month['label']!,
-                          style: const TextStyle(
-                              fontFamily: kFontFamily, fontSize: 14)));
-                }).toList(),
-                onChanged: (val) {
-                  provider.setSelectedMonth(val);
-                  _monthController.text = val ?? "";
-                })));
-  }
-
   // --- Pages ---
 
   Widget _buildNamePage(AddChildFlowProvider provider) => _buildPageLayout(
@@ -457,7 +425,7 @@ class _AddChildFlowState extends State<AddChildFlow> {
       provider: provider,
       onNext: () => _validateAndProceed(0),
       content: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _buildLabel("اسم الطفل", true),
+        _buildLabel("اسم الطفل كامل", true),
         const SizedBox(height: 10),
         _buildTextField(
             controller: _nameController,
@@ -472,33 +440,200 @@ class _AddChildFlowState extends State<AddChildFlow> {
       onNext: () => _validateAndProceed(1),
       content: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _buildLabel("تاريخ ميلاد الطفل", true),
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(
-              child: _buildTextField(
-                  controller: _dayController,
-                  hint: "يوم",
-                  isNumber: true,
-                  maxLength: 2)),
-          const SizedBox(width: 10),
-          Expanded(flex: 2, child: _buildMonthDropdown(provider)),
-          const SizedBox(width: 10),
-          Expanded(
-              child: _buildTextField(
-                  controller: _yearController,
-                  hint: "عام",
-                  isNumber: true,
-                  maxLength: 4))
-        ]),
+        const SizedBox(height: 16),
+        // Day field
+        _buildDateField(
+          controller: _dayController,
+          label: "اليوم",
+          hint: "مثال: 15",
+          maxLength: 2,
+          hasError: provider.dateError != null,
+        ),
+        const SizedBox(height: 12),
+        // Month dropdown
+        _buildMonthDropdownField(provider),
+        const SizedBox(height: 12),
+        // Year field
+        _buildDateField(
+          controller: _yearController,
+          label: "السنة",
+          hint: "مثال: 2020",
+          maxLength: 4,
+          hasError: provider.dateError != null,
+        ),
         if (provider.dateError != null)
           Padding(
-              padding: const EdgeInsets.only(top: 5),
-              child: Text(provider.dateError!,
-                  style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 12,
-                      fontFamily: kFontFamily)))
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline,
+                        color: Colors.red, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(provider.dateError!,
+                          style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                              fontFamily: kFontFamily)),
+                    ),
+                  ],
+                ),
+              ))
       ]));
+
+  Widget _buildDateField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required int maxLength,
+    bool hasError = false,
+  }) {
+    Color borderColor = Colors.grey[300]!;
+    if (hasError && controller.text.isEmpty) {
+      borderColor = Colors.red;
+    } else if (controller.text.isNotEmpty) {
+      borderColor = Colors.green;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: kFontFamily,
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: kFontFamily,
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+          ),
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(maxLength),
+          ],
+          onChanged: (val) => setState(() {}),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: Colors.grey[400],
+              fontFamily: kFontFamily,
+              fontSize: 16,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: borderColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: borderColor, width: 1.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: kPrimaryColor, width: 2),
+            ),
+            suffixIcon: controller.text.isNotEmpty
+                ? IconButton(
+                    icon:
+                        const Icon(Icons.cancel, color: Colors.grey, size: 20),
+                    onPressed: () {
+                      controller.clear();
+                      setState(() {});
+                    },
+                  )
+                : null,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMonthDropdownField(AddChildFlowProvider provider) {
+    Color borderColor = Colors.grey[300]!;
+    if (provider.dateError != null && provider.selectedMonth == null) {
+      borderColor = Colors.red;
+    } else if (provider.selectedMonth != null) {
+      borderColor = Colors.green;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "الشهر",
+          style: TextStyle(
+            fontFamily: kFontFamily,
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor, width: 1.5),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: provider.selectedMonth,
+              hint: Text(
+                "اختر الشهر",
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontFamily: kFontFamily,
+                  fontSize: 16,
+                ),
+              ),
+              isExpanded: true,
+              icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+              style: const TextStyle(
+                fontFamily: kFontFamily,
+                fontSize: 16,
+                color: Colors.black,
+              ),
+              items: provider.monthsList.map((month) {
+                return DropdownMenuItem<String>(
+                  value: month['val'],
+                  child: Text(
+                    month['label']!,
+                    style: const TextStyle(
+                      fontFamily: kFontFamily,
+                      fontSize: 16,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (val) {
+                provider.setSelectedMonth(val);
+                _monthController.text = val ?? "";
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildGenderPage(AddChildFlowProvider provider) => _buildPageLayout(
       title: "ادخل نوع الطفل",
@@ -551,7 +686,8 @@ class _AddChildFlowState extends State<AddChildFlow> {
                   decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       image: DecorationImage(
-                          image: FileImage(provider.childImage!), fit: BoxFit.cover),
+                          image: FileImage(provider.childImage!),
+                          fit: BoxFit.cover),
                       border: Border.all(color: Colors.grey[300]!, width: 1))),
         ),
         const SizedBox(height: 20),
@@ -616,7 +752,8 @@ class _AddChildFlowState extends State<AddChildFlow> {
                     child: filled
                         ? Padding(
                             padding: const EdgeInsets.all(8.0),
-                            child: Image.asset(provider.selectedFruitImages[index]))
+                            child: Image.asset(
+                                provider.selectedFruitImages[index]))
                         : null);
               })),
           const SizedBox(height: 20),
@@ -636,7 +773,8 @@ class _AddChildFlowState extends State<AddChildFlow> {
                             color: const Color(0xFFFFF8E1),
                             borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.all(8),
-                        child: Image.asset(provider.fruitsList[idx].imagePath)));
+                        child:
+                            Image.asset(provider.fruitsList[idx].imagePath)));
               }),
 
           if (provider.selectedFruitImages.isNotEmpty)

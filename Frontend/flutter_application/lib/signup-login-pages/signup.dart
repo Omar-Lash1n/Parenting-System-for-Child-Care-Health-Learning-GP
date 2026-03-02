@@ -138,331 +138,350 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Consumer<SignupProvider>(
-          builder: (context, provider, _) {
-            return Column(
-              children: [
-                // --- 1. Scrollable Content ---
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: 600,
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: _screenWidth > 600 ? 40.0 : 24.0,
-                            vertical: 20.0,
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Consumer<SignupProvider>(
+            builder: (context, provider, _) {
+              return Column(
+                children: [
+                  // --- 1. Scrollable Content ---
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: 600,
                           ),
-                          child: Form(
-                            key: _formKey,
-                            autovalidateMode:
-                                AutovalidateMode.onUserInteraction,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                SizedBox(height: _screenHeight * 0.02),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: _screenWidth > 600 ? 40.0 : 24.0,
+                              vertical: 20.0,
+                            ),
+                            child: Form(
+                              key: _formKey,
+                              autovalidateMode:
+                                  AutovalidateMode.onUserInteraction,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(height: _screenHeight * 0.02),
 
-                                // --- Logo ---
-                                Center(
-                                  child: Image.asset(
-                                    'images/main-logo.png',
-                                    width: _screenHeight * 0.15,
-                                    height: _screenHeight * 0.15,
-                                    errorBuilder:
-                                        (context, error, stackTrace) => Icon(
-                                      Icons.group,
-                                      size: _screenHeight * 0.15,
-                                      color: kPrimaryColor,
-                                    ),
-                                  ),
-                                ),
-
-                                // --- Headers ---
-                                const Center(
-                                  child: Text(
-                                    'أنشئ حسابك الجديد',
-                                    style: TextStyle(
-                                      fontFamily: kFontFamily,
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Center(
-                                  child: Text(
-                                    'من فضلك ادخل البيانات بعناية',
-                                    style: TextStyle(
-                                      fontFamily: kFontFamily,
-                                      fontSize: 16,
-                                      color: Colors.grey[600],
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                SizedBox(height: _screenHeight * 0.04),
-
-                                // --- Full Name Field ---
-                                _buildLabel('الاسم كامل *'),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _nameController,
-                                  decoration: _buildInputDecoration(
-                                    hintText: 'اكتب اسمك هنا...',
-                                    suffixIcon: _nameController.text.isNotEmpty
-                                        ? IconButton(
-                                            icon: const Icon(Icons.close,
-                                                color: Colors.grey),
-                                            onPressed: () =>
-                                                _nameController.clear(),
-                                          )
-                                        : null,
-                                    borderColor: provider.isFullNameValid
-                                        ? Colors.green
-                                        : null,
-                                    focusedBorderColor: provider.isFullNameValid
-                                        ? Colors.green
-                                        : null,
-                                  ),
-                                  keyboardType: TextInputType.name,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'الاسم الكامل مطلوب';
-                                    }
-                                    if (!provider.validateName(value)) {
-                                      return 'يرجى ادخال اسم صحيح لا يحتوي على رموز';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 20),
-
-                                // --- Username Field ---
-                                _buildLabel('اسم المستخدم *'),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _usernameController,
-                                  decoration: _buildInputDecoration(
-                                    hintText:
-                                        'اكتب اسم المستخدم بدون مسافات...',
-                                    suffixIcon:
-                                        _usernameController.text.isNotEmpty
-                                            ? IconButton(
-                                                icon: const Icon(Icons.close,
-                                                    color: Colors.grey),
-                                                onPressed: () =>
-                                                    _usernameController.clear(),
-                                              )
-                                            : null,
-                                    borderColor: provider.isUsernameValid
-                                        ? Colors.green
-                                        : null,
-                                    focusedBorderColor: provider.isUsernameValid
-                                        ? Colors.green
-                                        : null,
-                                  ),
-                                  keyboardType: TextInputType.text,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'اسم المستخدم مطلوب';
-                                    }
-                                    if (value.contains(' ')) {
-                                      return 'يجب ألا يحتوي على مسافات';
-                                    }
-                                    if (!provider.validateUsername(value)) {
-                                      return 'يجب أن يكون أكثر من 4 حروف';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 20),
-
-                                // --- Email Field ---
-                                _buildLabel('البريد الالكتروني *'),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _emailController,
-                                  decoration: _buildInputDecoration(
-                                    hintText: 'اكتب بريدك الالكتروني هنا...',
-                                    suffixIcon: _emailController.text.isNotEmpty
-                                        ? IconButton(
-                                            icon: const Icon(Icons.close,
-                                                color: Colors.grey),
-                                            onPressed: () {
-                                              _emailController.clear();
-                                            },
-                                          )
-                                        : null,
-                                    borderColor: provider.isEmailValid
-                                        ? Colors.green
-                                        : null,
-                                    focusedBorderColor: provider.isEmailValid
-                                        ? Colors.green
-                                        : null,
-                                  ),
-                                  keyboardType: TextInputType.emailAddress,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'البريد الالكتروني مطلوب';
-                                    }
-                                    if (!provider.validateEmail(value)) {
-                                      return 'صيغة بريد الكتروني غير صحيحة';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 20),
-
-                                // --- Password Field ---
-                                _buildLabel('كلمة المرور *'),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _passwordController,
-                                  obscureText: !provider.isPasswordVisible,
-                                  decoration: _buildInputDecoration(
-                                    hintText:
-                                        'اكتب كلمة مرور لا تقل عن 8 حروف...',
-                                    prefixIcon: IconButton(
-                                      padding: const EdgeInsets.only(left: 15),
-                                      icon: Icon(
-                                        provider.isPasswordVisible
-                                            ? Icons.visibility_off
-                                            : Icons.visibility,
-                                        color: Colors.grey,
+                                  // --- Logo ---
+                                  Center(
+                                    child: Image.asset(
+                                      'images/main-logo.png',
+                                      width: _screenHeight * 0.15,
+                                      height: _screenHeight * 0.15,
+                                      errorBuilder:
+                                          (context, error, stackTrace) => Icon(
+                                        Icons.group,
+                                        size: _screenHeight * 0.15,
+                                        color: kPrimaryColor,
                                       ),
-                                      onPressed:
-                                          provider.togglePasswordVisibility,
                                     ),
                                   ),
-                                  onChanged: provider.updatePasswordStrength,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'كلمة المرور مطلوبة';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 12),
 
-                                // --- Password Strength Indicator ---
-                                if (_passwordController.text.isNotEmpty)
-                                  Column(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: LinearProgressIndicator(
-                                          value: provider.passwordStrength,
-                                          backgroundColor: Colors.grey[300],
-                                          color:
-                                              provider.passwordStrength <= 0.33
-                                                  ? kPrimaryColor
-                                                  : provider.passwordStrength <=
-                                                          0.66
-                                                      ? Colors.yellow[700]
-                                                      : Colors.green,
-                                          minHeight: 6,
+                                  // --- Headers ---
+                                  const Center(
+                                    child: Text(
+                                      'أنشئ حسابك الجديد',
+                                      style: TextStyle(
+                                        fontFamily: kFontFamily,
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Center(
+                                    child: Text(
+                                      'من فضلك ادخل البيانات بعناية',
+                                      style: TextStyle(
+                                        fontFamily: kFontFamily,
+                                        fontSize: 16,
+                                        color: Colors.grey[600],
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                  SizedBox(height: _screenHeight * 0.04),
+
+                                  // --- Full Name Field ---
+                                  _buildLabel('الاسم كامل *'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: _nameController,
+                                    textDirection: TextDirection.rtl,
+                                    textAlign: TextAlign.right,
+                                    decoration: _buildInputDecoration(
+                                      hintText: 'اكتب اسمك هنا...',
+                                      suffixIcon:
+                                          _nameController.text.isNotEmpty
+                                              ? IconButton(
+                                                  icon: const Icon(Icons.close,
+                                                      color: Colors.grey),
+                                                  onPressed: () =>
+                                                      _nameController.clear(),
+                                                )
+                                              : null,
+                                      borderColor: provider.isFullNameValid
+                                          ? Colors.green
+                                          : null,
+                                      focusedBorderColor:
+                                          provider.isFullNameValid
+                                              ? Colors.green
+                                              : null,
+                                    ),
+                                    keyboardType: TextInputType.name,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'الاسم الكامل مطلوب';
+                                      }
+                                      if (!provider.validateName(value)) {
+                                        return 'يرجى ادخال اسم صحيح لا يحتوي على رموز';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // --- Username Field ---
+                                  _buildLabel('اسم المستخدم *'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: _usernameController,
+                                    textDirection: TextDirection.rtl,
+                                    textAlign: TextAlign.right,
+                                    decoration: _buildInputDecoration(
+                                      hintText:
+                                          'اكتب اسم المستخدم بدون مسافات...',
+                                      suffixIcon: _usernameController
+                                              .text.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(Icons.close,
+                                                  color: Colors.grey),
+                                              onPressed: () =>
+                                                  _usernameController.clear(),
+                                            )
+                                          : null,
+                                      borderColor: provider.isUsernameValid
+                                          ? Colors.green
+                                          : null,
+                                      focusedBorderColor:
+                                          provider.isUsernameValid
+                                              ? Colors.green
+                                              : null,
+                                    ),
+                                    keyboardType: TextInputType.text,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'اسم المستخدم مطلوب';
+                                      }
+                                      if (value.contains(' ')) {
+                                        return 'يجب ألا يحتوي على مسافات';
+                                      }
+                                      if (!provider.validateUsername(value)) {
+                                        return 'يجب أن يكون أكثر من 4 حروف';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // --- Email Field ---
+                                  _buildLabel('البريد الالكتروني *'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: _emailController,
+                                    textDirection: TextDirection.rtl,
+                                    textAlign: TextAlign.right,
+                                    decoration: _buildInputDecoration(
+                                      hintText: 'اكتب بريدك الالكتروني هنا...',
+                                      suffixIcon:
+                                          _emailController.text.isNotEmpty
+                                              ? IconButton(
+                                                  icon: const Icon(Icons.close,
+                                                      color: Colors.grey),
+                                                  onPressed: () {
+                                                    _emailController.clear();
+                                                  },
+                                                )
+                                              : null,
+                                      borderColor: provider.isEmailValid
+                                          ? Colors.green
+                                          : null,
+                                      focusedBorderColor: provider.isEmailValid
+                                          ? Colors.green
+                                          : null,
+                                    ),
+                                    keyboardType: TextInputType.emailAddress,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'البريد الالكتروني مطلوب';
+                                      }
+                                      if (!provider.validateEmail(value)) {
+                                        return 'صيغة بريد الكتروني غير صحيحة';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // --- Password Field ---
+                                  _buildLabel('كلمة المرور *'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: _passwordController,
+                                    textDirection: TextDirection.rtl,
+                                    textAlign: TextAlign.right,
+                                    obscureText: !provider.isPasswordVisible,
+                                    decoration: _buildInputDecoration(
+                                      hintText:
+                                          'اكتب كلمة مرور لا تقل عن 8 حروف...',
+                                      suffixIcon: Padding(
+                                        padding:
+                                            const EdgeInsets.only(left: 12),
+                                        child: IconButton(
+                                          icon: Icon(
+                                            provider.isPasswordVisible
+                                                ? Icons.visibility_off
+                                                : Icons.visibility,
+                                            color: Colors.grey,
+                                          ),
+                                          onPressed:
+                                              provider.togglePasswordVisibility,
                                         ),
                                       ),
-                                      const SizedBox(height: 12),
-                                      _buildStrengthCheck(
-                                          text: 'يحتوي على 8 احرف',
-                                          met: provider.has8Chars),
-                                      const SizedBox(height: 4),
-                                      _buildStrengthCheck(
-                                          text: 'يحتوي على رموز &*/',
-                                          met: provider.hasSymbol),
-                                      const SizedBox(height: 4),
-                                      _buildStrengthCheck(
-                                          text: 'يحتوي على ارقام',
-                                          met: provider.hasNumber),
-                                    ],
+                                    ),
+                                    onChanged: provider.updatePasswordStrength,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'كلمة المرور مطلوبة';
+                                      }
+                                      return null;
+                                    },
                                   ),
-                              ],
+                                  const SizedBox(height: 12),
+
+                                  // --- Password Strength Indicator ---
+                                  if (_passwordController.text.isNotEmpty)
+                                    Column(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          child: LinearProgressIndicator(
+                                            value: provider.passwordStrength,
+                                            backgroundColor: Colors.grey[300],
+                                            color: provider.passwordStrength <=
+                                                    0.33
+                                                ? kPrimaryColor
+                                                : provider.passwordStrength <=
+                                                        0.66
+                                                    ? Colors.yellow[700]
+                                                    : Colors.green,
+                                            minHeight: 6,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _buildStrengthCheck(
+                                            text: 'يحتوي على 8 احرف',
+                                            met: provider.has8Chars),
+                                        const SizedBox(height: 4),
+                                        _buildStrengthCheck(
+                                            text: 'يحتوي على رموز &*/',
+                                            met: provider.hasSymbol),
+                                        const SizedBox(height: 4),
+                                        _buildStrengthCheck(
+                                            text: 'يحتوي على ارقام',
+                                            met: provider.hasNumber),
+                                      ],
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
 
-                // --- 2. Sticky Buttons at Bottom ---
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-                  child: Column(
-                    children: [
-                      // --- Next Button ---
-                      ElevatedButton(
-                        onPressed: _submitForm,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: kPrimaryColor,
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(50),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'التالي',
-                              style: TextStyle(
-                                fontFamily: kFontFamily,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                  // --- 2. Sticky Buttons at Bottom ---
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                    child: Column(
+                      children: [
+                        // --- Next Button ---
+                        ElevatedButton(
+                          onPressed: _submitForm,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kPrimaryColor,
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50),
                             ),
-                            SizedBox(width: 10),
-                            Icon(Icons.arrow_back_outlined,
-                                color: Colors.white),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // --- Login Link ---
-                      Center(
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              FadePageRoute(child: const LoginScreen()),
-                            );
-                          },
-                          child: RichText(
-                            text: const TextSpan(
-                              style: TextStyle(
-                                fontFamily: kFontFamily,
-                                fontSize: 15,
-                                color: Colors.black87,
-                              ),
-                              children: [
-                                TextSpan(text: 'لديك حساب بالفعل؟ '),
-                                TextSpan(
-                                  text: 'تسجيل الدخول',
-                                  style: TextStyle(
-                                    color: kPrimaryColor,
-                                    fontWeight: FontWeight.bold,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: kPrimaryColor,
-                                  ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'التالي',
+                                style: TextStyle(
+                                  fontFamily: kFontFamily,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
                                 ),
-                              ],
+                              ),
+                              SizedBox(width: 10),
+                              Icon(Icons.arrow_back_outlined,
+                                  color: Colors.white),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // --- Login Link ---
+                        Center(
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                FadePageRoute(child: const LoginScreen()),
+                              );
+                            },
+                            child: RichText(
+                              text: const TextSpan(
+                                style: TextStyle(
+                                  fontFamily: kFontFamily,
+                                  fontSize: 15,
+                                  color: Colors.black87,
+                                ),
+                                children: [
+                                  TextSpan(text: 'لديك حساب بالفعل؟ '),
+                                  TextSpan(
+                                    text: 'تسجيل الدخول',
+                                    style: TextStyle(
+                                      color: kPrimaryColor,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: kPrimaryColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -542,6 +561,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       suffixIcon: suffixIcon,
       hintTextDirection: TextDirection.rtl,
       prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+      contentPadding: const EdgeInsetsDirectional.only(
+          start: 20, end: 16, top: 16, bottom: 16),
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(

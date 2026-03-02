@@ -169,9 +169,31 @@ class AddChildFlowProvider extends ChangeNotifier {
     switch (stepIndex) {
       case 0: // Name
         if (name.trim().isEmpty) {
-          _nameError = "يرجى إدخال اسم الطفل";
+          _nameError = "اسم الطفل كامل مطلوب - يرجى إدخال اسم الطفل للمتابعة";
           notifyListeners();
           return false;
+        }
+        // Validate name contains only letters and spaces
+        final nameRegex = RegExp(r'^[\u0600-\u06FFa-zA-Z\s]+$');
+        if (!nameRegex.hasMatch(name.trim())) {
+          _nameError = "يرجى إدخال اسم صحيح يحتوي على حروف فقط";
+          notifyListeners();
+          return false;
+        }
+        // Validate full name has at least two words (first and last name)
+        final nameParts = name.trim().split(RegExp(r'\s+'));
+        if (nameParts.length < 2) {
+          _nameError = "يرجى إدخال الاسم كاملاً (الاسم الأول واسم العائلة)";
+          notifyListeners();
+          return false;
+        }
+        // Validate each name part has at least 2 characters
+        for (var part in nameParts) {
+          if (part.length < 2) {
+            _nameError = "كل جزء من الاسم يجب أن يكون حرفين على الأقل";
+            notifyListeners();
+            return false;
+          }
         }
         return true;
 
@@ -186,9 +208,15 @@ class AddChildFlowProvider extends ChangeNotifier {
         int? m = int.tryParse(month);
         int? y = int.tryParse(year);
 
-        if (d == null || d < 1 || d > 31 ||
-            m == null || m < 1 || m > 12 ||
-            y == null || y > DateTime.now().year || y < 2000) {
+        if (d == null ||
+            d < 1 ||
+            d > 31 ||
+            m == null ||
+            m < 1 ||
+            m > 12 ||
+            y == null ||
+            y > DateTime.now().year ||
+            y < 1900) {
           _dateError = "تاريخ غير صحيح";
           notifyListeners();
           return false;
@@ -197,9 +225,31 @@ class AddChildFlowProvider extends ChangeNotifier {
         // Calculate age and determine if older child
         final dob = DateTime(y, m, d);
         final now = DateTime.now();
+
+        // Check if birth date is in the future
+        if (dob.isAfter(now)) {
+          _dateError = "تاريخ الميلاد لا يمكن أن يكون في المستقبل";
+          notifyListeners();
+          return false;
+        }
+
         int age = now.year - dob.year;
-        if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+        if (now.month < dob.month ||
+            (now.month == dob.month && now.day < dob.day)) {
           age--;
+        }
+
+        // Validate age range (0-18 years)
+        if (age < 0) {
+          _dateError = "تاريخ الميلاد غير صحيح";
+          notifyListeners();
+          return false;
+        }
+
+        if (age >= 18) {
+          _dateError = "عمر الطفل يجب أن يكون أقل من 18 سنة";
+          notifyListeners();
+          return false;
         }
 
         _isOlderChild = age >= 4;
@@ -303,7 +353,7 @@ class AddChildFlowProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       notifyListeners();
-      
+
       if (!context.mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

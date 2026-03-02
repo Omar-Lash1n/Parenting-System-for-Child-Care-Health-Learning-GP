@@ -4,13 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import 'dart:math';
 
-import 'package:Ajial/signup-login-pages/signup.dart';
+import 'package:Ajial/signup-login-pages/login.dart';
 // --- *** بداية التعديل المطلوب *** ---
 // 1. إضافة import لصفحة اختيار الدور
 // (يرجى التأكد من أن هذا المسار صحيح)
-import 'package:Ajial/role_selection.dart'; 
+import 'package:Ajial/role_selection.dart';
 // --- *** نهاية التعديل المطلوب *** ---
-
 
 // --- الثوابت وكلاس التلاشي (كما هي) ---
 const Color kPrimaryColor = Color(0xFFBF092F);
@@ -139,7 +138,7 @@ class _ParentWelcomeScreenState extends State<ParentWelcomeScreen> {
                       createParticlePath: _drawConfettiPath,
                     ),
                   ),
-                  
+
                   // --- (النصوص في المنتصف كما هي) ---
                   Center(
                     child: Padding(
@@ -195,8 +194,7 @@ class _ParentWelcomeScreenState extends State<ParentWelcomeScreen> {
                             // 2. تغيير الانتقال إلى RoleSelectionScreen
                             Navigator.pushReplacement(
                               context,
-                              FadePageRoute(
-                                child: const RoleSelectionScreen()),
+                              FadePageRoute(child: const RoleSelectionScreen()),
                             );
                           },
                           padding: EdgeInsets.zero,
@@ -209,7 +207,7 @@ class _ParentWelcomeScreenState extends State<ParentWelcomeScreen> {
                 ],
               ),
             ),
-            
+
             // --- 2. الزر الثابت في الأسفل (كما هو) ---
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
@@ -218,10 +216,10 @@ class _ParentWelcomeScreenState extends State<ParentWelcomeScreen> {
                 height: 55,
                 child: ElevatedButton(
                   onPressed: () {
-                    print("الانتقال إلى الشاشة التالية");
+                    print("الانتقال إلى شاشة تسجيل الدخول");
                     Navigator.of(context).pushReplacement(
                       FadePageRoute(
-                        child: const SignUpScreen(),
+                        child: const LoginScreen(),
                       ),
                     );
                   },

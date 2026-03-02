@@ -12,6 +12,8 @@ public interface IUnitOfWork : IDisposable
     IRepository<EmailVerificationToken> EmailVerificationTokens { get; }
     IChildRepository Children { get; }
     IVoiceNoteRepository VoiceNotes { get; }
+    IRepository<VaccinationMilestone> VaccinationMilestones { get; }
+    IRepository<ChildVaccination> ChildVaccinations { get; }
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

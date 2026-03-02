@@ -18,6 +18,8 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<EmailVerificationToken> EmailVerificationTokens { get; private set; }
     public IChildRepository Children { get; private set; }
     public IVoiceNoteRepository VoiceNotes { get; private set; }
+    public IRepository<VaccinationMilestone> VaccinationMilestones { get; private set; }
+    public IRepository<ChildVaccination> ChildVaccinations { get; private set; }
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -30,6 +32,8 @@ public class UnitOfWork : IUnitOfWork
         EmailVerificationTokens = new Repository<EmailVerificationToken>(_context);
         Children = new ChildRepository(_context);
         VoiceNotes = new VoiceNoteRepository(_context);
+        VaccinationMilestones = new Repository<VaccinationMilestone>(_context);
+        ChildVaccinations = new Repository<ChildVaccination>(_context);
     }
 
     public async Task<int> SaveChangesAsync()

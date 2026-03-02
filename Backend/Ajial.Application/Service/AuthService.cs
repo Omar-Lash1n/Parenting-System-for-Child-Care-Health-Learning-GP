@@ -16,7 +16,7 @@ public class AuthService : IAuthService
     private readonly IJwtTokenService _jwtTokenService;  // ✅ NEW
 
     public AuthService(
-        IUnitOfWork unitOfWork, 
+        IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IEmailService emailService,
         IJwtTokenService jwtTokenService)  // ✅ NEW
@@ -133,7 +133,7 @@ public class AuthService : IAuthService
     }
 
     // ... (keep all ForgotPasswordAsync, ResetPasswordAsync, RegisterParentAsync methods unchanged)
-    
+
     public async Task<ApiResponse<ForgotPasswordResponseDto>> ForgotPasswordAsync(
         ForgotPasswordRequestDto request)
     {
@@ -193,7 +193,7 @@ public class AuthService : IAuthService
             // الخطوة 4: إلغاء جميع الرموز السابقة غير المستخدمة
             var existingTokens = await _unitOfWork.PasswordResetTokens
                 .GetAllAsync();
-            
+
             var userExistingTokens = existingTokens
                 .Where(t => t.UserId == user.Id && !t.IsUsed)
                 .ToList();
@@ -231,7 +231,7 @@ public class AuthService : IAuthService
                     user.FullName
                 );
             }
-            catch (Exception emailEx)
+            catch (Exception)
             {
                 // فشل إرسال الإيميل
                 return ApiResponse<ForgotPasswordResponseDto>.FailureResponse(
@@ -261,223 +261,228 @@ public class AuthService : IAuthService
             );
         }
     }
-    
+
     // Add this method to your AuthService class
 
-/// <summary>
-/// التحقق من صحة رمز OTP دون تغيير كلمة المرور
-/// </summary>
-public async Task<ApiResponse<VerifyOtpResponseDto>> VerifyOtpAsync(VerifyOtpRequestDto request)
-{
-    try
+    /// <summary>
+    /// التحقق من صحة رمز OTP دون تغيير كلمة المرور
+    /// </summary>
+    public async Task<ApiResponse<VerifyOtpResponseDto>> VerifyOtpAsync(VerifyOtpRequestDto request)
     {
-        // الخطوة 1: التحقق من صحة البيانات
-        var validator = new VerifyOtpRequestValidator();
-        var (isValid, errors) = validator.Validate(request);
-
-        if (!isValid)
+        try
         {
-            return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
-                "فشل في التحقق من الرمز",
-                errors
+            // الخطوة 1: التحقق من صحة البيانات
+            var validator = new VerifyOtpRequestValidator();
+            var (isValid, errors) = validator.Validate(request);
+
+            if (!isValid)
+            {
+                return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                    "فشل في التحقق من الرمز",
+                    errors
+                );
+            }
+
+            // الخطوة 2: البحث عن الرمز في قاعدة البيانات
+            var resetToken = await _unitOfWork.PasswordResetTokens.GetFirstOrDefaultAsync(
+                t => t.Token == request.Token.Trim()
+            );
+
+            if (resetToken == null)
+            {
+                return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                    "فشل في التحقق من الرمز",
+                    new List<string> { "الرمز غير صحيح" }
+                );
+            }
+
+            // الخطوة 3: التحقق من أن الرمز لم يُستخدم
+            if (resetToken.IsUsed)
+            {
+                return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                    "فشل في التحقق من الرمز",
+                    new List<string> { "تم استخدام هذا الرمز مسبقاً" }
+                );
+            }
+
+            // الخطوة 4: التحقق من أن الرمز لم ينتهِ
+            if (resetToken.ExpiresAt < DateTime.UtcNow)
+            {
+                return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                    "فشل في التحقق من الرمز",
+                    new List<string> { "انتهت صلاحية الرمز. يرجى طلب رمز جديد" }
+                );
+            }
+
+            // الخطوة 5: التحقق من وجود المستخدم
+            var user = await _unitOfWork.Users.GetByIdAsync(resetToken.UserId);
+
+            if (user == null)
+            {
+                return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                    "فشل في التحقق من الرمز",
+                    new List<string> { "المستخدم غير موجود" }
+                );
+            }
+
+            // الخطوة 6: التحقق من أن المستخدم ولي أمر
+            var parent = await _unitOfWork.Parents.GetFirstOrDefaultAsync(
+                p => p.UserId == user.Id
+            );
+
+            if (parent == null)
+            {
+                return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
+                    "فشل في التحقق من الرمز",
+                    new List<string> { "المستخدم ليس ولي أمر" }
+                );
+            }
+
+            // الخطوة 7: الرمز صحيح - إرجاع استجابة نجاح
+            var response = new VerifyOtpResponseDto
+            {
+                IsValid = true,
+                Message = "الرمز صحيح. يمكنك الآن تغيير كلمة المرور",
+                VerifiedAt = DateTime.UtcNow
+            };
+
+            return ApiResponse<VerifyOtpResponseDto>.SuccessResponse(
+                response,
+                "تم التحقق من الرمز بنجاح"
             );
         }
-
-        // الخطوة 2: البحث عن الرمز في قاعدة البيانات
-        var resetToken = await _unitOfWork.PasswordResetTokens.GetFirstOrDefaultAsync(
-            t => t.Token == request.Token.Trim()
-        );
-
-        if (resetToken == null)
+        catch (Exception ex)
         {
             return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
-                "فشل في التحقق من الرمز",
-                new List<string> { "الرمز غير صحيح" }
+                "حدث خطأ أثناء التحقق من الرمز",
+                new List<string> { ex.Message }
             );
         }
-
-        // الخطوة 3: التحقق من أن الرمز لم يُستخدم
-        if (resetToken.IsUsed)
-        {
-            return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
-                "فشل في التحقق من الرمز",
-                new List<string> { "تم استخدام هذا الرمز مسبقاً" }
-            );
-        }
-
-        // الخطوة 4: التحقق من أن الرمز لم ينتهِ
-        if (resetToken.ExpiresAt < DateTime.UtcNow)
-        {
-            return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
-                "فشل في التحقق من الرمز",
-                new List<string> { "انتهت صلاحية الرمز. يرجى طلب رمز جديد" }
-            );
-        }
-
-        // الخطوة 5: التحقق من وجود المستخدم
-        var user = await _unitOfWork.Users.GetByIdAsync(resetToken.UserId);
-
-        if (user == null)
-        {
-            return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
-                "فشل في التحقق من الرمز",
-                new List<string> { "المستخدم غير موجود" }
-            );
-        }
-
-        // الخطوة 6: التحقق من أن المستخدم ولي أمر
-        var parent = await _unitOfWork.Parents.GetFirstOrDefaultAsync(
-            p => p.UserId == user.Id
-        );
-
-        if (parent == null)
-        {
-            return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
-                "فشل في التحقق من الرمز",
-                new List<string> { "المستخدم ليس ولي أمر" }
-            );
-        }
-
-        // الخطوة 7: الرمز صحيح - إرجاع استجابة نجاح
-        var response = new VerifyOtpResponseDto
-        {
-            IsValid = true,
-            Message = "الرمز صحيح. يمكنك الآن تغيير كلمة المرور",
-            VerifiedAt = DateTime.UtcNow
-        };
-
-        return ApiResponse<VerifyOtpResponseDto>.SuccessResponse(
-            response,
-            "تم التحقق من الرمز بنجاح"
-        );
     }
-    catch (Exception ex)
+    /// <summary>
+    /// تسجيل دخول الطفل باستخدام معرف الدخول وكلمة المرور البصرية (5 فواكه)
+    /// </summary>
+    public async Task<ApiResponse<LoginChildResponseDto>> LoginChildAsync(LoginChildRequestDto request)
     {
-        return ApiResponse<VerifyOtpResponseDto>.FailureResponse(
-            "حدث خطأ أثناء التحقق من الرمز",
-            new List<string> { ex.Message }
-        );
-    }
-}
-/// <summary>
-/// تسجيل دخول الطفل باستخدام معرف الدخول وكلمة المرور البصرية (5 فواكه)
-/// </summary>
-public async Task<ApiResponse<LoginChildResponseDto>> LoginChildAsync(LoginChildRequestDto request)
-{
-    try
-    {
-        // Step 1: Validate input
-        var validator = new LoginChildRequestValidator();
-        var (isValid, errors) = validator.Validate(request);
-
-        if (!isValid)
+        try
         {
-            return ApiResponse<LoginChildResponseDto>.FailureResponse(
-                "فشل في تسجيل الدخول",
-                errors
-            );
-        }
+            // Step 1: Validate input
+            var validator = new LoginChildRequestValidator();
+            var (isValid, errors) = validator.Validate(request);
 
-        // Step 2: Find child by login ID
-        var child = await _unitOfWork.Children.GetFirstOrDefaultAsync(
-            c => c.ChildLoginId == request.ChildLoginId.Trim(),
-            includeProperties: "Parent"
-        );
-
-        if (child == null)
-        {
-            return ApiResponse<LoginChildResponseDto>.FailureResponse(
-                "حاول تاني", // "Try again" - matches Figma error
-                new List<string> { "معرف الدخول أو كلمة السر غير صحيحة" }
-            );
-        }
-
-        // Step 3: Check if child is active
-        if (!child.IsActive)
-        {
-            return ApiResponse<LoginChildResponseDto>.FailureResponse(
-                "فشل في تسجيل الدخول",
-                new List<string> { "الحساب غير نشط" }
-            );
-        }
-
-        // Step 4: Check if child has password (should have for ages 4-13)
-        if (string.IsNullOrEmpty(child.PasswordHash))
-        {
-            return ApiResponse<LoginChildResponseDto>.FailureResponse(
-                "فشل في تسجيل الدخول",
-                new List<string> { "هذا الحساب لا يحتوي على كلمة مرور" }
-            );
-        }
-
-        // Step 5: Verify password
-        // Combine the fruit codes from request
-        var enteredPassword = string.Join("", request.FruitPasswordCodes);
-        
-        // Verify using password hasher
-        bool isPasswordValid = _passwordHasher.VerifyPassword(enteredPassword, child.PasswordHash);
-
-        if (!isPasswordValid)
-        {
-            return ApiResponse<LoginChildResponseDto>.FailureResponse(
-                "حاول تاني", // "Try again" - matches Figma error
-                new List<string> { "معرف الدخول أو كلمة السر غير صحيحة" }
-            );
-        }
-
-        // Step 6: Check parent is active
-        if (child.Parent != null)
-        {
-            var parentUser = await _unitOfWork.Users.GetByIdAsync(child.Parent.UserId);
-            if (parentUser == null || !parentUser.IsActive)
+            if (!isValid)
             {
                 return ApiResponse<LoginChildResponseDto>.FailureResponse(
                     "فشل في تسجيل الدخول",
-                    new List<string> { "حساب ولي الأمر غير نشط" }
+                    errors
                 );
             }
-        }
 
-        // Step 7: Generate JWT token (optional - if you want child sessions)
-        string? token = null;
-        if (_jwtTokenService != null)
-        {
-            // Generate token with child-specific claims
-            token = _jwtTokenService.GenerateToken(
-                child.Id,
-                child.ChildLoginId ?? child.Id.ToString(),
-                $"child_{child.Id}@ajial.app", // Dummy email for children
-                "Child"
+            // Step 2: Find child by login ID
+            var child = await _unitOfWork.Children.GetFirstOrDefaultAsync(
+                c => c.ChildLoginId == request.ChildLoginId.Trim(),
+                includeProperties: "Parent"
+            );
+
+            if (child == null)
+            {
+                return ApiResponse<LoginChildResponseDto>.FailureResponse(
+                    "حاول تاني", // "Try again" - matches Figma error
+                    new List<string> { "معرف الدخول أو كلمة السر غير صحيحة" }
+                );
+            }
+
+            // Step 3: Check if child is active
+            if (!child.IsActive)
+            {
+                return ApiResponse<LoginChildResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    new List<string> { "الحساب غير نشط" }
+                );
+            }
+
+            // Step 4: Check if child has password (should have for ages 4-13)
+            if (string.IsNullOrEmpty(child.PasswordHash))
+            {
+                return ApiResponse<LoginChildResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    new List<string> { "هذا الحساب لا يحتوي على كلمة مرور" }
+                );
+            }
+
+            // Step 5: Verify password
+            // Combine the fruit codes from request
+            var enteredPassword = string.Join("", request.FruitPasswordCodes);
+
+            // Verify using password hasher
+            bool isPasswordValid = _passwordHasher.VerifyPassword(enteredPassword, child.PasswordHash);
+
+            if (!isPasswordValid)
+            {
+                return ApiResponse<LoginChildResponseDto>.FailureResponse(
+                    "حاول تاني", // "Try again" - matches Figma error
+                    new List<string> { "معرف الدخول أو كلمة السر غير صحيحة" }
+                );
+            }
+
+            // Step 6: Check parent is active
+            if (child.Parent != null)
+            {
+                var parentUser = await _unitOfWork.Users.GetByIdAsync(child.Parent.UserId);
+                if (parentUser == null || !parentUser.IsActive)
+                {
+                    return ApiResponse<LoginChildResponseDto>.FailureResponse(
+                        "فشل في تسجيل الدخول",
+                        new List<string> { "حساب ولي الأمر غير نشط" }
+                    );
+                }
+            }
+
+            // Step 7: Generate JWT token (optional - if you want child sessions)
+            string? token = null;
+            if (_jwtTokenService != null)
+            {
+                // Generate token with child-specific claims
+                token = _jwtTokenService.GenerateToken(
+                    child.Id,
+                    child.ChildLoginId ?? child.Id.ToString(),
+                    $"child_{child.Id}@ajial.app", // Dummy email for children
+                    "Child"
+                );
+            }
+
+            // Step 7.5: Update LastActivityAt for online status tracking
+            child.LastActivityAt = DateTime.UtcNow;
+            await _unitOfWork.Children.UpdateAsync(child);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Step 8: Create response
+            var response = new LoginChildResponseDto
+            {
+                ChildId = child.Id,
+                FullName = child.FullName,
+                Age = child.Age,
+                Gender = child.Gender,
+                ProfileImageUrl = child.ProfileImageUrl,
+                ParentId = child.ParentId,
+                Message = $"مرحباً بك يا {child.FullName}!", // "Welcome [child name]!"
+                LoginAt = DateTime.UtcNow,
+                Token = token
+            };
+
+            return ApiResponse<LoginChildResponseDto>.SuccessResponse(
+                response,
+                "تم تسجيل الدخول بنجاح"
             );
         }
-
-        // Step 8: Create response
-        var response = new LoginChildResponseDto
+        catch (Exception ex)
         {
-            ChildId = child.Id,
-            FullName = child.FullName,
-            Age = child.Age,
-            Gender = child.Gender,
-            ProfileImageUrl = child.ProfileImageUrl,
-            ParentId = child.ParentId,
-            Message = $"مرحباً بك يا {child.FullName}!", // "Welcome [child name]!"
-            LoginAt = DateTime.UtcNow,
-            Token = token
-        };
-
-        return ApiResponse<LoginChildResponseDto>.SuccessResponse(
-            response,
-            "تم تسجيل الدخول بنجاح"
-        );
+            return ApiResponse<LoginChildResponseDto>.FailureResponse(
+                "حدث خطأ أثناء تسجيل الدخول",
+                new List<string> { ex.Message }
+            );
+        }
     }
-    catch (Exception ex)
-    {
-        return ApiResponse<LoginChildResponseDto>.FailureResponse(
-            "حدث خطأ أثناء تسجيل الدخول",
-            new List<string> { ex.Message }
-        );
-    }
-}
     public async Task<ApiResponse<ResetPasswordResponseDto>> ResetPasswordAsync(
         ResetPasswordRequestDto request)
     {
@@ -580,102 +585,138 @@ public async Task<ApiResponse<LoginChildResponseDto>> LoginChildAsync(LoginChild
     {
         var random = new Random();
         var token = string.Empty;
-        
+
         for (int i = 0; i < length; i++)
         {
             token += random.Next(0, 10).ToString();
         }
-        
+
         return token;
     }
 
     public async Task<RegisterParentResponse> RegisterParentAsync(RegisterParentRequest request)
-{
-    // Validate date of birth (must be at least 18 years old)
-    var age = DateTime.UtcNow.Year - request.DateOfBirth.Year;
-    if (request.DateOfBirth > DateTime.UtcNow.AddYears(-age)) age--;
-    
-    if (age < 18)
     {
-        throw new ArgumentException("يجب أن يكون عمر المستخدم 18 عامًا على الأقل");
-    }
+        // Validate date of birth (must be at least 18 years old)
+        var age = DateTime.UtcNow.Year - request.DateOfBirth.Year;
+        if (request.DateOfBirth > DateTime.UtcNow.AddYears(-age)) age--;
 
-    // Check if username already exists
-    var existingUsername = await _unitOfWork.Users.ExistsAsync(u => u.Username == request.Username);
-    if (existingUsername)
-    {
-        throw new ArgumentException("اسم المستخدم موجود بالفعل");
-    }
-
-    // Check if email already exists
-    var existingEmail = await _unitOfWork.Users.ExistsAsync(u => u.Email == request.Email);
-    if (existingEmail)
-    {
-        throw new ArgumentException("البريد الإلكتروني موجود بالفعل");
-    }
-
-    // Verify city exists
-    var cityExists = await _unitOfWork.Cities.ExistsAsync(c => c.Id == request.CityId && c.IsActive);
-    if (!cityExists)
-    {
-        throw new ArgumentException("المدينة المختارة غير صحيحة");
-    }
-
-    // Validate gender
-    if (!Enum.IsDefined(typeof(ParentGender), request.Gender))
-    {
-        throw new ArgumentException("من أنت؟ غير صحيح");
-    }
-
-    // ✅ REMOVE MANUAL TRANSACTION - Let EF Core handle it automatically
-    try
-    {
-        // Create User
-        var user = new User
+        if (age < 18)
         {
-            Id = Guid.NewGuid(),
-            FullName = request.FullName,
-            Username = request.Username,
-            Email = request.Email.ToLower(),
-            PasswordHash = _passwordHasher.HashPassword(request.Password),
-            UserType = UserType.Parent,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
+            throw new ArgumentException("يجب أن يكون عمر المستخدم 18 عامًا على الأقل");
+        }
 
-        await _unitOfWork.Users.AddAsync(user);
-
-        // Create Parent profile
-        var parent = new Parent
+        // Check if username already exists
+        var existingUsername = await _unitOfWork.Users.ExistsAsync(u => u.Username == request.Username);
+        if (existingUsername)
         {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            DateOfBirth = request.DateOfBirth,
-            CityId = request.CityId,
-            Gender = (ParentGender)request.Gender,
-            CreatedAt = DateTime.UtcNow
-        };
+            throw new ArgumentException("اسم المستخدم موجود بالفعل");
+        }
 
-        await _unitOfWork.Parents.AddAsync(parent);
-        
-        // ✅ Single SaveChanges - EF Core handles transaction automatically
-        await _unitOfWork.SaveChangesAsync();
-
-        return new RegisterParentResponse
+        // Check if email already exists
+        var existingEmail = await _unitOfWork.Users.ExistsAsync(u => u.Email == request.Email);
+        if (existingEmail)
         {
-            UserId = user.Id,
-            ParentId = parent.Id,
-            FullName = user.FullName,
-            Username = user.Username,
-            Email = user.Email,
-            Message = "تم إنشاء الحساب بنجاح",
-            CreatedAt = user.CreatedAt
-        };
+            throw new ArgumentException("البريد الإلكتروني موجود بالفعل");
+        }
+
+        // Verify city exists
+        var cityExists = await _unitOfWork.Cities.ExistsAsync(c => c.Id == request.CityId && c.IsActive);
+        if (!cityExists)
+        {
+            throw new ArgumentException("المدينة المختارة غير صحيحة");
+        }
+
+        // Validate gender
+        if (!Enum.IsDefined(typeof(ParentGender), request.Gender))
+        {
+            throw new ArgumentException("من أنت؟ غير صحيح");
+        }
+
+        // ✅ REMOVE MANUAL TRANSACTION - Let EF Core handle it automatically
+        try
+        {
+            // Create User
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                FullName = request.FullName,
+                Username = request.Username,
+                Email = request.Email.ToLower(),
+                PasswordHash = _passwordHasher.HashPassword(request.Password),
+                UserType = UserType.Parent,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            await _unitOfWork.Users.AddAsync(user);
+
+            // Create Parent profile
+            var parent = new Parent
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                DateOfBirth = request.DateOfBirth,
+                CityId = request.CityId,
+                Gender = (ParentGender)request.Gender,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Parents.AddAsync(parent);
+
+            // ✅ Single SaveChanges - EF Core handles transaction automatically
+            await _unitOfWork.SaveChangesAsync();
+
+            return new RegisterParentResponse
+            {
+                UserId = user.Id,
+                ParentId = parent.Id,
+                FullName = user.FullName,
+                Username = user.Username,
+                Email = user.Email,
+                Message = "تم إنشاء الحساب بنجاح",
+                CreatedAt = user.CreatedAt
+            };
+        }
+        catch (Exception ex)
+        {
+            // ✅ No need for RollbackTransaction - EF Core auto-rollback on exception
+            throw new InvalidOperationException("حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة مرة أخرى", ex);
+        }
     }
-    catch (Exception ex)
+
+    /// <summary>
+    /// تسجيل خروج الطفل - Logout child (clears LastActivityAt so IsActive becomes false)
+    /// </summary>
+    public async Task<ApiResponse<string>> LogoutChildAsync(Guid childId)
     {
-        // ✅ No need for RollbackTransaction - EF Core auto-rollback on exception
-        throw new InvalidOperationException("حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة مرة أخرى", ex);
+        try
+        {
+            var child = await _unitOfWork.Children.GetByIdAsync(childId);
+
+            if (child == null)
+            {
+                return ApiResponse<string>.FailureResponse(
+                    "فشل في تسجيل الخروج",
+                    new List<string> { "الطفل غير موجود" }
+                );
+            }
+
+            // Clear LastActivityAt so parent sees IsActive = false
+            child.LastActivityAt = null;
+            await _unitOfWork.Children.UpdateAsync(child);
+            await _unitOfWork.SaveChangesAsync();
+
+            return ApiResponse<string>.SuccessResponse(
+                "تم تسجيل الخروج بنجاح",
+                $"تم تسجيل خروج {child.FullName} بنجاح"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<string>.FailureResponse(
+                "حدث خطأ أثناء تسجيل الخروج",
+                new List<string> { ex.Message }
+            );
+        }
     }
-}
 }

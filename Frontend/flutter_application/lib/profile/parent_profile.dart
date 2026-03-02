@@ -2,6 +2,7 @@
 // Parent Profile Page - Following Figma CSS Specifications
 
 import 'package:Ajial/api/auth_service.dart';
+import 'package:Ajial/family/family_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +12,7 @@ import 'package:Ajial/profile/change_email_page.dart';
 import 'package:Ajial/profile/delete_account_page.dart';
 import 'package:Ajial/add-child/add-child-flow.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
+import 'package:Ajial/widgets/skeleton_loading.dart';
 
 // --- CONSTANTS ---
 const Color kPrimaryColor = Color(0xFFBF092F);
@@ -116,8 +118,8 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
         if (provider.isLoading) {
           return const Scaffold(
             backgroundColor: Colors.white,
-            body: Center(
-              child: CircularProgressIndicator(color: kPrimaryColor),
+            body: SafeArea(
+              child: ParentProfileSkeleton(),
             ),
           );
         }
@@ -633,7 +635,14 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
     final children = provider.children;
     return Column(
       children: [
-        _buildSectionHeader('الاطفال', true),
+        _buildSectionHeader(
+          'الاطفال',
+          true,
+          onViewAll: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const FamilyPage()),
+          ),
+        ),
         const SizedBox(height: 14),
         SizedBox(
           height: 99,
@@ -1014,7 +1023,11 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
   }
 
   // --- Section Header ---
-  Widget _buildSectionHeader(String title, bool showViewAll) {
+  Widget _buildSectionHeader(
+    String title,
+    bool showViewAll, {
+    VoidCallback? onViewAll,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       height: 47,
@@ -1026,22 +1039,25 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           if (showViewAll)
-            const Row(
-              children: [
-                Icon(Icons.arrow_back_ios, size: 12),
-                SizedBox(width: 4),
-                Text(
-                  'عرض الكل',
-                  style: TextStyle(
-                    fontFamily: kFontFamily,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w300,
+            GestureDetector(
+              onTap: onViewAll,
+              child: const Row(
+                children: [
+                  Icon(Icons.arrow_back_ios, size: 12),
+                  SizedBox(width: 4),
+                  Text(
+                    'عرض الكل',
+                    style: TextStyle(
+                      fontFamily: kFontFamily,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             )
           else
-            const SizedBox.shrink(), // Empty space instead of arrow
+            const SizedBox.shrink(),
           Text(
             title,
             style: const TextStyle(

@@ -1102,4 +1102,88 @@ public class ParentService : IParentService
             );
         }
     }
+
+    /// <summary>
+    /// Get all children for the logged-in parent (for "All Children" view)
+    /// جلب جميع أطفال ولي الأمر المسجل لعرض "جميع الأطفال"
+    /// </summary>
+    public async Task<ApiResponse<GetParentChildrenResponseDto>> GetParentChildrenAsync(Guid userId)
+    {
+        try
+        {
+            _logger.LogInformation("Fetching children for user ID: {UserId}", userId);
+
+            // Step 1: Get parent by userId
+            var parent = await _unitOfWork.Parents.GetFirstOrDefaultAsync(
+                predicate: p => p.UserId == userId,
+                includeProperties: "User"
+            );
+
+            if (parent == null)
+            {
+                _logger.LogWarning("Parent not found for user ID: {UserId}", userId);
+                return ApiResponse<GetParentChildrenResponseDto>.FailureResponse(
+                    "ولي الأمر غير موجود",
+                    new List<string> { "لم يتم العثور على بيانات ولي الأمر" }
+                );
+            }
+
+            // Step 2: Check if user is active
+            if (!parent.User.IsActive)
+            {
+                _logger.LogWarning("Inactive user attempted to fetch children: {UserId}", userId);
+                return ApiResponse<GetParentChildrenResponseDto>.FailureResponse(
+                    "الحساب غير نشط",
+                    new List<string> { "هذا الحساب غير نشط" }
+                );
+            }
+
+            // Step 3: Get all children for this parent
+            var children = await _unitOfWork.Children.GetChildrenByParentIdAsync(parent.Id);
+
+            // Step 4: Map to ChildSummaryDto with calculated fields
+            var now = DateTime.UtcNow;
+            const int activeThresholdMinutes = 5;
+
+            var childrenDtos = children
+                .OrderByDescending(c => c.CreatedAt) // Newest first
+                .Select(child => new ChildSummaryDto
+                {
+                    ChildId = child.Id,
+                    FullName = child.FullName,
+                    PhotoUrl = child.ProfileImageUrl,
+                    Age = CalculateAge(child.BirthDate),
+                    IsActive = child.LastActivityAt.HasValue
+                              && (now - child.LastActivityAt.Value).TotalMinutes <= activeThresholdMinutes,
+                    HasAccount = !string.IsNullOrEmpty(child.ChildLoginId),
+                    PrizeCount = 0 // Placeholder — will be implemented with prize/achievement system
+                })
+                .ToList();
+
+            // Step 5: Build response
+            var response = new GetParentChildrenResponseDto
+            {
+                TotalCount = childrenDtos.Count,
+                Children = childrenDtos
+            };
+
+            _logger.LogInformation(
+                "Successfully retrieved {Count} children for user {UserId}",
+                childrenDtos.Count, userId
+            );
+
+            return ApiResponse<GetParentChildrenResponseDto>.SuccessResponse(
+                response,
+                $"تم جلب بيانات {childrenDtos.Count} طفل بنجاح"
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching children for user ID: {UserId}", userId);
+            return ApiResponse<GetParentChildrenResponseDto>.FailureResponse(
+                "حدث خطأ أثناء جلب بيانات الأطفال",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً" }
+            );
+        }
+    }
 }
