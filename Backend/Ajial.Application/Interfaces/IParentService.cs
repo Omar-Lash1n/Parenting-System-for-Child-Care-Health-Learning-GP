@@ -35,4 +35,10 @@ public interface IParentService
     /// التحقق من البريد الإلكتروني باستخدام الرمز
     /// </summary>
     Task<ApiResponse<VerifyEmailResponseDto>> VerifyEmailAsync(string token);
+
+    /// <summary>
+    /// Get all children for the logged-in parent (for "All Children" view)
+    /// جلب جميع أطفال ولي الأمر المسجل
+    /// </summary>
+    Task<ApiResponse<GetParentChildrenResponseDto>> GetParentChildrenAsync(Guid userId);
 }

@@ -24,7 +24,7 @@ public class ChildService : IChildService
     }
 
     public async Task<ApiResponse<AddChildResponseDto>> AddChildAsync(
-        AddChildRequestDto request, 
+        AddChildRequestDto request,
         Guid parentId)
     {
         try
@@ -85,7 +85,7 @@ public class ChildService : IChildService
                 try
                 {
                     profileImageUrl = await _imageService.UploadChildImageAsync(
-                        request.ProfileImage, 
+                        request.ProfileImage,
                         childId
                     );
                 }
@@ -125,7 +125,7 @@ public class ChildService : IChildService
             {
                 // Combine fruit codes into a single password string
                 var combinedPassword = string.Join("", request.FruitPasswordCodes);
-                
+
                 // Hash the password using your IPasswordHasher
                 child.PasswordHash = _passwordHasher.HashPassword(combinedPassword);
             }
@@ -145,7 +145,7 @@ public class ChildService : IChildService
                 ProfileImageUrl = child.ProfileImageUrl,
                 ChildLoginId = child.ChildLoginId,
                 RequiresPassword = requiresPassword,
-                Message = requiresPassword 
+                Message = requiresPassword
                     ? $"تم إضافة الطفل {child.FullName} بنجاح. يمكن للطفل تسجيل الدخول باستخدام المعرف: {child.ChildLoginId}"
                     : $"تم إضافة الطفل {child.FullName} بنجاح",
                 CreatedAt = child.CreatedAt
@@ -169,6 +169,7 @@ public class ChildService : IChildService
     {
         try
         {
+            await Task.CompletedTask;
             var fruits = new List<FruitOptionDto>
             {
                 new FruitOptionDto { FruitCode = "apple2025", FruitNameAr = "تفاح", FruitNameEn = "Apple", DisplayOrder = 1 },
@@ -217,8 +218,8 @@ public class ChildService : IChildService
 
             return ApiResponse<bool>.SuccessResponse(
                 isAvailable,
-                isAvailable 
-                    ? "معرف تسجيل الدخول متاح" 
+                isAvailable
+                    ? "معرف تسجيل الدخول متاح"
                     : "معرف تسجيل الدخول مستخدم بالفعل"
             );
         }
@@ -239,5 +240,83 @@ public class ChildService : IChildService
             "female" => "أنثى",
             _ => gender
         };
+    }
+
+    public async Task<ApiResponse<ChildProfileSummaryDto>> GetChildProfileSummaryAsync(Guid childId, Guid parentId)
+    {
+        try
+        {
+            var parent = await _unitOfWork.Parents.GetFirstOrDefaultAsync(p => p.UserId == parentId);
+            if (parent == null)
+            {
+                return ApiResponse<ChildProfileSummaryDto>.FailureResponse(
+                    "فشل في جلب بيانات الطفل",
+                    new List<string> { "حساب ولي الأمر غير موجود" }
+                );
+            }
+
+            var child = await _unitOfWork.Children.GetByIdAsync(childId);
+
+            if (child == null || child.ParentId != parent.Id)
+            {
+                return ApiResponse<ChildProfileSummaryDto>.FailureResponse(
+                    "فشل في جلب بيانات الطفل",
+                    new List<string> { "الطفل غير موجود أو لا ينتمي لهذا الحساب" }
+                );
+            }
+
+            string firstName = string.IsNullOrWhiteSpace(child.FullName)
+                ? ""
+                : child.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+
+            var (years, months, days) = CalculateExactAge(child.BirthDate);
+
+            var summary = new ChildProfileSummaryDto
+            {
+                ChildId = child.Id,
+                FirstName = firstName,
+                AgeYears = years,
+                AgeMonths = months,
+                AgeDays = days,
+                ProfileImageUrl = child.ProfileImageUrl,
+                ProfileCompletionPercentage = 0
+            };
+
+            return ApiResponse<ChildProfileSummaryDto>.SuccessResponse(
+                summary,
+                "تم جلب بيانات الطفل بنجاح"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ChildProfileSummaryDto>.FailureResponse(
+                "حدث خطأ أثناء جلب بيانات الطفل",
+                new List<string> { ex.Message }
+            );
+        }
+    }
+
+    private (int years, int months, int days) CalculateExactAge(DateTime birthDate)
+    {
+        DateTime today = DateTime.Today;
+        int years = today.Year - birthDate.Year;
+        int months = today.Month - birthDate.Month;
+        int days = today.Day - birthDate.Day;
+
+        if (days < 0)
+        {
+            months--;
+            days += DateTime.DaysInMonth(today.Year, today.Month == 1 ? 12 : today.Month - 1);
+        }
+
+        if (months < 0)
+        {
+            years--;
+            months += 12;
+        }
+
+        if (years < 0) return (0, 0, 0);
+
+        return (years, months, days);
     }
 }

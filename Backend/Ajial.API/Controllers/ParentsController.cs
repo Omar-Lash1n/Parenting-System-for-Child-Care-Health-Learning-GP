@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using Ajial.Application.DTOs.Common;
 using Ajial.Application.DTOs.Parent;
+using Ajial.Application.DTOs.Child;
 using Ajial.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,11 +13,16 @@ namespace Ajial.API.Controllers;
 public class ParentsController : ControllerBase
 {
     private readonly IParentService _parentService;
+    private readonly IChildService _childService;
     private readonly ILogger<ParentsController> _logger;
 
-    public ParentsController(IParentService parentService, ILogger<ParentsController> logger)
+    public ParentsController(
+        IParentService parentService,
+        IChildService childService,
+        ILogger<ParentsController> logger)
     {
         _parentService = parentService;
+        _childService = childService;
         _logger = logger;
     }
 
@@ -655,6 +661,83 @@ public class ParentsController : ControllerBase
     }
 
     /// <summary>
+    /// Get all children for the logged-in parent (for "All Children" view)
+    /// جلب جميع أطفال ولي الأمر المسجل
+    /// </summary>
+    /// <remarks>
+    /// Returns a list of all children associated with the authenticated parent.
+    /// 
+    /// Each child includes:
+    /// - **ChildId**: Unique identifier
+    /// - **FullName**: Child's full name
+    /// - **PhotoUrl**: Profile image URL (nullable)
+    /// - **Age**: Calculated from BirthDate
+    /// - **IsActive**: true if child has been active within the last 5 minutes (green dot in UI)
+    /// - **HasAccount**: true if the child has login credentials
+    /// - **PrizeCount**: Number of achievements (currently defaults to 0)
+    /// 
+    /// Requires authentication — returns data for the logged-in parent only.
+    /// </remarks>
+    [HttpGet("children")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<GetParentChildrenResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<GetParentChildrenResponseDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<GetParentChildrenResponseDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<GetParentChildrenResponseDto>), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetParentChildren()
+    {
+        try
+        {
+            // Get user ID from JWT token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                _logger.LogWarning("Unauthorized children access attempt - invalid user ID claim");
+                return Unauthorized(ApiResponse<GetParentChildrenResponseDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول للوصول إلى بيانات الأطفال" }
+                ));
+            }
+
+            _logger.LogInformation("Children list requested by user ID: {UserId}", userId);
+
+            var result = await _parentService.GetParentChildrenAsync(userId);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning(
+                    "Failed to retrieve children for user {UserId}. Errors: {Errors}",
+                    userId,
+                    string.Join(", ", result.Errors)
+                );
+
+                if (result.Errors.Any(e => e.Contains("غير موجود")))
+                {
+                    return NotFound(result);
+                }
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation(
+                "Successfully returned {Count} children for user {UserId}",
+                result.Data?.TotalCount ?? 0, userId
+            );
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetParentChildren endpoint");
+            return StatusCode(500, ApiResponse<GetParentChildrenResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع أثناء جلب بيانات الأطفال" }
+            ));
+        }
+    }
+
+    /// <summary>
     /// Generate HTML page for email verification result
     /// </summary>
     private string GenerateVerificationHtmlPage(bool isSuccess, string title, string message, string email)
@@ -768,5 +851,47 @@ public class ParentsController : ControllerBase
     </div>
 </body>
 </html>";
+    }
+
+    /// <summary>
+    /// جلب ملخص بيانات ملف الطفل - Get child profile summary 
+    /// </summary>
+    /// <param name="childId">معرف الطفل</param>
+    [HttpGet("child/{childId}/profile-summary")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ChildProfileSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ChildProfileSummaryDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetChildProfileSummary(Guid childId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                _logger.LogWarning("Unauthorized attempt to get child profile summary. Invalid user ID claim");
+                return Unauthorized(ApiResponse<ChildProfileSummaryDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            _logger.LogInformation("Parent {ParentId} retrieving profile summary for child {ChildId}", parentUserId, childId);
+
+            var result = await _childService.GetChildProfileSummaryAsync(childId, parentUserId);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting profile summary for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<ChildProfileSummaryDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع" }
+            ));
+        }
     }
 }

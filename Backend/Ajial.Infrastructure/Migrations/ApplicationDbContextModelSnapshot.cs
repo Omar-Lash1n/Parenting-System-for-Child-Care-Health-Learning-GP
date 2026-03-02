@@ -51,10 +51,19 @@ namespace Ajial.Infrastructure.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
+                    b.Property<bool>("HasCompletedAdditionalVaccinationSurvey")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasCompletedVaccinationSurvey")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("LastActivityAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid>("ParentId")
                         .HasColumnType("uniqueidentifier");
@@ -81,6 +90,39 @@ namespace Ajial.Infrastructure.Migrations
                     b.HasIndex("ParentId");
 
                     b.ToTable("Children");
+                });
+
+            modelBuilder.Entity("Ajial.Domain.Entities.ChildVaccination", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ChildId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsTaken")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("VaccinationMilestoneId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChildId");
+
+                    b.HasIndex("VaccinationMilestoneId");
+
+                    b.HasIndex("ChildId", "VaccinationMilestoneId")
+                        .IsUnique();
+
+                    b.ToTable("ChildVaccinations");
                 });
 
             modelBuilder.Entity("Ajial.Domain.Entities.City", b =>
@@ -510,6 +552,215 @@ namespace Ajial.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Ajial.Domain.Entities.VaccinationMilestone", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AgeInMonths")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Main");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("NameAr")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VaccinesAr")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("VaccinesEn")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("VaccinationMilestones");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            AgeInMonths = 0,
+                            Category = "Main",
+                            IsActive = true,
+                            NameAr = "تطعيم الولادة",
+                            NameEn = "Birth Vaccination",
+                            SortOrder = 1,
+                            VaccinesAr = "كبدي ب رضع, شلل اطفال فموي, طعم بي سي جي",
+                            VaccinesEn = "Hepatitis B, Oral Polio Vaccine, BCG"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            AgeInMonths = 2,
+                            Category = "Main",
+                            IsActive = true,
+                            NameAr = "تطعيم شهرين",
+                            NameEn = "2 Months Vaccination",
+                            SortOrder = 2,
+                            VaccinesAr = "شلل اطفال (فموي), الطعم الخماسي",
+                            VaccinesEn = "Oral Polio Vaccine, Pentavalent Vaccine"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            AgeInMonths = 4,
+                            Category = "Main",
+                            IsActive = true,
+                            NameAr = "تطعيم 4 شهور",
+                            NameEn = "4 Months Vaccination",
+                            SortOrder = 3,
+                            VaccinesAr = "شلل اطفال (فموي), الطعم الخماسي, شلل اطفال (حقن)",
+                            VaccinesEn = "Oral Polio Vaccine, Pentavalent Vaccine, IPV"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            AgeInMonths = 6,
+                            Category = "Main",
+                            IsActive = true,
+                            NameAr = "تطعيم 6 شهور",
+                            NameEn = "6 Months Vaccination",
+                            SortOrder = 4,
+                            VaccinesAr = "شلل اطفال (فموي), الطعم الخماسي, شلل اطفال (حقن)",
+                            VaccinesEn = "Oral Polio Vaccine, Pentavalent Vaccine, IPV"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            AgeInMonths = 9,
+                            Category = "Main",
+                            IsActive = true,
+                            NameAr = "تطعيم 9 شهور",
+                            NameEn = "9 Months Vaccination",
+                            SortOrder = 5,
+                            VaccinesAr = "شلل اطفال (فموي)",
+                            VaccinesEn = "Oral Polio Vaccine"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            AgeInMonths = 12,
+                            Category = "Main",
+                            IsActive = true,
+                            NameAr = "تطعيم 12 شهر",
+                            NameEn = "12 Months Vaccination",
+                            SortOrder = 6,
+                            VaccinesAr = "شلل اطفال (فموي), الثلاثى الفيروسي",
+                            VaccinesEn = "Oral Polio Vaccine, MMR"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            AgeInMonths = 18,
+                            Category = "Main",
+                            IsActive = true,
+                            NameAr = "تطعيم 18 شهر",
+                            NameEn = "18 Months Vaccination",
+                            SortOrder = 7,
+                            VaccinesAr = "شلل اطفال (فموي), الثلاثى الفيروسي",
+                            VaccinesEn = "Oral Polio Vaccine, MMR"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            AgeInMonths = 48,
+                            Category = "Additional",
+                            IsActive = true,
+                            NameAr = "تطعيم أولى حضانة",
+                            NameEn = "KG1 Vaccination",
+                            SortOrder = 8,
+                            VaccinesAr = "المكورات السحائية الثنائى",
+                            VaccinesEn = "Meningococcal Vaccine"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            AgeInMonths = 72,
+                            Category = "Additional",
+                            IsActive = true,
+                            NameAr = "تطعيم أولى ابتدائى",
+                            NameEn = "Grade 1 Vaccination",
+                            SortOrder = 9,
+                            VaccinesAr = "المكورات السحائية الثنائى",
+                            VaccinesEn = "Meningococcal Vaccine"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            AgeInMonths = 84,
+                            Category = "Additional",
+                            IsActive = true,
+                            NameAr = "تطعيم ثانية ابتدائى",
+                            NameEn = "Grade 2 Vaccination",
+                            SortOrder = 10,
+                            VaccinesAr = "الثنائى البكتيري",
+                            VaccinesEn = "DT Vaccine"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            AgeInMonths = 120,
+                            Category = "Additional",
+                            IsActive = true,
+                            NameAr = "تطعيم رابعة ابتدائى",
+                            NameEn = "Grade 4 Vaccination",
+                            SortOrder = 11,
+                            VaccinesAr = "الثنائى البكتيري",
+                            VaccinesEn = "DT Vaccine"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            AgeInMonths = 144,
+                            Category = "Additional",
+                            IsActive = true,
+                            NameAr = "تطعيم أولى إعدادي",
+                            NameEn = "Grade 7 Vaccination",
+                            SortOrder = 12,
+                            VaccinesAr = "المكورات السحائية الثنائى",
+                            VaccinesEn = "Meningococcal Vaccine"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            AgeInMonths = 180,
+                            Category = "Additional",
+                            IsActive = true,
+                            NameAr = "تطعيم أولى ثانوي",
+                            NameEn = "Grade 10 Vaccination",
+                            SortOrder = 13,
+                            VaccinesAr = "المكورات السحائية الثنائى",
+                            VaccinesEn = "Meningococcal Vaccine"
+                        });
+                });
+
             modelBuilder.Entity("Ajial.Domain.Entities.VoiceNote", b =>
                 {
                     b.Property<Guid>("Id")
@@ -572,6 +823,25 @@ namespace Ajial.Infrastructure.Migrations
                     b.Navigation("Parent");
                 });
 
+            modelBuilder.Entity("Ajial.Domain.Entities.ChildVaccination", b =>
+                {
+                    b.HasOne("Ajial.Domain.Entities.Child", "Child")
+                        .WithMany("Vaccinations")
+                        .HasForeignKey("ChildId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Ajial.Domain.Entities.VaccinationMilestone", "VaccinationMilestone")
+                        .WithMany()
+                        .HasForeignKey("VaccinationMilestoneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Child");
+
+                    b.Navigation("VaccinationMilestone");
+                });
+
             modelBuilder.Entity("Ajial.Domain.Entities.EmailVerificationToken", b =>
                 {
                     b.HasOne("Ajial.Domain.Entities.User", "User")
@@ -622,6 +892,11 @@ namespace Ajial.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Child");
+                });
+
+            modelBuilder.Entity("Ajial.Domain.Entities.Child", b =>
+                {
+                    b.Navigation("Vaccinations");
                 });
 
             modelBuilder.Entity("Ajial.Domain.Entities.Parent", b =>
