@@ -264,6 +264,10 @@ class ChildDataProvider extends ChangeNotifier {
       final data = await AuthService().getChildFileData(childId);
 
       if (data != null) {
+        // DEBUG: print raw API response to see actual field names
+        print('=== getChildFileData raw response ===');
+        data.forEach((k, v) => print('  $k: $v'));
+        print('=====================================');
         _childName = (data['firstName'] ?? '').toString();
         _fullName = (data['fullName'] ?? '').toString();
         _name = _fullName.isNotEmpty ? _fullName : _childName;
@@ -380,8 +384,11 @@ class ChildDataProvider extends ChangeNotifier {
     }
   }
 
-  /// Delete child from backend
-  Future<(bool, String)> deleteChild() async {
+  /// Delete child from backend.
+  /// Pass [childId] directly when navigating from the family list
+  /// (i.e. without having called [fetchFileData] first).
+  Future<(bool, String)> deleteChild({String? childId}) async {
+    if (childId != null && childId.isNotEmpty) _childId = childId;
     if (_childId.isEmpty) return (false, 'معرف الطفل غير موجود');
 
     _isSaving = true;
