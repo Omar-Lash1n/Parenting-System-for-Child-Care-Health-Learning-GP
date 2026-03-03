@@ -29,6 +29,14 @@ import 'package:Ajial/profile/my_child_profile.dart';
 import 'package:Ajial/profile/child_data_profile.dart';
 import 'package:Ajial/profile/child_data_profile_form.dart';
 import 'package:Ajial/child-app/home/child_home_page.dart';
+// --- Vaccination Feature ---
+import 'package:Ajial/vaccinations/vaccination_welcome_provider.dart';
+import 'package:Ajial/vaccinations/vaccination_welcome_page.dart';
+import 'package:Ajial/vaccinations/vaccination_survey_provider.dart';
+import 'package:Ajial/vaccinations/vaccination_survey_select_page.dart';
+import 'package:Ajial/vaccinations/additional_vaccination_provider.dart';
+import 'package:Ajial/vaccinations/additional_vaccination_survey_page.dart';
+import 'package:Ajial/vaccinations/vaccination_success_page.dart';
 import 'package:Ajial/family/family_page.dart';
 
 void main() async {
@@ -47,6 +55,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ParentProfileProvider()),
         ChangeNotifierProvider(create: (_) => ChildHomeProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => VaccinationWelcomeProvider()),
+        ChangeNotifierProvider(create: (_) => VaccinationSurveyProvider()),
+        ChangeNotifierProvider(create: (_) => AdditionalVaccinationProvider()),
         ChangeNotifierProvider(create: (_) => FamilyProvider()),
         ChangeNotifierProvider(create: (_) => ChildProfileProvider()),
         ChangeNotifierProvider(create: (_) => NavBarProvider()),
@@ -89,6 +100,11 @@ class AjialApp extends StatelessWidget {
         '/add-child': (context) => const AddChildFlow(),
         '/profile': (context) => const ParentProfilePage(),
         '/settings': (context) => const SettingsPage(),
+        '/vaccination-welcome': (context) => const VaccinationWelcomePage(),
+        '/vaccination-survey': (context) => const VaccinationSurveySelectPage(),
+        '/additional-vaccination-survey': (context) =>
+            const AdditionalVaccinationSurveyPage(),
+        '/vaccination-success': (context) => const VaccinationSuccessPage(),
         '/family': (context) => const FamilyPage(),
         '/child-profile': (context) => const MyChildProfilePage(),
         '/child-data': (context) => const ChildDataProfilePage(),

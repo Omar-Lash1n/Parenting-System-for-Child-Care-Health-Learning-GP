@@ -2,6 +2,7 @@
 // Child Data Provider - State & Strings for Child Data Profile Screen
 
 import 'package:flutter/material.dart';
+import 'package:Ajial/api/auth_service.dart';
 
 /// All Arabic strings centralized for future localization
 class ChildDataStrings {
@@ -44,64 +45,63 @@ class ChildDataStrings {
       'يرجى الحذر، إن حذف الطفل سيؤدي إلى مسح جميع البيانات السريرية وسجل التطعيمات الخاص به نهائياً ولا يمكن استعادتها مرة أخرى.';
   static String deleteChildButton(String name) => 'حذف ملف $name';
 
-  // Rewards Section
-  static const String rewardsHeader = 'المكافئات';
-  static const String viewAll = 'عرض الكل';
-  static const String starsUnit = 'نجمة';
-  static const String badgesUnit = 'وسام';
+  // Rewards
+  static const String rewardsHeader = 'المكافآت';
 
-  // Account Settings Section
-  static String accountSettingsHeader(String name) => 'حساب $name';
+  // Account Settings
+  static String accountSettingsHeader(String name) => 'اعدادات حساب $name';
   static const String childCodeLabel = 'كود الطفل';
-  static const String changePasswordLabel = 'كلمة المرور';
+  static const String fruitPasswordLabel = 'كلمة المرور';
+  static const String changePasswordLabel = 'تغيير كلمة المرور';
   static const String deactivateAccountLabel = 'تعطيل الحساب';
+  static const String accountActiveLabel = 'مفعّل';
+  static const String accountInactiveLabel = 'غير مفعّل';
 
-  // Making Child Account Screen
-  static const String makingAccountTitle = 'انشاء حساب للطفل';
-  static const String makingAccountSubtitle =
-      'يمكنكم وضع كود للطفل وكلمة مرور يمكن من خلالهم الطفل استخدام حسابه الخاص';
-  static const String childCodeFieldLabel = 'كود الطفل*';
-  static const String childCodeHint = 'اسم المستخدم';
-  static const String fruitPasswordLabel = 'كلمة المرور*';
-  static const String skipButton = 'تخطى';
+  // Form labels
+  static const String formNameLabel = 'الاسم الثلاثي';
+  static const String formDobLabel = 'تاريخ الميلاد';
+  static const String formDobDay = 'اليوم';
+  static const String formDobMonth = 'الشهر';
+  static const String formDobYear = 'السنة';
+  static const String formGenderLabel = 'الجنس';
+  static const String formHeightHint = 'أدخل الطول';
+  static const String formWeightHint = 'أدخل الوزن';
+  static const String formHeadCircHint = 'أدخل محيط الرأس';
+  static const String formBloodTypeHint = 'اختر فصيلة الدم';
+  static const String formUnitCm = 'سم';
+  static const String formUnitKg = 'كجم';
+  static const String formSaveBtn = 'حفظ';
 
-  // Change Password Screen
-  static String changePasswordTitle(String name) => 'تغيير كلمة مرور $name';
-  static const String oldPasswordLabel = 'كلمة المرور القديمة*';
-  static const String newPasswordLabel = 'كلمة المرور الجديدة*';
-  static const String confirmPasswordLabel = 'تاكيد كلمة المرور الجديدة*';
-  static const String changePasswordButton = 'تغيير كلمة المرور';
-
-  // My Child Profile 4+ account card
+  // Account card (for >= 4 years, no account yet)
   static String accountCardTitle(String name) =>
       'يبدو ان $name اتم 4 اعوام بحمدالله';
   static String accountCardDescription(String name) =>
-      'يمكنكم انشاء حساب ل$name حيث يكون له واجهته الخاصة المليئة بالمهام والالعاب التعليمية المرحة';
+      'الان يستطيع $name تسجيل الدخول والتفاعل مع المهام التعليمية والألعاب التفاعلية';
 
-  // ── Form Screen Strings ─────────────────────────
-  static const String formNameLabel = 'الاسم*';
-  static const String formNameHint = 'اسم المستخدم';
-  static const String formDobLabel = 'تاريخ الميلاد*';
-  static const String formDobYear = 'عام';
-  static const String formDobMonth = 'شهر';
-  static const String formDobDay = 'يوم';
-  static const String formGenderLabel = 'النوع*';
+  // Change password
+  static String changePasswordTitle(String name) => 'تغيير كلمة مرور $name';
+
+  // Missing constants used across screens
+  static const String starsUnit = 'نجمة';
+  static const String badgesUnit = 'وسام';
   static const String formGenderMale = 'ذكر';
   static const String formGenderFemale = 'أنثى';
-  static const String formHeightLabel = 'الطول (اختيارى)';
-  static const String formHeightHint = 'اكتب وزن الطفل';
-  static const String formWeightLabel = 'الوزن (اختيارى)';
-  static const String formWeightHint = 'اكتب وزن الطفل';
-  static const String formBloodTypeLabel = 'فصيلة الدم (اختيارى)';
-  static const String formBloodTypeHint = 'اختر من القائمة';
-  static const String formHeadCircLabel = 'محيط الدماغ (اختيارى)';
-  static const String formHeadCircHint = 'اكتب محيط الدماغ';
-  static const String formUnitKg = 'كجم';
-  static const String formUnitCm = 'سم';
-  static const String formSaveButton = 'حفظ';
-  static const String formSkipButton = 'تخطى';
-  static const String formSaveAll = 'حفظ البيانات';
   static const String bottomSheetSave = 'حفظ';
+  static const String oldPasswordLabel = 'كلمة المرور القديمة';
+  static const String newPasswordLabel = 'كلمة المرور الجديدة';
+  static const String confirmPasswordLabel = 'تأكيد كلمة المرور';
+  static const String changePasswordButton = 'تغيير كلمة المرور';
+  static const String formNameHint = 'أدخل الاسم الثلاثي';
+  static const String formHeightLabel = 'الطول (سم)';
+  static const String formWeightLabel = 'الوزن (كجم)';
+  static const String formBloodTypeLabel = 'فصيلة الدم';
+  static const String formHeadCircLabel = 'محيط الرأس (سم)';
+  static const String formSaveAll = 'حفظ الكل';
+  static const String formSkipButton = 'تخطي';
+  static const String makingAccountTitle = 'انشاء حساب للطفل';
+  static const String makingAccountSubtitle = 'أدخل كود الطفل وكلمة المرور';
+  static const String childCodeFieldLabel = 'كود الطفل';
+  static const String childCodeHint = 'أدخل كود مكون من 4 أرقام';
 }
 
 /// Model for a single profile info row
@@ -123,26 +123,35 @@ class ProfileInfoItem {
 
 class ChildDataProvider extends ChangeNotifier {
   // --- State ---
-  String _childName = 'ابراهيم';
-  double _profileCompletionPercent = 0.25;
-  int _completedVaccinations = 2;
+  String _childId = '';
+  String _childName = '';
+  String _fullName = '';
+  double _profileCompletionPercent = 0.0;
+  int _completedVaccinations = 0;
   int _totalVaccinations = 8;
 
+  // Loading / Error
+  bool _isLoading = false;
+  bool _hasError = false;
+  String _errorMessage = '';
+  bool _isSaving = false;
+
   // Personal profile data
-  String _name = 'ابراهيم';
-  String _age = '25 يوم';
-  String _gender = 'ذكر';
+  String _name = '';
+  String _age = '';
+  String _gender = '';
+  String? _profileImageUrl;
 
   // Date of birth components
-  String _dobDay = '5';
-  String _dobMonth = 'يناير';
-  String _dobYear = '2025';
+  String _dobDay = '';
+  String _dobMonth = '';
+  String _dobYear = '';
 
-  // Medical profile data
-  String _height = '30';
-  String _weight = '3.5';
-  String _headCircumference = '35';
-  String _bloodType = 'A+';
+  // Medical profile data — raw values (without units)
+  String _height = '';
+  String _weight = '';
+  String _headCircumference = '';
+  String _bloodType = '';
   String _medicalHistory = '';
 
   // Selected gender for form toggle (0 = male, 1 = female)
@@ -154,9 +163,13 @@ class ChildDataProvider extends ChangeNotifier {
   String _childCode = '';
   List<String> _fruitPasswordCodes = [];
   List<String> _fruitPasswordImages = [];
-  int _starsCount = 25;
-  int _badgesCount = 25;
+  int _starsCount = 0;
+  int _badgesCount = 0;
   int _childAgeInYears = 0;
+
+  // Backend account fields
+  String _accountAction = 'not_eligible';
+  String _accountStatusMessage = '';
 
   // Arabic month names
   static const List<String> monthNames = [
@@ -193,10 +206,16 @@ class ChildDataProvider extends ChangeNotifier {
   }
 
   // --- Getters ---
+  String get childId => _childId;
   String get childName => _childName;
+  String get fullName => _fullName;
   double get profileCompletionPercent => _profileCompletionPercent;
   int get completedVaccinations => _completedVaccinations;
   int get totalVaccinations => _totalVaccinations;
+  bool get isLoading => _isLoading;
+  bool get hasError => _hasError;
+  String get errorMessage => _errorMessage;
+  bool get isSaving => _isSaving;
 
   String get completionPercentText =>
       '${(_profileCompletionPercent * 100).toInt()}%';
@@ -207,10 +226,12 @@ class ChildDataProvider extends ChangeNotifier {
   String get name => _name;
   String get age => _age;
   String get gender => _gender;
+  String? get profileImageUrl => _profileImageUrl;
   String get heightVal => _height;
   String get weightVal => _weight;
   String get headCircumference => _headCircumference;
   String get bloodType => _bloodType;
+  String get medicalHistory => _medicalHistory;
   String get dobDay => _dobDay;
   String get dobMonth => _dobMonth;
   String get dobYear => _dobYear;
@@ -226,11 +247,163 @@ class ChildDataProvider extends ChangeNotifier {
   int get badgesCount => _badgesCount;
   int get childAgeInYears => _childAgeInYears;
   bool get isOlderChild => _childAgeInYears >= 4;
+  String get accountAction => _accountAction;
+  String get accountStatusMessage => _accountStatusMessage;
 
-  // --- Setters ---
+  // --- API Methods ---
+
+  /// Fetch file data from backend
+  Future<void> fetchFileData(String childId) async {
+    _childId = childId;
+    _isLoading = true;
+    _hasError = false;
+    _errorMessage = '';
+    notifyListeners();
+
+    try {
+      final data = await AuthService().getChildFileData(childId);
+
+      if (data != null) {
+        _childName = (data['firstName'] ?? '').toString();
+        _fullName = (data['fullName'] ?? '').toString();
+        _name = _fullName.isNotEmpty ? _fullName : _childName;
+
+        // Age
+        final years = data['ageYears'] as int? ?? 0;
+        final months = data['ageMonths'] as int? ?? 0;
+        final days = data['ageDays'] as int? ?? 0;
+        _childAgeInYears = years;
+        _age = _formatAge(years, months, days);
+
+        // Gender
+        _gender = (data['gender'] ?? '').toString();
+        _selectedGenderIndex = _gender == 'أنثى' ? 1 : 0;
+
+        // Date of Birth
+        final birthDateStr = data['birthDate']?.toString();
+        if (birthDateStr != null && birthDateStr.isNotEmpty) {
+          try {
+            final dt = DateTime.parse(birthDateStr);
+            _dobDay = dt.day.toString();
+            _dobYear = dt.year.toString();
+            if (dt.month >= 1 && dt.month <= 12) {
+              _dobMonth = monthNames[dt.month - 1];
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+
+        // Medical — backend returns values WITH units or null
+        _height = _extractNumericValue(data['height']);
+        _weight = _extractNumericValue(data['weight']);
+        _headCircumference = _extractNumericValue(data['headCircumference']);
+        _bloodType = (data['bloodType'] ?? '').toString();
+        _medicalHistory = (data['medicalHistory'] ?? '').toString();
+
+        // Profile image
+        _profileImageUrl = data['profileImageUrl']?.toString();
+
+        // Completion
+        final pct = data['profileCompletionPercentage'] as num? ?? 0;
+        _profileCompletionPercent = pct / 100.0;
+
+        // Account status
+        _accountAction = (data['accountAction'] ?? 'not_eligible').toString();
+        _accountStatusMessage = (data['accountStatusMessage'] ?? '').toString();
+        _isAccountCreated = data['hasAccount'] == true;
+        _isAccountActive = _isAccountCreated;
+
+        _isLoading = false;
+        notifyListeners();
+      } else {
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage = 'فشل في جلب بيانات ملف الطفل';
+        notifyListeners();
+      }
+    } catch (e) {
+      _isLoading = false;
+      _hasError = true;
+      _errorMessage = 'خطأ في الاتصال';
+      notifyListeners();
+    }
+  }
+
+  /// Extract numeric value from backend string like "90 سم" → "90"
+  String _extractNumericValue(dynamic val) {
+    if (val == null) return '';
+    final s = val.toString().trim();
+    // Remove Arabic units
+    return s
+        .replaceAll('سم', '')
+        .replaceAll('كجم', '')
+        .replaceAll('cm', '')
+        .replaceAll('kg', '')
+        .trim();
+  }
+
+  /// Format age from year/month/day parts
+  String _formatAge(int years, int months, int days) {
+    final parts = <String>[];
+    if (years > 0) parts.add('$years سنة');
+    if (months > 0) parts.add('$months شهر');
+    if (days > 0) parts.add('$days يوم');
+    return parts.isEmpty ? '0 يوم' : parts.join(' ');
+  }
+
+  /// Submit updates to backend (only changed fields)
+  Future<(bool, String)> submitUpdates(Map<String, dynamic> body) async {
+    if (_childId.isEmpty) return (false, 'معرف الطفل غير موجود');
+
+    _isSaving = true;
+    notifyListeners();
+
+    try {
+      final (success, message, data) =
+          await AuthService().updateChildMedicalData(_childId, body);
+
+      _isSaving = false;
+
+      if (success && data != null) {
+        // Update completion % from response
+        final pct = data['profileCompletionPercentage'] as num? ?? 0;
+        _profileCompletionPercent = pct / 100.0;
+      }
+
+      notifyListeners();
+      return (success, message);
+    } catch (e) {
+      _isSaving = false;
+      notifyListeners();
+      return (false, 'حدث خطأ في الاتصال');
+    }
+  }
+
+  /// Delete child from backend
+  Future<(bool, String)> deleteChild() async {
+    if (_childId.isEmpty) return (false, 'معرف الطفل غير موجود');
+
+    _isSaving = true;
+    notifyListeners();
+
+    try {
+      final result = await AuthService().deleteChild(_childId);
+      _isSaving = false;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      _isSaving = false;
+      notifyListeners();
+      return (false, 'خطأ في الاتصال');
+    }
+  }
+
+  // --- Local Setters ---
+
   void setName(String v) {
     _name = v;
-    _childName = v;
+    _childName = v.split(' ').first;
     notifyListeners();
   }
 
@@ -264,51 +437,40 @@ class ChildDataProvider extends ChangeNotifier {
     _dobDay = day;
     _dobMonth = month;
     _dobYear = year;
-    // Auto-calculate age from DOB
     _recalculateAge();
     notifyListeners();
   }
 
   void _recalculateAge() {
-    final int? d = int.tryParse(_dobDay);
-    final int? y = int.tryParse(_dobYear);
-    if (d == null || y == null || _dobMonth.isEmpty) return;
+    if (_dobDay.isEmpty || _dobMonth.isEmpty || _dobYear.isEmpty) return;
+    final monthIndex = monthNames.indexOf(_dobMonth);
+    if (monthIndex == -1) return;
+    final day = int.tryParse(_dobDay);
+    final year = int.tryParse(_dobYear);
+    if (day == null || year == null) return;
 
-    // Find month index
-    int mIndex = monthNames.indexOf(_dobMonth);
-    if (mIndex < 0) return;
-    mIndex += 1; // 1-based
-
-    final dob = DateTime(y, mIndex, d);
+    final dob = DateTime(year, monthIndex + 1, day);
     final now = DateTime.now();
     if (dob.isAfter(now)) return;
 
-    int ageYears = now.year - dob.year;
-    int ageMonths = now.month - dob.month;
-    if (now.day < dob.day) ageMonths--;
-    if (ageMonths < 0) {
-      ageYears--;
-      ageMonths += 12;
+    int years = now.year - dob.year;
+    int months = now.month - dob.month;
+    int days = now.day - dob.day;
+
+    if (days < 0) {
+      months--;
+      final prevMonth = DateTime(now.year, now.month, 0);
+      days += prevMonth.day;
+    }
+    if (months < 0) {
+      years--;
+      months += 12;
     }
 
-    _childAgeInYears = ageYears;
-
-    if (ageYears > 0) {
-      if (ageMonths > 0) {
-        _age = '$ageYears سنوات , $ageMonths اشهر';
-      } else {
-        _age = '$ageYears سنوات';
-      }
-    } else if (ageMonths > 0) {
-      final days = now.difference(dob).inDays % 30;
-      _age = '$ageMonths اشهر , $days يوم';
-    } else {
-      final days = now.difference(dob).inDays;
-      _age = '$days يوم';
-    }
+    _childAgeInYears = years;
+    _age = _formatAge(years, months, days);
   }
 
-  // Account setters
   void setChildCode(String v) {
     _childCode = v;
     notifyListeners();
@@ -335,22 +497,30 @@ class ChildDataProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void activateAccount() {
+    _isAccountActive = true;
+    notifyListeners();
+  }
+
   // --- Personal Profile Items ---
   List<ProfileInfoItem> get personalItems => [
         ProfileInfoItem(
-          label: _name.isNotEmpty ? _name : ChildDataStrings.nameLabel,
+          label: ChildDataStrings.nameLabel,
+          value: _name.isNotEmpty ? _name : null,
           icon: Icons.person_outline,
           iconColor: const Color(0xFFBF092F),
           iconBgColor: const Color(0x1ABF092F),
         ),
         ProfileInfoItem(
-          label: _age.isNotEmpty ? _age : ChildDataStrings.ageLabel,
+          label: ChildDataStrings.ageLabel,
+          value: _age.isNotEmpty ? _age : null,
           icon: Icons.calendar_today_outlined,
           iconColor: const Color(0xFF008CFF),
           iconBgColor: const Color(0x1A008CFF),
         ),
         ProfileInfoItem(
-          label: _gender.isNotEmpty ? _gender : ChildDataStrings.genderLabel,
+          label: ChildDataStrings.genderLabel,
+          value: _gender.isNotEmpty ? _gender : null,
           icon: Icons.child_care,
           iconColor: const Color(0xFFFE8401),
           iconBgColor: const Color(0x1AFE8401),
@@ -360,40 +530,56 @@ class ChildDataProvider extends ChangeNotifier {
   // --- Medical Profile Items ---
   List<ProfileInfoItem> get medicalItems => [
         ProfileInfoItem(
-          label: _height.isNotEmpty ? _height : ChildDataStrings.heightLabel,
+          label: ChildDataStrings.heightLabel,
+          value: _height.isNotEmpty ? '$_height سم' : null,
           icon: Icons.height,
           iconColor: const Color(0xFFBF092F),
           iconBgColor: const Color(0x1ABF092F),
         ),
         ProfileInfoItem(
-          label: _weight.isNotEmpty ? _weight : ChildDataStrings.weightLabel,
+          label: ChildDataStrings.weightLabel,
+          value: _weight.isNotEmpty ? '$_weight كجم' : null,
           icon: Icons.monitor_weight_outlined,
           iconColor: const Color(0xFF01A449),
           iconBgColor: const Color(0x1A01A449),
         ),
         ProfileInfoItem(
-          label: _headCircumference.isNotEmpty
-              ? _headCircumference
-              : ChildDataStrings.headCircumferenceLabel,
+          label: ChildDataStrings.headCircumferenceLabel,
+          value:
+              _headCircumference.isNotEmpty ? '$_headCircumference سم' : null,
           icon: Icons.circle_outlined,
           iconColor: const Color(0xFF008CFF),
           iconBgColor: const Color(0x1A008CFF),
         ),
         ProfileInfoItem(
-          label: _bloodType.isNotEmpty
-              ? _bloodType
-              : ChildDataStrings.bloodTypeLabel,
+          label: ChildDataStrings.bloodTypeLabel,
+          value: _bloodType.isNotEmpty ? _bloodType : null,
           icon: Icons.bloodtype_outlined,
           iconColor: const Color(0xFFFF0000),
           iconBgColor: const Color(0x0DFF0000),
         ),
         ProfileInfoItem(
-          label: _medicalHistory.isNotEmpty
-              ? _medicalHistory
-              : ChildDataStrings.medicalHistoryLabel,
+          label: ChildDataStrings.medicalHistoryLabel,
+          value: _medicalHistory.isNotEmpty ? _medicalHistory : null,
           icon: Icons.monitor_heart_outlined,
           iconColor: const Color(0xFFFE8401),
           iconBgColor: const Color(0x1AFE8401),
         ),
       ];
+
+  /// Upload child profile image
+  Future<(bool, String)> uploadChildImage(
+      List<int> imageBytes, String fileName) async {
+    if (_childId.isEmpty) return (false, 'معرف الطفل غير موجود');
+
+    final (success, message, imageUrl) = await AuthService()
+        .uploadChildProfileImage(_childId, imageBytes, fileName);
+
+    if (success && imageUrl != null) {
+      _profileImageUrl = imageUrl;
+      notifyListeners();
+    }
+
+    return (success, message);
+  }
 }

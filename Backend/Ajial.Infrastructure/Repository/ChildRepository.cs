@@ -22,7 +22,7 @@ public class ChildRepository : Repository<Child>, IChildRepository
     public async Task<List<Child>> GetChildrenByParentIdAsync(Guid parentId)
     {
         return await _dbSet
-            .Where(c => c.ParentId == parentId && c.IsActive)
+            .Where(c => c.ParentId == parentId)
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
     }

@@ -37,6 +37,23 @@ public class Child
     /// </summary>
     public bool HasCompletedAdditionalVaccinationSurvey { get; set; } = false;
 
+    // ── الملف الطبي (Medical Profile) ──
+
+    /// <summary>الطول بالسنتيمتر</summary>
+    public double? Height { get; set; }
+
+    /// <summary>الوزن بالكيلوجرام</summary>
+    public double? Weight { get; set; }
+
+    /// <summary>محيط الدماغ بالسنتيمتر</summary>
+    public double? HeadCircumference { get; set; }
+
+    /// <summary>فصيلة الدم (e.g., "A+", "O-", "B+", "AB-")</summary>
+    public string? BloodType { get; set; }
+
+    /// <summary>تاريخ طبي - ملاحظات طبية عامة</summary>
+    public string? MedicalHistory { get; set; }
+
     /// <summary>
     /// سجل التطعيمات - Vaccination records for this child
     /// </summary>

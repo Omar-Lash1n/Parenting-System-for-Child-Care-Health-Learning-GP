@@ -763,6 +763,54 @@ class AuthService {
     }
   }
 
+  /// رفع صورة الطفل
+  /// POST /Parents/child/{childId}/profile-image
+  Future<(bool, String, String?)> uploadChildProfileImage(
+    String childId,
+    List<int> imageBytes,
+    String fileName,
+  ) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/child/$childId/profile-image';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.', null);
+    }
+
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+      request.headers.addAll({
+        'Authorization': 'Bearer $token',
+        'accept': 'text/plain',
+      });
+
+      final mimeType = lookupMimeType(fileName) ?? 'image/jpeg';
+      final mimeSplit = mimeType.split('/');
+
+      request.files.add(http.MultipartFile.fromBytes(
+        'image',
+        imageBytes,
+        filename: fileName,
+        contentType: MediaType(mimeSplit[0], mimeSplit[1]),
+      ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        final imageUrl = responseBody['data']?['profileImageUrl']?.toString();
+        return (true, 'تم رفع صورة الطفل بنجاح', imageUrl);
+      } else {
+        final errorMsg = responseBody['message'] ?? 'حدث خطأ في رفع الصورة';
+        return (false, errorMsg.toString(), null);
+      }
+    } catch (e) {
+      print('Connection Error in uploadChildProfileImage: $e');
+      return (false, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.', null);
+    }
+  }
+
   /// إرسال إيميل التحقق
   /// POST /Parents/send-verification-email
   Future<(bool, String)> sendVerificationEmail() async {
@@ -950,7 +998,7 @@ class AuthService {
       } else {
         // التعامل مع الأخطاء
         String errorMessage = 'حدث خطأ غير معروف';
-        
+
         if (responseBody['errors'] != null &&
             (responseBody['errors'] as List).isNotEmpty) {
           errorMessage = (responseBody['errors'] as List).first.toString();
@@ -1017,7 +1065,11 @@ class AuthService {
         request.fields['Title'] = title;
       }
 
-      print('📤 Uploading voice note from bytes (${audioBytes.length} bytes)...');
+      print(
+          '📤 Uploading voice note from bytes (${audioBytes.length} bytes)...');
+
+      print(
+          '📤 Uploading voice note from bytes (${audioBytes.length} bytes)...');
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
@@ -1036,7 +1088,7 @@ class AuthService {
       } else {
         // التعامل مع الأخطاء
         String errorMessage = 'حدث خطأ غير معروف';
-        
+
         if (responseBody['errors'] != null &&
             (responseBody['errors'] as List).isNotEmpty) {
           errorMessage = (responseBody['errors'] as List).first.toString();
@@ -1061,7 +1113,8 @@ class AuthService {
   /// جلب جميع التسجيلات الصوتية للطفل
   /// GET /api/Child/voice-notes
   /// Requires child JWT token
-  Future<(bool success, String message, List<VoiceNote> voiceNotes)> getVoiceNotes() async {
+  Future<(bool success, String message, List<VoiceNote> voiceNotes)>
+      getVoiceNotes() async {
     final String apiUrl = '$_apiBaseUrl/Child/voice-notes';
     final String? childToken = await getChildToken();
 
@@ -1086,22 +1139,423 @@ class AuthService {
 
       if (response.statusCode == 200 && responseBody['success'] == true) {
         final List<dynamic> data = responseBody['data'] ?? [];
-        final List<VoiceNote> voiceNotes = 
+        final List<VoiceNote> voiceNotes =
             data.map((e) => VoiceNote.fromJson(e)).toList();
-        
-        final String successMessage = (responseBody['message'] ?? 'تم جلب الملاحظات الصوتية بنجاح').toString();
+
+        final String successMessage =
+            (responseBody['message'] ?? 'تم جلب الملاحظات الصوتية بنجاح')
+                .toString();
         return (
           true,
           successMessage,
           voiceNotes,
         );
       } else {
-        String errorMessage = responseBody['message'] ?? 'حدث خطأ في جلب التسجيلات';
+        String errorMessage =
+            responseBody['message'] ?? 'حدث خطأ في جلب التسجيلات';
         return (false, errorMessage, <VoiceNote>[]);
       }
     } catch (e) {
       print('❌ Error fetching voice notes: $e');
       return (false, 'تأكد من الاتصال بالإنترنت', <VoiceNote>[]);
+    }
+  }
+
+  // ============================================================
+  // ==================== Vaccination API =======================
+  // ============================================================
+
+  /// جلب بيانات صفحة ترحيب التطعيمات للطفل
+  /// GET /api/Vaccination/welcome/{childId}
+  /// Requires parent JWT token
+  Future<Map<String, dynamic>?> getVaccinationWelcome(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/welcome/$childId';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+      print(
+          'Get Vaccination Welcome Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in getVaccinationWelcome: $e');
+      return null;
+    }
+  }
+
+  /// جلب بيانات استبيان التطعيمات للطفل
+  /// GET /api/Vaccination/survey/{childId}
+  /// Requires parent JWT token
+  Future<Map<String, dynamic>?> getVaccinationSurvey(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/survey/$childId';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+      print(
+          'Get Vaccination Survey Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in getVaccinationSurvey: $e');
+      return null;
+    }
+  }
+
+  /// إرسال اختيارات استبيان التطعيمات
+  /// POST /api/Vaccination/survey
+  /// Requires parent JWT token
+  ///
+  /// [childId] — the child's UUID
+  /// [selections] — list of {milestoneId: int, isTaken: bool}
+  Future<Map<String, dynamic>?> submitVaccinationSurvey({
+    required String childId,
+    required List<Map<String, dynamic>> selections,
+  }) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/survey';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final body = jsonEncode({
+        'childId': childId,
+        'selections': selections,
+      });
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true) {
+          print('Vaccination Survey submitted successfully');
+          return responseBody['data'] as Map<String, dynamic>?;
+        }
+      }
+      print(
+          'Submit Vaccination Survey Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in submitVaccinationSurvey: $e');
+      return null;
+    }
+  }
+
+  /// جلب بيانات استبيان التطعيمات الإضافية للطفل
+  /// GET /api/Vaccination/additional-survey/{childId}
+  /// Requires parent JWT token
+  Future<Map<String, dynamic>?> getAdditionalSurvey(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/additional-survey/$childId';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+      print(
+          'Get Additional Survey Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in getAdditionalSurvey: $e');
+      return null;
+    }
+  }
+
+  /// إرسال اختيارات استبيان التطعيمات الإضافية
+  /// POST /api/Vaccination/additional-survey
+  /// Requires parent JWT token
+  Future<Map<String, dynamic>?> submitAdditionalSurvey({
+    required String childId,
+    required List<Map<String, dynamic>> selections,
+  }) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/additional-survey';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final body = jsonEncode({
+        'childId': childId,
+        'selections': selections,
+      });
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true) {
+          print('Additional Survey submitted successfully');
+          return responseBody['data'] as Map<String, dynamic>?;
+        }
+      }
+      print(
+          'Submit Additional Survey Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in submitAdditionalSurvey: $e');
+      return null;
+    }
+  }
+
+  // ============================================================
+  // ============== Child Profile API Methods ====================
+  // ============================================================
+
+  /// GET /api/Parents/child/{childId}/profile-summary
+  /// Returns the child's basic profile data for the summary screen.
+  Future<Map<String, dynamic>?> getChildProfileSummary(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/child/$childId/profile-summary';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+
+      // Parse error
+      try {
+        final responseBody = jsonDecode(response.body);
+        final errors = responseBody['errors'] as List?;
+        if (errors != null && errors.isNotEmpty) {
+          print('getChildProfileSummary Error: ${errors.first}');
+        }
+      } catch (_) {}
+
+      print(
+          'getChildProfileSummary Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in getChildProfileSummary: $e');
+      return null;
+    }
+  }
+
+  /// GET /api/Parents/child/{childId}/file-data
+  /// Returns the child's detailed file data (medical, personal info).
+  Future<Map<String, dynamic>?> getChildFileData(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/child/$childId/file-data';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+
+      try {
+        final responseBody = jsonDecode(response.body);
+        final errors = responseBody['errors'] as List?;
+        if (errors != null && errors.isNotEmpty) {
+          print('getChildFileData Error: ${errors.first}');
+        }
+      } catch (_) {}
+
+      print(
+          'getChildFileData Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in getChildFileData: $e');
+      return null;
+    }
+  }
+
+  /// PUT /api/Parents/child/{childId}/medical-data
+  /// Updates the child's medical/personal data. Send only changed fields.
+  /// Returns (success, message, responseData).
+  Future<(bool, String, Map<String, dynamic>?)> updateChildMedicalData(
+      String childId, Map<String, dynamic> body) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/child/$childId/medical-data';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.', null);
+    }
+
+    if (body.isEmpty) {
+      return (false, 'لا توجد بيانات للتحديث', null);
+    }
+
+    try {
+      final response = await http
+          .put(
+            Uri.parse(apiUrl),
+            headers: {
+              'accept': 'application/json',
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        return (
+          true,
+          (responseBody['message'] ?? 'تم تحديث البيانات بنجاح').toString(),
+          responseBody['data'] as Map<String, dynamic>?,
+        );
+      } else {
+        // Extract error message
+        String errorMsg;
+        final errors = responseBody['errors'] as List?;
+        if (errors != null && errors.isNotEmpty) {
+          errorMsg = errors.first.toString();
+        } else {
+          errorMsg =
+              (responseBody['message'] ?? 'حدث خطأ في التحديث').toString();
+        }
+        return (false, errorMsg, null);
+      }
+    } catch (e) {
+      print('Connection Error in updateChildMedicalData: $e');
+      return (false, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.', null);
+    }
+  }
+
+  /// DELETE /api/Parents/child/{childId}
+  /// Permanently deletes the child and all related data.
+  Future<(bool, String)> deleteChild(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/child/$childId';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'يرجى تسجيل الدخول أولاً');
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        return (
+          true,
+          (responseBody['message'] ?? 'تم حذف ملف الطفل بنجاح').toString(),
+        );
+      } else if (response.statusCode == 401) {
+        return (false, 'جلسة منتهية، يرجى تسجيل الدخول مرة أخرى');
+      } else {
+        final errors = responseBody['errors'] as List?;
+        final errorMsg = (errors != null && errors.isNotEmpty)
+            ? errors.first.toString()
+            : (responseBody['message'] ?? 'فشل حذف ملف الطفل').toString();
+        return (false, errorMsg);
+      }
+    } catch (e) {
+      print('Delete Child Error: $e');
+      return (false, 'خطأ في الاتصال');
     }
   }
 }
@@ -1203,7 +1657,7 @@ class VoiceNote {
       title: json['title']?.toString() ?? 'تسجيل صوتي',
       blobUrl: json['blobUrl']?.toString() ?? '',
       fileSizeBytes: json['fileSizeBytes'] as int?,
-      createdAt: json['createdAt'] != null 
+      createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'].toString())
           : DateTime.now(),
     );
@@ -1236,5 +1690,6 @@ class UploadVoiceNoteResult {
   });
 
   @override
-  String toString() => 'UploadVoiceNoteResult(success: $success, message: $message)';
+  String toString() =>
+      'UploadVoiceNoteResult(success: $success, message: $message)';
 }

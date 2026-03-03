@@ -6,11 +6,14 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:Ajial/providers/child_data_provider.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
-import 'package:Ajial/profile/confirm_delete_child.dart';
 import 'package:Ajial/providers/confirm_delete_provider.dart';
+import 'package:Ajial/providers/family_provider.dart';
+import 'package:Ajial/family/models/child_model.dart';
 import 'package:Ajial/profile/child_data_profile_form.dart';
 import 'package:Ajial/profile/change_child_password.dart';
 import 'package:Ajial/profile/making_child_account.dart';
+import 'package:Ajial/profile/my_child_profile.dart';
+import 'package:Ajial/profile/confirm_delete_child.dart';
 import 'package:Ajial/providers/child_profile_provider.dart';
 
 // --- CONSTANTS ---
@@ -23,8 +26,24 @@ const Color _kDangerRed = Color(0xFFFF0000);
 const Color _kSectionBg = Color(0xFFF5F5F5);
 const String _kFontFamily = 'IBM Plex Sans Arabic';
 
-class ChildDataProfilePage extends StatelessWidget {
-  const ChildDataProfilePage({super.key});
+class ChildDataProfilePage extends StatefulWidget {
+  final String? childId;
+  const ChildDataProfilePage({super.key, this.childId});
+
+  @override
+  State<ChildDataProfilePage> createState() => _ChildDataProfilePageState();
+}
+
+class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.childId != null && widget.childId!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<ChildDataProvider>().fetchFileData(widget.childId!);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,40 +58,48 @@ class ChildDataProfilePage extends StatelessWidget {
               child: Column(
                 children: [
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 8),
-                          _buildHeader(context, provider),
-                          const SizedBox(height: 24),
-                          _buildProgressCard(context, provider),
-                          const SizedBox(height: 24),
-                          _buildPersonalSection(context, provider),
-                          const SizedBox(height: 24),
-                          _buildMedicalSection(context, provider),
-                          const SizedBox(height: 24),
-                          _buildAccountSection(context, provider),
-                          const SizedBox(height: 24),
-                          // Rewards section (only when account exists)
-                          if (provider.isOlderChild &&
-                              provider.isAccountCreated)
-                            _buildRewardsSection(provider),
-                          if (provider.isOlderChild &&
-                              provider.isAccountCreated)
-                            const SizedBox(height: 24),
-                          // Account settings (only when account exists)
-                          if (provider.isOlderChild &&
-                              provider.isAccountCreated)
-                            _buildAccountSettingsSection(context, provider),
-                          if (provider.isOlderChild &&
-                              provider.isAccountCreated)
-                            const SizedBox(height: 24),
-                          _buildDangerZone(context, provider),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
+                    child: provider.isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: _kPrimaryRed,
+                            ),
+                          )
+                        : provider.hasError
+                            ? _buildErrorState(provider)
+                            : SingleChildScrollView(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    _buildHeader(context, provider),
+                                    const SizedBox(height: 24),
+                                    _buildProgressCard(context, provider),
+                                    const SizedBox(height: 24),
+                                    _buildPersonalSection(context, provider),
+                                    const SizedBox(height: 24),
+                                    _buildMedicalSection(context, provider),
+                                    const SizedBox(height: 24),
+                                    _buildAccountSection(context, provider),
+                                    const SizedBox(height: 24),
+                                    // Rewards section (only when account exists)
+                                    if (provider.isOlderChild &&
+                                        provider.isAccountCreated)
+                                      _buildRewardsSection(provider),
+                                    if (provider.isOlderChild &&
+                                        provider.isAccountCreated)
+                                      const SizedBox(height: 24),
+                                    // Account settings (show for all >=4 children)
+                                    if (provider.isOlderChild)
+                                      _buildAccountSettingsSection(
+                                          context, provider),
+                                    if (provider.isOlderChild)
+                                      const SizedBox(height: 24),
+                                    _buildDangerZone(context, provider),
+                                    const SizedBox(height: 24),
+                                  ],
+                                ),
+                              ),
                   ),
                   const AppBottomNavBar(currentIndex: 1),
                 ],
@@ -81,6 +108,54 @@ class ChildDataProfilePage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  // ============================================================
+  // ERROR / RETRY STATE
+  // ============================================================
+  Widget _buildErrorState(ChildDataProvider provider) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: _kPrimaryRed),
+          const SizedBox(height: 12),
+          Text(
+            provider.errorMessage,
+            style: const TextStyle(
+              fontFamily: _kFontFamily,
+              fontSize: 16,
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: () {
+              if (widget.childId != null) {
+                provider.fetchFileData(widget.childId!);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              decoration: BoxDecoration(
+                color: _kPrimaryRed,
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: const Text(
+                'إعادة المحاولة',
+                style: TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -128,64 +203,82 @@ class ChildDataProfilePage extends StatelessWidget {
           ],
         ),
         // SECOND in RTL → visually LEFT: Child selector pill
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(50),
-            border: Border.all(color: Colors.black.withOpacity(0.25)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                child: Stack(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: _kPrimaryRed.withOpacity(0.15),
-                        shape: BoxShape.circle,
+        GestureDetector(
+          onTap: () => _showChildSelectorDropdown(context, provider),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(color: Colors.black.withOpacity(0.25)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: _kPrimaryRed.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: provider.profileImageUrl != null &&
+                                provider.profileImageUrl!.isNotEmpty
+                            ? ClipOval(
+                                child: Image.network(
+                                  provider.profileImageUrl!,
+                                  width: 32,
+                                  height: 32,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Center(
+                                    child: Icon(Icons.child_care,
+                                        size: 16, color: _kPrimaryRed),
+                                  ),
+                                ),
+                              )
+                            : const Center(
+                                child: Icon(Icons.child_care,
+                                    size: 16, color: _kPrimaryRed),
+                              ),
                       ),
-                      child: const Center(
-                        child: Icon(Icons.child_care,
-                            size: 16, color: _kPrimaryRed),
-                      ),
-                    ),
-                    // Green online dot
-                    if (provider.isAccountActive)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF01A449),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1.5),
+                      // Green online dot
+                      if (provider.isAccountActive)
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF01A449),
+                              shape: BoxShape.circle,
+                              border:
+                                  Border.all(color: Colors.white, width: 1.5),
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                provider.childName,
-                style: const TextStyle(
-                  fontFamily: _kFontFamily,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
+                const SizedBox(width: 4),
+                Text(
+                  provider.childName,
+                  style: const TextStyle(
+                    fontFamily: _kFontFamily,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
+                  ),
                 ),
-              ),
-              const Icon(Icons.keyboard_arrow_down,
-                  size: 20, color: Colors.black),
-            ],
+                const Icon(Icons.keyboard_arrow_down,
+                    size: 20, color: Colors.black),
+              ],
+            ),
           ),
         ),
       ],
@@ -291,7 +384,7 @@ class ChildDataProfilePage extends StatelessWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) =>
-                          const ChildDataProfileFormPage(prefill: false),
+                          const ChildDataProfileFormPage(prefill: true),
                     ),
                   );
                 },
@@ -387,31 +480,57 @@ class ChildDataProfilePage extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // FIRST in RTL → RIGHT: Icon circle + Label
-          Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: item.iconBgColor,
-                  shape: BoxShape.circle,
+          // FIRST in RTL → RIGHT: Icon circle + Label + Value
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: item.iconBgColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Icon(item.icon, size: 24, color: item.iconColor),
+                  ),
                 ),
-                child: Center(
-                  child: Icon(item.icon, size: 24, color: item.iconColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontFamily: _kFontFamily,
+                          fontSize: item.value != null ? 12 : 14,
+                          fontWeight: item.value != null
+                              ? FontWeight.w400
+                              : FontWeight.w500,
+                          color: item.value != null
+                              ? Colors.black.withOpacity(0.5)
+                              : Colors.black,
+                        ),
+                      ),
+                      if (item.value != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          item.value!,
+                          style: const TextStyle(
+                            fontFamily: _kFontFamily,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                item.label,
-                style: const TextStyle(
-                  fontFamily: _kFontFamily,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
           // SECOND in RTL → LEFT: Edit icon → bottom sheet
           Padding(
@@ -435,11 +554,23 @@ class ChildDataProfilePage extends StatelessWidget {
     final items = provider.personalItems;
     final editActions = [
       () => _showTextEditSheet(
-              context, ChildDataStrings.nameLabel, provider.name, (v) {
+              context, ChildDataStrings.nameLabel, provider.name, (v) async {
             provider.setName(v);
             _syncToProfile(context, provider);
+            final (success, msg) =
+                await provider.submitUpdates({'fullName': v});
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(msg,
+                      style: const TextStyle(fontFamily: _kFontFamily)),
+                  backgroundColor:
+                      success ? const Color(0xFF01A449) : _kDangerRed,
+                ),
+              );
+            }
           }),
-      () => _showDobEditSheet(context, provider),
+      () => _showDobWarningPopup(context, provider),
       () => _showGenderEditSheet(context, provider),
     ];
     return Column(
@@ -476,29 +607,73 @@ class ChildDataProfilePage extends StatelessWidget {
     final items = provider.medicalItems;
     final editActions = [
       () => _showMeasurementEditSheet(
-          context,
-          ChildDataStrings.heightLabel,
-          ChildDataStrings.formHeightHint,
-          ChildDataStrings.formUnitCm,
-          provider.heightVal,
-          (v) => provider.setHeight(v)),
+              context,
+              ChildDataStrings.heightLabel,
+              ChildDataStrings.formHeightHint,
+              ChildDataStrings.formUnitCm,
+              provider.heightVal, (v) async {
+            provider.setHeight(v);
+            final (success, msg) = await provider
+                .submitUpdates({'height': double.tryParse(v) ?? 0.0});
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content:
+                    Text(msg, style: const TextStyle(fontFamily: _kFontFamily)),
+                backgroundColor:
+                    success ? const Color(0xFF01A449) : _kDangerRed,
+              ));
+            }
+          }),
       () => _showMeasurementEditSheet(
-          context,
-          ChildDataStrings.weightLabel,
-          ChildDataStrings.formWeightHint,
-          ChildDataStrings.formUnitKg,
-          provider.weightVal,
-          (v) => provider.setWeight(v)),
+              context,
+              ChildDataStrings.weightLabel,
+              ChildDataStrings.formWeightHint,
+              ChildDataStrings.formUnitKg,
+              provider.weightVal, (v) async {
+            provider.setWeight(v);
+            final (success, msg) = await provider
+                .submitUpdates({'weight': double.tryParse(v) ?? 0.0});
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content:
+                    Text(msg, style: const TextStyle(fontFamily: _kFontFamily)),
+                backgroundColor:
+                    success ? const Color(0xFF01A449) : _kDangerRed,
+              ));
+            }
+          }),
       () => _showMeasurementEditSheet(
-          context,
-          ChildDataStrings.headCircumferenceLabel,
-          ChildDataStrings.formHeadCircHint,
-          ChildDataStrings.formUnitCm,
-          provider.headCircumference,
-          (v) => provider.setHeadCircumference(v)),
-      () => _showBloodTypeEditSheet(context, provider),
+              context,
+              ChildDataStrings.headCircumferenceLabel,
+              ChildDataStrings.formHeadCircHint,
+              ChildDataStrings.formUnitCm,
+              provider.headCircumference, (v) async {
+            provider.setHeadCircumference(v);
+            final (success, msg) = await provider.submitUpdates(
+                {'headCircumference': double.tryParse(v) ?? 0.0});
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content:
+                    Text(msg, style: const TextStyle(fontFamily: _kFontFamily)),
+                backgroundColor:
+                    success ? const Color(0xFF01A449) : _kDangerRed,
+              ));
+            }
+          }),
+      () => _showBloodTypeRadioPopup(context, provider),
       () => _showTextEditSheet(
-          context, ChildDataStrings.medicalHistoryLabel, '', (v) {}),
+              context, ChildDataStrings.medicalHistoryLabel, '', (v) async {
+            final (success, msg) =
+                await provider.submitUpdates({'medicalHistory': v});
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content:
+                    Text(msg, style: const TextStyle(fontFamily: _kFontFamily)),
+                backgroundColor:
+                    success ? const Color(0xFF01A449) : _kDangerRed,
+              ));
+            }
+          }),
     ];
     return Column(
       children: [
@@ -632,7 +807,7 @@ class ChildDataProfilePage extends StatelessWidget {
               ],
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
                   ChildDataStrings.accountCardTitle(provider.childName),
@@ -734,7 +909,7 @@ class ChildDataProfilePage extends StatelessWidget {
             ],
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 ChildDataStrings.accountNotOldEnough(provider.childName),
@@ -1068,23 +1243,23 @@ class ChildDataProfilePage extends StatelessWidget {
               ),
               Divider(color: Colors.black.withOpacity(0.05), height: 1),
 
-              // Deactivate Account
+              // Deactivate / Reactivate Account
               _buildSettingsRow(
-                icon: Icons.block,
-                iconColor: _kDangerRed,
-                iconBgColor: _kDangerRed.withOpacity(0.1),
-                label: ChildDataStrings.deactivateAccountLabel,
+                icon: provider.isAccountActive
+                    ? Icons.block
+                    : Icons.check_circle_outline,
+                iconColor: provider.isAccountActive
+                    ? _kDangerRed
+                    : const Color(0xFF01A449),
+                iconBgColor: provider.isAccountActive
+                    ? _kDangerRed.withOpacity(0.1)
+                    : const Color(0xFF01A449).withOpacity(0.1),
+                label: provider.isAccountActive
+                    ? ChildDataStrings.deactivateAccountLabel
+                    : 'اعادة تفعيل الحساب',
                 value: '',
-                isDestructive: true,
-                onEdit: () {
-                  provider.deactivateAccount();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('تم تعطيل الحساب',
-                          style: TextStyle(fontFamily: _kFontFamily)),
-                    ),
-                  );
-                },
+                isDestructive: provider.isAccountActive,
+                onEdit: () => _showDeactivateConfirmPopup(context, provider),
               ),
             ],
           ),
@@ -1425,9 +1600,12 @@ class ChildDataProfilePage extends StatelessWidget {
                             child: ElevatedButton(
                               onPressed: () {
                                 Navigator.of(ctx).pop(); // close popup
-                                Navigator.of(context).push(
+                                // Navigate to confirm delete page
+                                Navigator.push(
+                                  context,
                                   MaterialPageRoute(
                                     builder: (_) => ConfirmDeleteChildPage(
+                                      childId: widget.childId ?? '',
                                       childName: childName,
                                     ),
                                   ),
@@ -1456,6 +1634,468 @@ class ChildDataProfilePage extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // DOB WARNING POPUP (Figma CSS)
+  // ============================================================
+  void _showDobWarningPopup(BuildContext context, ChildDataProvider provider) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: 318,
+              height: 301,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 15,
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Close button (top-left visual in RTL)
+                  Positioned(
+                    left: 16,
+                    top: 16,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child:
+                              Icon(Icons.close, size: 20, color: Colors.black),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Content
+                  Column(
+                    children: [
+                      const SizedBox(height: 39),
+                      // Red exclamation circle
+                      Container(
+                        width: 75,
+                        height: 75,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF0000).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.error_outline,
+                            size: 39,
+                            color: Color(0xFFFF0000),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Title
+                      const Text(
+                        'احذر سيتم تهيئة ملف الطفل',
+                        style: TextStyle(
+                          fontFamily: _kFontFamily,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      // Subtitle
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          'لتغيير عمر الطفل سيتطلب مسح جميع\nبيانات الطفل و لايمكن استعادتها مرة اخرى',
+                          style: TextStyle(
+                            fontFamily: _kFontFamily,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w300,
+                            color: Colors.black,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const Spacer(),
+                      // Buttons row
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // رجوع button (outlined)
+                            GestureDetector(
+                              onTap: () => Navigator.of(ctx).pop(),
+                              child: Container(
+                                width: 131,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                      color: Colors.black.withOpacity(0.5)),
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'رجوع',
+                                    style: TextStyle(
+                                      fontFamily: _kFontFamily,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // استمرار button (red)
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.of(ctx).pop();
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ChildDataProfileFormPage(
+                                            prefill: true),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 131,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF0000),
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'استمرار',
+                                    style: TextStyle(
+                                      fontFamily: _kFontFamily,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // DEACTIVATE ACCOUNT CONFIRMATION POPUP (Figma CSS)
+  // ============================================================
+  void _showDeactivateConfirmPopup(
+      BuildContext context, ChildDataProvider provider) {
+    final bool isActive = provider.isAccountActive;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: 318,
+              height: 301,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 15,
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Close button
+                  Positioned(
+                    left: 16,
+                    top: 16,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child:
+                              Icon(Icons.close, size: 20, color: Colors.black),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Content
+                  Column(
+                    children: [
+                      const SizedBox(height: 39),
+                      // Red exclamation circle
+                      Container(
+                        width: 75,
+                        height: 75,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF0035).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.error_outline,
+                            size: 39,
+                            color: Color(0xFFFF0035),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Title
+                      Text(
+                        isActive ? 'تعطيل الحساب' : 'اعادة تفعيل الحساب',
+                        style: const TextStyle(
+                          fontFamily: _kFontFamily,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      // Subtitle
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          isActive
+                              ? 'هل أنت متأكد من تعطيل حساب الطفل؟\nلن يتمكن الطفل من تسجيل الدخول'
+                              : 'هل تريد اعادة تفعيل حساب الطفل؟\nسيتمكن الطفل من تسجيل الدخول مرة اخرى',
+                          style: const TextStyle(
+                            fontFamily: _kFontFamily,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w300,
+                            color: Colors.black,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const Spacer(),
+                      // Buttons row
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // رجوع button (outlined)
+                            GestureDetector(
+                              onTap: () => Navigator.of(ctx).pop(),
+                              child: Container(
+                                width: 131,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                      color: Colors.black.withOpacity(0.5)),
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'رجوع',
+                                    style: TextStyle(
+                                      fontFamily: _kFontFamily,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // تأكيد button (red)
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.of(ctx).pop();
+                                if (isActive) {
+                                  provider.deactivateAccount();
+                                } else {
+                                  provider.activateAccount();
+                                }
+                                _syncToProfile(context, provider);
+                              },
+                              child: Container(
+                                width: 131,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF0000),
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    isActive ? 'تعطيل' : 'تفعيل',
+                                    style: const TextStyle(
+                                      fontFamily: _kFontFamily,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // BLOOD TYPE RADIO POPUP (Figma CSS)
+  // ============================================================
+  void _showBloodTypeRadioPopup(
+      BuildContext context, ChildDataProvider provider) {
+    final bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+    String? selected =
+        provider.bloodType.isNotEmpty ? provider.bloodType : null;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Center(
+          child: Material(
+            color: Colors.transparent,
+            child: StatefulBuilder(
+              builder: (_, setDialogState) => Container(
+                width: 343,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 15,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    ...bloodTypes.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final type = entry.value;
+                      final isSelected = selected == type;
+                      return Column(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              setDialogState(() => selected = type);
+                              // Auto-save and close after picking
+                              Future.delayed(const Duration(milliseconds: 200),
+                                  () {
+                                provider.setBloodType(type);
+                                Navigator.of(ctx).pop();
+                              });
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    type,
+                                    style: const TextStyle(
+                                      fontFamily: _kFontFamily,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black,
+                                      letterSpacing: 0.1,
+                                    ),
+                                  ),
+                                  // Radio circle
+                                  Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? _kPrimaryRed
+                                            : const Color(0xFFD9D9D9),
+                                        width: isSelected ? 1 : 1.25,
+                                      ),
+                                    ),
+                                    child: isSelected
+                                        ? Center(
+                                            child: Container(
+                                              width: 12,
+                                              height: 12,
+                                              decoration: const BoxDecoration(
+                                                color: _kPrimaryRed,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (idx < bloodTypes.length - 1)
+                            Divider(
+                              color: Colors.black.withOpacity(0.05),
+                              height: 8,
+                            ),
+                        ],
+                      );
+                    }),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1785,9 +2425,20 @@ class ChildDataProfilePage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            _buildSheetSaveButton(context, () {
+            _buildSheetSaveButton(context, () async {
               provider.setGender(selected);
               Navigator.of(context).pop();
+              final String genderStr = selected == 0 ? 'ذكر' : 'أنثى';
+              final (success, msg) =
+                  await provider.submitUpdates({'gender': genderStr});
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(msg,
+                      style: const TextStyle(fontFamily: _kFontFamily)),
+                  backgroundColor:
+                      success ? const Color(0xFF01A449) : _kDangerRed,
+                ));
+              }
             }),
           ],
         ),
@@ -1908,6 +2559,124 @@ class ChildDataProfilePage extends StatelessWidget {
             fontSize: 18,
             fontWeight: FontWeight.w500,
             color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // CHILD SELECTOR DROPDOWN
+  // ============================================================
+  void _showChildSelectorDropdown(
+      BuildContext context, ChildDataProvider provider) {
+    final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+    final children = familyProvider.children;
+
+    if (children.isEmpty) {
+      familyProvider.loadChildren();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('جاري تحميل قائمة الأطفال...',
+              style: TextStyle(fontFamily: _kFontFamily)),
+          backgroundColor: Color(0xFFFE8401),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'اختر طفلاً',
+                style: TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...children.map((child) {
+                final isSelected = child.childId == widget.childId;
+                return ListTile(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    if (!isSelected) {
+                      // Navigate to this child's data page
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ChildDataProfilePage(childId: child.childId),
+                        ),
+                      );
+                    }
+                  },
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFBF092F).withOpacity(0.05),
+                      shape: BoxShape.circle,
+                      border: isSelected
+                          ? Border.all(color: const Color(0xFFBF092F), width: 2)
+                          : null,
+                    ),
+                    child: child.photoUrl != null && child.photoUrl!.isNotEmpty
+                        ? ClipOval(
+                            child: Image.network(
+                              child.photoUrl!,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Center(
+                                child: Icon(Icons.child_care,
+                                    size: 20, color: Color(0xFFBF092F)),
+                              ),
+                            ),
+                          )
+                        : const Center(
+                            child: Icon(Icons.child_care,
+                                size: 20, color: Color(0xFFBF092F)),
+                          ),
+                  ),
+                  title: Text(
+                    child.fullName,
+                    style: TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 16,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color:
+                          isSelected ? const Color(0xFFBF092F) : Colors.black,
+                    ),
+                  ),
+                  subtitle: Text(
+                    child.ageText,
+                    style: const TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 13,
+                      color: Color(0xFF7C7C7C),
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? const Icon(Icons.check_circle,
+                          color: Color(0xFFBF092F), size: 24)
+                      : null,
+                );
+              }),
+            ],
           ),
         ),
       ),

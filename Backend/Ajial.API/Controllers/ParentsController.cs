@@ -894,4 +894,303 @@ public class ParentsController : ControllerBase
             ));
         }
     }
+
+    /// <summary>
+    /// جلب بيانات ملف الطفل الكامل (الملف الشخصي + الملف الطبي) - Get child file data
+    /// </summary>
+    [HttpGet("child/{childId}/file-data")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ChildFileDataDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ChildFileDataDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetChildFileData(Guid childId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                _logger.LogWarning("Unauthorized attempt to get child file data. Invalid user ID claim");
+                return Unauthorized(ApiResponse<ChildFileDataDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            _logger.LogInformation("Parent {ParentId} retrieving file data for child {ChildId}", parentUserId, childId);
+            var result = await _childService.GetChildFileDataAsync(childId, parentUserId);
+
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting file data for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<ChildFileDataDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع" }
+            ));
+        }
+    }
+
+    /// <summary>
+    /// تحديث البيانات الطبية للطفل - Update child medical data
+    /// </summary>
+    [HttpPut("child/{childId}/medical-data")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<UpdateChildMedicalDataResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<UpdateChildMedicalDataResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateChildMedicalData(Guid childId, [FromBody] UpdateChildMedicalDataDto request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                _logger.LogWarning("Unauthorized attempt to update child medical data. Invalid user ID claim");
+                return Unauthorized(ApiResponse<UpdateChildMedicalDataResponseDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            _logger.LogInformation("Parent {ParentId} updating medical data for child {ChildId}", parentUserId, childId);
+            var result = await _childService.UpdateChildMedicalDataAsync(childId, parentUserId, request);
+
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating medical data for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<UpdateChildMedicalDataResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع" }
+            ));
+        }
+    }
+
+    /// <summary>
+    /// حذف ملف الطفل من قائمة أطفال ولي الأمر - Delete child
+    /// </summary>
+    [HttpDelete("child/{childId}")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<DeleteChildResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<DeleteChildResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteChild(Guid childId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                _logger.LogWarning("Unauthorized attempt to delete child. Invalid user ID claim");
+                return Unauthorized(ApiResponse<DeleteChildResponseDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            _logger.LogWarning("Parent {ParentId} requesting deletion of child {ChildId}", parentUserId, childId);
+            var result = await _childService.DeleteChildAsync(childId, parentUserId);
+
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<DeleteChildResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع" }
+            ));
+        }
+    }
+
+    /// <summary>
+    /// رفع أو تحديث صورة ملف الطفل - Upload or update child profile image
+    /// </summary>
+    [HttpPost("child/{childId}/profile-image")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ApiResponse<UploadChildImageResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<UploadChildImageResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UploadChildProfileImage(Guid childId, IFormFile image)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                _logger.LogWarning("Unauthorized attempt to upload child image. Invalid user ID claim");
+                return Unauthorized(ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            _logger.LogInformation("Parent {ParentId} uploading image for child {ChildId}", parentUserId, childId);
+            var result = await _childService.UploadChildProfileImageAsync(childId, parentUserId, image);
+
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading image for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع" }
+            ));
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ──────── Child Account Management Endpoints ────────
+    // ═══════════════════════════════════════════════════════
+
+    /// <summary>
+    /// جلب تفاصيل حساب الطفل - Get child account details (login ID + active status)
+    /// </summary>
+    [HttpGet("child/{childId}/account")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ChildAccountDetailsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ChildAccountDetailsDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetChildAccountDetails(Guid childId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                return Unauthorized(ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            var result = await _childService.GetChildAccountDetailsAsync(childId, parentUserId);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting account details for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                "حدث خطأ في الخادم", new List<string> { "حدث خطأ غير متوقع" }));
+        }
+    }
+
+    /// <summary>
+    /// تحديث كود الطفل - Update child login ID (must be unique)
+    /// </summary>
+    [HttpPut("child/{childId}/account/login-id")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ChildAccountDetailsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ChildAccountDetailsDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateChildLoginId(Guid childId, [FromBody] UpdateChildLoginIdDto request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                return Unauthorized(ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            var result = await _childService.UpdateChildLoginIdAsync(childId, parentUserId, request);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating login ID for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                "حدث خطأ في الخادم", new List<string> { "حدث خطأ غير متوقع" }));
+        }
+    }
+
+    /// <summary>
+    /// تغيير كلمة مرور الطفل (الفواكه) - Change child fruit password
+    /// </summary>
+    [HttpPut("child/{childId}/account/password")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateChildPassword(Guid childId, [FromBody] UpdateChildPasswordDto request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                return Unauthorized(ApiResponse<string>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            var result = await _childService.UpdateChildPasswordAsync(childId, parentUserId, request);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating password for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<string>.FailureResponse(
+                "حدث خطأ في الخادم", new List<string> { "حدث خطأ غير متوقع" }));
+        }
+    }
+
+    /// <summary>
+    /// تفعيل/تعطيل حساب الطفل - Toggle child account active status
+    /// </summary>
+    [HttpPut("child/{childId}/account/toggle")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ChildAccountDetailsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ChildAccountDetailsDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ToggleChildAccount(Guid childId, [FromBody] ToggleChildAccountDto request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                return Unauthorized(ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            var result = await _childService.ToggleChildAccountAsync(childId, parentUserId, request);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error toggling account for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                "حدث خطأ في الخادم", new List<string> { "حدث خطأ غير متوقع" }));
+        }
+    }
+
+    /// <summary>
+    /// حذف صورة ملف الطفل والعودة للصورة الافتراضية - Delete child profile image and reset to default
+    /// </summary>
+    [HttpDelete("child/{childId}/profile-image")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<UploadChildImageResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<UploadChildImageResponseDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DeleteChildProfileImage(Guid childId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                return Unauthorized(ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            var result = await _childService.DeleteChildProfileImageAsync(childId, parentUserId);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting profile image for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم", new List<string> { "حدث خطأ غير متوقع" }));
+        }
+    }
 }

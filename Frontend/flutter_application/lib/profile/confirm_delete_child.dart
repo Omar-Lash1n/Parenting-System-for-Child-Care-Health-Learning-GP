@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:Ajial/providers/confirm_delete_provider.dart';
+import 'package:Ajial/providers/child_data_provider.dart';
 
 const Color _kDangerRed = Color(0xFFD90000);
 const Color _kTextBlack = Colors.black;
@@ -11,7 +12,12 @@ const String _kFontFamily = 'IBM Plex Sans Arabic';
 
 class ConfirmDeleteChildPage extends StatelessWidget {
   final String childName;
-  const ConfirmDeleteChildPage({super.key, required this.childName});
+  final String childId;
+  const ConfirmDeleteChildPage({
+    super.key,
+    required this.childName,
+    required this.childId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -168,10 +174,42 @@ class ConfirmDeleteChildPage extends StatelessWidget {
                                 height: 50,
                                 child: ElevatedButton(
                                   onPressed: provider.isDeleteEnabled
-                                      ? () {
-                                          // TODO: call delete API
-                                          Navigator.of(context)
-                                              .popUntil((r) => r.isFirst);
+                                      ? () async {
+                                          // Call delete API
+                                          final dataProv =
+                                              Provider.of<ChildDataProvider>(
+                                                  context,
+                                                  listen: false);
+                                          final (success, message) =
+                                              await dataProv.deleteChild();
+                                          if (success && context.mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(message,
+                                                    style: const TextStyle(
+                                                        fontFamily:
+                                                            _kFontFamily)),
+                                                backgroundColor:
+                                                    const Color(0xFF01A449),
+                                              ),
+                                            );
+                                            Navigator.of(context)
+                                                .pushNamedAndRemoveUntil(
+                                                    '/family',
+                                                    (route) => false);
+                                          } else if (context.mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(message,
+                                                    style: const TextStyle(
+                                                        fontFamily:
+                                                            _kFontFamily)),
+                                                backgroundColor: _kDangerRed,
+                                              ),
+                                            );
+                                          }
                                         }
                                       : null,
                                   style: ElevatedButton.styleFrom(
