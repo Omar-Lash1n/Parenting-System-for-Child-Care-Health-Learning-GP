@@ -980,4 +980,122 @@ public class ChildService : IChildService
             );
         }
     }
+
+    // ═══════════════════════════════════════════════════════
+    // ── Create Account for Existing Child (4+ years) ──
+    // ═══════════════════════════════════════════════════════
+
+    public async Task<ApiResponse<ChildAccountDetailsDto>> CreateChildAccountAsync(
+        Guid childId, Guid parentUserId, CreateChildAccountDto request)
+    {
+        try
+        {
+            // Step 1: Validate ChildLoginId format (must be 4+ digits, numeric only)
+            if (string.IsNullOrWhiteSpace(request.ChildLoginId))
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في إنشاء حساب الطفل",
+                    new List<string> { "كود الطفل مطلوب" }
+                );
+            }
+
+            var trimmedLoginId = request.ChildLoginId.Trim();
+
+            if (!System.Text.RegularExpressions.Regex.IsMatch(trimmedLoginId, @"^\d+$"))
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في إنشاء حساب الطفل",
+                    new List<string> { "كود الطفل يجب أن يحتوي على أرقام فقط" }
+                );
+            }
+
+            if (trimmedLoginId.Length < 4)
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في إنشاء حساب الطفل",
+                    new List<string> { "كود الطفل يجب أن يتكون من 4 أرقام على الأقل" }
+                );
+            }
+
+            // Step 2: Validate fruit password codes (exactly 5)
+            if (request.FruitPasswordCodes == null || request.FruitPasswordCodes.Count != 5)
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في إنشاء حساب الطفل",
+                    new List<string> { "يجب اختيار 5 فواكه لكلمة المرور" }
+                );
+            }
+
+            // Step 3: Validate parent-child ownership
+            var (parent, child, error) = await ValidateParentChildAccessAsync(childId, parentUserId);
+            if (error != null)
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في إنشاء حساب الطفل",
+                    new List<string> { error }
+                );
+            }
+
+            // Step 4: Check child is 4+ years old
+            var (ageYears, _, _) = CalculateExactAge(child!.BirthDate);
+            if (ageYears < 4)
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في إنشاء حساب الطفل",
+                    new List<string> { "الطفل يجب أن يكون عمره 4 سنوات أو أكثر لإنشاء حساب" }
+                );
+            }
+
+            // Step 5: Check child doesn't already have an account
+            if (!string.IsNullOrEmpty(child.ChildLoginId))
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في إنشاء حساب الطفل",
+                    new List<string> { "هذا الطفل لديه حساب بالفعل" }
+                );
+            }
+
+            // Step 6: Check ChildLoginId uniqueness
+            var existingChild = await _unitOfWork.Children.GetFirstOrDefaultAsync(
+                c => c.ChildLoginId == trimmedLoginId
+            );
+
+            if (existingChild != null)
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في إنشاء حساب الطفل",
+                    new List<string> { "معرف تسجيل الدخول مستخدم بالفعل. يرجى اختيار معرف آخر" }
+                );
+            }
+
+            // Step 7: Set credentials
+            child.ChildLoginId = trimmedLoginId;
+            var combinedPassword = string.Join("", request.FruitPasswordCodes);
+            child.PasswordHash = _passwordHasher.HashPassword(combinedPassword);
+            child.UpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.Children.UpdateAsync(child);
+            await _unitOfWork.SaveAsync();
+
+            // Step 8: Return response
+            var dto = new ChildAccountDetailsDto
+            {
+                ChildId = child.Id,
+                ChildLoginId = child.ChildLoginId,
+                IsAccountActive = child.IsActive
+            };
+
+            return ApiResponse<ChildAccountDetailsDto>.SuccessResponse(
+                dto,
+                $"تم إنشاء حساب الطفل {child.FullName} بنجاح. يمكن للطفل تسجيل الدخول باستخدام المعرف: {child.ChildLoginId}"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                "حدث خطأ أثناء إنشاء حساب الطفل",
+                new List<string> { ex.Message }
+            );
+        }
+    }
 }

@@ -148,6 +148,66 @@ public class ChildController : ControllerBase
     }
 
     /// <summary>
+    /// إنشاء حساب لطفل موجود أتم 4 سنوات - Create account for existing child (4+ years)
+    /// </summary>
+    /// <remarks>
+    /// For children who were registered before turning 4 and now need a login account.
+    /// The parent provides a unique 4-digit ChildLoginId and selects 5 fruits as password.
+    /// 
+    /// Validations:
+    /// - Child must be 4+ years old
+    /// - Child must not already have an account
+    /// - ChildLoginId must be unique (4+ digits, numeric only)
+    /// - Exactly 5 fruit codes required for password
+    /// </remarks>
+    [HttpPost("{childId}/create-account")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ChildAccountDetailsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ChildAccountDetailsDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> CreateChildAccount(Guid childId, [FromBody] CreateChildAccountDto request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                _logger.LogWarning("Unauthorized attempt to create child account. Invalid user ID claim");
+                return Unauthorized(ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول أولاً" }
+                ));
+            }
+
+            _logger.LogInformation("Parent {ParentId} attempting to create account for child {ChildId}",
+                parentUserId, childId);
+
+            var result = await _childService.CreateChildAccountAsync(childId, parentUserId, request);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("Failed to create child account. Errors: {Errors}",
+                    string.Join(", ", result.Errors));
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("Account created successfully for child {ChildId} with LoginId: {LoginId}",
+                childId, result.Data?.ChildLoginId);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in CreateChildAccount endpoint");
+            return StatusCode(500, ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+            ));
+        }
+    }
+
+    /// <summary>
     /// تسجيل ملاحظة صوتية - Upload voice note
     /// </summary>
     /// <remarks>
