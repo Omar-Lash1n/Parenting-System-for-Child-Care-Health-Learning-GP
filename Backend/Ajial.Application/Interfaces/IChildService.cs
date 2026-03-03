@@ -14,4 +14,8 @@ public interface IChildService
     Task<ApiResponse<UpdateChildMedicalDataResponseDto>> UpdateChildMedicalDataAsync(Guid childId, Guid parentUserId, UpdateChildMedicalDataDto request);
     Task<ApiResponse<DeleteChildResponseDto>> DeleteChildAsync(Guid childId, Guid parentUserId);
     Task<ApiResponse<UploadChildImageResponseDto>> UploadChildProfileImageAsync(Guid childId, Guid parentUserId, IFormFile image);
+    Task<ApiResponse<ChildAccountDetailsDto>> GetChildAccountDetailsAsync(Guid childId, Guid parentUserId);
+    Task<ApiResponse<ChildAccountDetailsDto>> UpdateChildLoginIdAsync(Guid childId, Guid parentUserId, UpdateChildLoginIdDto request);
+    Task<ApiResponse<string>> UpdateChildPasswordAsync(Guid childId, Guid parentUserId, UpdateChildPasswordDto request);
+    Task<ApiResponse<ChildAccountDetailsDto>> ToggleChildAccountAsync(Guid childId, Guid parentUserId, ToggleChildAccountDto request);
 }

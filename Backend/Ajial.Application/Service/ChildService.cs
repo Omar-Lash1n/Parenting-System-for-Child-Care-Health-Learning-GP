@@ -680,4 +680,247 @@ public class ChildService : IChildService
             );
         }
     }
+
+    // ═══════════════════════════════════════════════════════
+    // ──────── Child Account Management Methods ────────
+    // ═══════════════════════════════════════════════════════
+
+    public async Task<ApiResponse<ChildAccountDetailsDto>> GetChildAccountDetailsAsync(
+        Guid childId, Guid parentUserId)
+    {
+        try
+        {
+            var (parent, child, error) = await ValidateParentChildAccessAsync(childId, parentUserId);
+            if (error != null)
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في جلب بيانات الحساب",
+                    new List<string> { error }
+                );
+            }
+
+            // Verify child has an account
+            if (string.IsNullOrEmpty(child!.ChildLoginId))
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "الطفل لا يملك حساب",
+                    new List<string> { "هذا الطفل لم يتم إنشاء حساب له بعد" }
+                );
+            }
+
+            var dto = new ChildAccountDetailsDto
+            {
+                ChildId = child.Id,
+                ChildLoginId = child.ChildLoginId,
+                IsAccountActive = child.IsActive
+            };
+
+            return ApiResponse<ChildAccountDetailsDto>.SuccessResponse(
+                dto, "تم جلب بيانات حساب الطفل بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                "حدث خطأ أثناء جلب بيانات الحساب",
+                new List<string> { ex.Message }
+            );
+        }
+    }
+
+    public async Task<ApiResponse<ChildAccountDetailsDto>> UpdateChildLoginIdAsync(
+        Guid childId, Guid parentUserId, UpdateChildLoginIdDto request)
+    {
+        try
+        {
+            // Validate input
+            if (string.IsNullOrWhiteSpace(request.NewChildLoginId))
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في تحديث كود الطفل",
+                    new List<string> { "كود الطفل الجديد مطلوب" }
+                );
+            }
+
+            var (parent, child, error) = await ValidateParentChildAccessAsync(childId, parentUserId);
+            if (error != null)
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في تحديث كود الطفل",
+                    new List<string> { error }
+                );
+            }
+
+            if (string.IsNullOrEmpty(child!.ChildLoginId))
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "الطفل لا يملك حساب",
+                    new List<string> { "هذا الطفل لم يتم إنشاء حساب له بعد" }
+                );
+            }
+
+            var trimmedId = request.NewChildLoginId.Trim();
+
+            // Check if same as current
+            if (trimmedId == child.ChildLoginId)
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في تحديث كود الطفل",
+                    new List<string> { "كود الطفل الجديد مطابق للكود الحالي" }
+                );
+            }
+
+            // Check uniqueness
+            var existing = await _unitOfWork.Children.GetFirstOrDefaultAsync(
+                c => c.ChildLoginId == trimmedId && c.Id != childId);
+            if (existing != null)
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في تحديث كود الطفل",
+                    new List<string> { "هذا الكود مستخدم من قبل طفل آخر. يرجى اختيار كود مختلف" }
+                );
+            }
+
+            // Update
+            child.ChildLoginId = trimmedId;
+            child.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.Children.UpdateAsync(child);
+            await _unitOfWork.SaveAsync();
+
+            var dto = new ChildAccountDetailsDto
+            {
+                ChildId = child.Id,
+                ChildLoginId = child.ChildLoginId,
+                IsAccountActive = child.IsActive
+            };
+
+            return ApiResponse<ChildAccountDetailsDto>.SuccessResponse(
+                dto, "تم تحديث كود الطفل بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                "حدث خطأ أثناء تحديث كود الطفل",
+                new List<string> { ex.Message }
+            );
+        }
+    }
+
+    public async Task<ApiResponse<string>> UpdateChildPasswordAsync(
+        Guid childId, Guid parentUserId, UpdateChildPasswordDto request)
+    {
+        try
+        {
+            // Validate input
+            if (request.NewFruitPasswordCodes == null || request.NewFruitPasswordCodes.Count != 5)
+            {
+                return ApiResponse<string>.FailureResponse(
+                    "فشل في تحديث كلمة المرور",
+                    new List<string> { "كلمة المرور يجب أن تتكون من 5 فواكه" }
+                );
+            }
+
+            if (request.ConfirmFruitPasswordCodes == null || request.ConfirmFruitPasswordCodes.Count != 5)
+            {
+                return ApiResponse<string>.FailureResponse(
+                    "فشل في تحديث كلمة المرور",
+                    new List<string> { "تأكيد كلمة المرور يجب أن يتكون من 5 فواكه" }
+                );
+            }
+
+            // Check passwords match
+            var newPassword = string.Join("", request.NewFruitPasswordCodes);
+            var confirmPassword = string.Join("", request.ConfirmFruitPasswordCodes);
+            if (newPassword != confirmPassword)
+            {
+                return ApiResponse<string>.FailureResponse(
+                    "فشل في تحديث كلمة المرور",
+                    new List<string> { "كلمة المرور الجديدة وتأكيدها غير متطابقين" }
+                );
+            }
+
+            var (parent, child, error) = await ValidateParentChildAccessAsync(childId, parentUserId);
+            if (error != null)
+            {
+                return ApiResponse<string>.FailureResponse(
+                    "فشل في تحديث كلمة المرور",
+                    new List<string> { error }
+                );
+            }
+
+            if (string.IsNullOrEmpty(child!.ChildLoginId))
+            {
+                return ApiResponse<string>.FailureResponse(
+                    "الطفل لا يملك حساب",
+                    new List<string> { "هذا الطفل لم يتم إنشاء حساب له بعد" }
+                );
+            }
+
+            // Hash and update
+            child.PasswordHash = _passwordHasher.HashPassword(newPassword);
+            child.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.Children.UpdateAsync(child);
+            await _unitOfWork.SaveAsync();
+
+            return ApiResponse<string>.SuccessResponse(
+                "تم تحديث كلمة المرور بنجاح",
+                "تم تغيير كلمة مرور الطفل بنجاح"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<string>.FailureResponse(
+                "حدث خطأ أثناء تحديث كلمة المرور",
+                new List<string> { ex.Message }
+            );
+        }
+    }
+
+    public async Task<ApiResponse<ChildAccountDetailsDto>> ToggleChildAccountAsync(
+        Guid childId, Guid parentUserId, ToggleChildAccountDto request)
+    {
+        try
+        {
+            var (parent, child, error) = await ValidateParentChildAccessAsync(childId, parentUserId);
+            if (error != null)
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "فشل في تحديث حالة الحساب",
+                    new List<string> { error }
+                );
+            }
+
+            if (string.IsNullOrEmpty(child!.ChildLoginId))
+            {
+                return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                    "الطفل لا يملك حساب",
+                    new List<string> { "هذا الطفل لم يتم إنشاء حساب له بعد" }
+                );
+            }
+
+            child.IsActive = request.IsActive;
+            child.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.Children.UpdateAsync(child);
+            await _unitOfWork.SaveAsync();
+
+            string message = request.IsActive
+                ? "تم تفعيل حساب الطفل بنجاح"
+                : "تم تعطيل حساب الطفل بنجاح";
+
+            var dto = new ChildAccountDetailsDto
+            {
+                ChildId = child.Id,
+                ChildLoginId = child.ChildLoginId,
+                IsAccountActive = child.IsActive
+            };
+
+            return ApiResponse<ChildAccountDetailsDto>.SuccessResponse(dto, message);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
+                "حدث خطأ أثناء تحديث حالة الحساب",
+                new List<string> { ex.Message }
+            );
+        }
+    }
 }
