@@ -11,6 +11,7 @@ import 'package:Ajial/profile/child_data_profile.dart';
 import 'package:Ajial/profile/child_data_profile_form.dart';
 import 'package:Ajial/profile/making_child_account.dart';
 import 'package:Ajial/providers/child_data_provider.dart';
+import 'package:Ajial/api/auth_service.dart';
 
 // --- CONSTANTS ---
 const Color _kPrimaryRed = Color(0xFFBF092F);
@@ -831,7 +832,7 @@ class _MyChildProfilePageState extends State<MyChildProfilePage> {
     return GestureDetector(
       onTap: item.isLocked
           ? null
-          : () {
+          : () async {
               if (item.title == 'بيانات الطفل') {
                 Navigator.push(
                   context,
@@ -841,11 +842,85 @@ class _MyChildProfilePageState extends State<MyChildProfilePage> {
                   ),
                 );
               } else if (item.title == 'التطعيمات') {
-                Navigator.pushNamed(
-                  context,
-                  '/vaccination-welcome',
-                  arguments: {'childId': widget.childId},
+                // Show loading
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => const Center(
+                    child: CircularProgressIndicator(color: _kPrimaryRed),
+                  ),
                 );
+
+                try {
+                  final data = await AuthService()
+                      .getVaccinationWelcome(widget.childId!);
+
+                  if (!mounted) return;
+                  Navigator.of(context).pop(); // dismiss loading
+
+                  if (data == null) {
+                    // API error — navigate anyway
+                    Navigator.pushNamed(context, '/vaccination-welcome',
+                        arguments: {'childId': widget.childId});
+                    return;
+                  }
+
+                  if (data['hasCompletedVaccinationSurvey'] == true) {
+                    // Already completed — show popup
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: AlertDialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          title: const Text(
+                            'تنبيه',
+                            style: TextStyle(
+                              fontFamily: _kFontFamily,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          content: const Text(
+                            'تم اكمال الاستبيان لهذا الطفل من قبل',
+                            style: TextStyle(
+                              fontFamily: _kFontFamily,
+                              fontSize: 15,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          actionsAlignment: MainAxisAlignment.center,
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text(
+                                'حسناً',
+                                style: TextStyle(
+                                  fontFamily: _kFontFamily,
+                                  color: _kPrimaryRed,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  } else {
+                    // Not completed — navigate
+                    Navigator.pushNamed(context, '/vaccination-welcome',
+                        arguments: {'childId': widget.childId});
+                  }
+                } catch (e) {
+                  if (!mounted) return;
+                  Navigator.of(context).pop(); // dismiss loading
+                  Navigator.pushNamed(context, '/vaccination-welcome',
+                      arguments: {'childId': widget.childId});
+                }
               }
               // Other dashboard items can be wired here
             },
