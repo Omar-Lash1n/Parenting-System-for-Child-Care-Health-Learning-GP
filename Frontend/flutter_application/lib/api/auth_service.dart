@@ -266,6 +266,178 @@ class AuthService {
     }
   }
 
+  /// دالة إنشاء حساب لطفل موجود (Create Account for existing child)
+  ///
+  /// POST /api/Child/{childId}/create-account
+  Future<(bool success, String message)> createChildAccount({
+    required String childId,
+    required String childLoginId,
+    required List<String> fruitPasswordCodes,
+  }) async {
+    final String apiUrl = '$_apiBaseUrl/Child/$childId/create-account';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, "غير مصرح. يرجى تسجيل الدخول أولاً.");
+    }
+
+    final Map<String, String> headers = {
+      'accept': 'text/plain',
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+
+    final Map<String, dynamic> body = {
+      "childLoginId": childLoginId,
+      "fruitPasswordCodes": fruitPasswordCodes,
+    };
+
+    try {
+      print("📤 Sending Create Child Account Request to $apiUrl...");
+      final response = await http
+          .post(
+            Uri.parse(apiUrl),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      print("📥 Clean Response Code: ${response.statusCode}");
+      print("📥 Clean Response Body: ${response.body}");
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        return (
+          true,
+          (responseBody['message'] ?? "تم إنشاء حساب الطفل بنجاح").toString()
+        );
+      } else {
+        // Handle errors
+        String errorMsg = "فشل إنشاء الحساب";
+        final errors = responseBody['errors'] as List?;
+        if (errors != null && errors.isNotEmpty) {
+          errorMsg = errors.first.toString();
+        } else if (responseBody['message'] != null) {
+          errorMsg = responseBody['message'].toString();
+        }
+        return (false, errorMsg);
+      }
+    } catch (e) {
+      print("❌ Error creating child account: $e");
+      return (false, "تأكد من الاتصال بالإنترنت. يرجى المحاولة مرة أخرى.");
+    }
+  }
+
+  /// دالة تغيير رقم كود تسجيل الدخول للطفل
+  ///
+  /// PUT /api/Parents/child/{childId}/account/login-id
+  Future<(bool success, String message)> updateChildLoginId({
+    required String childId,
+    required String newChildLoginId,
+  }) async {
+    final String apiUrl =
+        '$_apiBaseUrl/Parents/child/$childId/account/login-id';
+    return _sendChildAccountUpdate(
+      apiUrl: apiUrl,
+      body: {"newChildLoginId": newChildLoginId},
+      successDefaultMsg: "تم تغيير كود الطفل بنجاح",
+    );
+  }
+
+  /// دالة تغيير كلمة مرور الفواكه للطفل
+  ///
+  /// PUT /api/Parents/child/{childId}/account/password
+  Future<(bool success, String message)> updateChildPassword({
+    required String childId,
+    required List<String> oldFruitPasswordCodes,
+    required List<String> newFruitPasswordCodes,
+    required List<String> confirmFruitPasswordCodes,
+  }) async {
+    final String apiUrl =
+        '$_apiBaseUrl/Parents/child/$childId/account/password';
+    return _sendChildAccountUpdate(
+      apiUrl: apiUrl,
+      body: {
+        "oldFruitPasswordCodes": oldFruitPasswordCodes,
+        "newFruitPasswordCodes": newFruitPasswordCodes,
+        "confirmFruitPasswordCodes": confirmFruitPasswordCodes,
+      },
+      successDefaultMsg: "تم تغيير كلمة المرور بنجاح",
+    );
+  }
+
+  /// دالة تفعيل/إيقاف حساب الطفل
+  ///
+  /// PUT /api/Parents/child/{childId}/account/toggle
+  Future<(bool success, String message)> toggleChildAccount({
+    required String childId,
+    required bool isActive,
+  }) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/child/$childId/account/toggle';
+    return _sendChildAccountUpdate(
+      apiUrl: apiUrl,
+      body: {"isActive": isActive},
+      successDefaultMsg:
+          isActive ? "تم تفعيل الحساب بنجاح" : "تم إيقاف الحساب بنجاح",
+    );
+  }
+
+  /// Helper function for PUT account update requests
+  Future<(bool success, String message)> _sendChildAccountUpdate({
+    required String apiUrl,
+    required Map<String, dynamic> body,
+    required String successDefaultMsg,
+  }) async {
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, "غير مصرح. يرجى تسجيل الدخول أولاً.");
+    }
+
+    final Map<String, String> headers = {
+      'accept': 'text/plain',
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+
+    try {
+      print("📤 Sending PUT Request to $apiUrl...");
+      final response = await http
+          .put(
+            Uri.parse(apiUrl),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      print("📥 Clean Response Code: ${response.statusCode}");
+      print("📥 Clean Response Body: ${response.body}");
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        return (
+          true,
+          (responseBody['message'] ?? successDefaultMsg).toString()
+        );
+      } else {
+        // Handle errors
+        String errorMsg = "فشل التحديث";
+        final errors = responseBody['errors'] as List?;
+        if (errors != null && errors.isNotEmpty) {
+          errorMsg = errors.first.toString();
+        } else if (responseBody['message'] != null) {
+          errorMsg = responseBody['message'].toString();
+        }
+        return (false, errorMsg);
+      }
+    } catch (e) {
+      print("❌ Error in _sendChildAccountUpdate: $e");
+      return (false, "تأكد من الاتصال بالإنترنت. يرجى المحاولة مرة أخرى.");
+    }
+  }
+
   /// دالة نسيت كلمة المرور
   Future<(bool, String)> forgotPassword({required String email}) async {
     final String apiUrl = '$_apiBaseUrl/Auth/forgot-password';

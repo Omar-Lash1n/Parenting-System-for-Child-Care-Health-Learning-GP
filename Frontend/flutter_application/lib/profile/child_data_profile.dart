@@ -383,8 +383,8 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) =>
-                          const ChildDataProfileFormPage(prefill: true),
+                      builder: (_) => ChildDataProfileFormPage(
+                          prefill: true, childId: widget.childId),
                     ),
                   );
                 },
@@ -423,7 +423,7 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => const ChildDataProfileFormPage(),
+            builder: (_) => ChildDataProfileFormPage(childId: widget.childId),
           ),
         );
       },
@@ -570,7 +570,7 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
               );
             }
           }),
-      () => _showDobWarningPopup(context, provider),
+      () => _showDobEditSheet(context, provider),
       () => _showGenderEditSheet(context, provider),
     ];
     return Column(
@@ -836,7 +836,8 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
                   onTap: () async {
                     final result = await Navigator.of(context).push<bool>(
                       MaterialPageRoute(
-                        builder: (_) => const MakingChildAccountPage(),
+                        builder: (_) => MakingChildAccountPage(
+                            childId: widget.childId ?? ''),
                       ),
                     );
                     if (result == true) {
@@ -1206,7 +1207,7 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        _buildSheetSaveButton(context, () {
+                        _buildSheetSaveButton(context, () async {
                           if (ctrl.text.length != 4) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -1216,8 +1217,33 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
                             );
                             return;
                           }
-                          provider.setChildCode(ctrl.text);
+
+                          // Show loading inside sheet is hard without stateful builder,
+                          // so we pop the sheet and show a loading overlay or just await.
+                          // It's cleaner to pop the sheet and show a loading snackbar or indicator.
+                          final prevCode = provider.childCode;
+                          provider.setChildCode(ctrl.text); // optimistic update
                           Navigator.of(context).pop();
+
+                          final result =
+                              await provider.updateAccountLoginId(ctrl.text);
+                          if (!context.mounted) return;
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(result.$2,
+                                  style: const TextStyle(
+                                      fontFamily: _kFontFamily)),
+                              backgroundColor: result.$1
+                                  ? const Color(0xFF01A449)
+                                  : Colors.red,
+                            ),
+                          );
+
+                          if (!result.$1) {
+                            // Revert optimistic update on failure
+                            provider.setChildCode(prevCode);
+                          }
                         }),
                       ],
                     ),
@@ -1246,19 +1272,20 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
               // Deactivate / Reactivate Account
               _buildSettingsRow(
                 icon: provider.isAccountActive
-                    ? Icons.block
-                    : Icons.check_circle_outline,
+                    ? Icons.check_circle
+                    : Icons.cancel,
                 iconColor: provider.isAccountActive
-                    ? _kDangerRed
-                    : const Color(0xFF01A449),
+                    ? const Color(0xFF01A449)
+                    : _kDangerRed,
                 iconBgColor: provider.isAccountActive
-                    ? _kDangerRed.withOpacity(0.1)
-                    : const Color(0xFF01A449).withOpacity(0.1),
-                label: provider.isAccountActive
-                    ? ChildDataStrings.deactivateAccountLabel
-                    : 'اعادة تفعيل الحساب',
-                value: '',
-                isDestructive: provider.isAccountActive,
+                    ? const Color(0xFF01A449).withOpacity(0.1)
+                    : _kDangerRed.withOpacity(0.1),
+                label: 'حالة الحساب',
+                value: provider.isAccountActive ? 'مفعل' : 'معطل',
+                valueColor: provider.isAccountActive
+                    ? const Color(0xFF01A449)
+                    : _kDangerRed,
+                isDestructive: false,
                 onEdit: () => _showDeactivateConfirmPopup(context, provider),
               ),
             ],
@@ -1274,53 +1301,57 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
     required Color iconBgColor,
     required String label,
     required String value,
+    Color? valueColor,
     required VoidCallback onEdit,
     bool isDestructive = false,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(10),
+    return InkWell(
+      onTap: onEdit,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(child: Icon(icon, size: 18, color: iconColor)),
             ),
-            child: Center(child: Icon(icon, size: 18, color: iconColor)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontFamily: _kFontFamily,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isDestructive ? _kDangerRed : Colors.black,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isDestructive ? _kDangerRed : Colors.black,
+                ),
               ),
             ),
-          ),
-          if (value.isNotEmpty)
-            Text(
-              value,
-              style: TextStyle(
-                fontFamily: _kFontFamily,
-                fontSize: 14,
-                color: Colors.black.withOpacity(0.5),
+            if (value.isNotEmpty)
+              Text(
+                value,
+                style: TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 14,
+                  fontWeight:
+                      valueColor != null ? FontWeight.w600 : FontWeight.w400,
+                  color: valueColor ?? Colors.black.withOpacity(0.5),
+                ),
               ),
-            ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onEdit,
-            child: Icon(
+            const SizedBox(width: 8),
+            Icon(
               isDestructive ? Icons.arrow_forward_ios : Icons.edit,
               size: 16,
-              color: isDestructive ? _kDangerRed : _kOrange,
+              color: isDestructive ? _kDangerRed : Colors.black,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1946,14 +1977,43 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
                             const SizedBox(width: 8),
                             // تأكيد button (red)
                             GestureDetector(
-                              onTap: () {
+                              onTap: () async {
                                 Navigator.of(ctx).pop();
+
+                                // Optimistically toggle the UI
                                 if (isActive) {
                                   provider.deactivateAccount();
                                 } else {
                                   provider.activateAccount();
                                 }
-                                _syncToProfile(context, provider);
+
+                                // Fire the API
+                                final result = await provider
+                                    .toggleAccountStatus(!isActive);
+                                if (!context.mounted) return;
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(result.$2,
+                                        style: const TextStyle(
+                                            fontFamily: _kFontFamily)),
+                                    backgroundColor: result.$1
+                                        ? const Color(0xFF01A449)
+                                        : Colors.red,
+                                  ),
+                                );
+
+                                if (!result.$1) {
+                                  // Revert optimistic update on failure
+                                  if (isActive) {
+                                    provider.activateAccount();
+                                  } else {
+                                    provider.deactivateAccount();
+                                  }
+                                } else {
+                                  // Sync to profile summary only after successful completion
+                                  _syncToProfile(context, provider);
+                                }
                               },
                               child: Container(
                                 width: 131,
@@ -2397,8 +2457,8 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
             const SizedBox(height: 16),
             _buildSheetSaveButton(context, () {
               provider.setDob(dayC.text, selectedMonth ?? '', yearC.text);
-              _syncToProfile(context, provider);
               Navigator.of(context).pop();
+              _showDobWarningPopup(context, provider);
             }),
           ],
         ),
@@ -2426,9 +2486,13 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
             ),
             const SizedBox(height: 16),
             _buildSheetSaveButton(context, () async {
+              if (selected == provider.selectedGenderIndex) {
+                Navigator.of(context).pop();
+                return; // No change made, avoid API error
+              }
               provider.setGender(selected);
               Navigator.of(context).pop();
-              final String genderStr = selected == 0 ? 'ذكر' : 'أنثى';
+              final String genderStr = selected == 0 ? 'Male' : 'Female';
               final (success, msg) =
                   await provider.submitUpdates({'gender': genderStr});
               if (context.mounted) {
@@ -2607,75 +2671,85 @@ class _ChildDataProfilePageState extends State<ChildDataProfilePage> {
                 ),
               ),
               const SizedBox(height: 16),
-              ...children.map((child) {
-                final isSelected = child.childId == widget.childId;
-                return ListTile(
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    if (!isSelected) {
-                      // Navigate to this child's data page
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ChildDataProfilePage(childId: child.childId),
-                        ),
-                      );
-                    }
-                  },
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFBF092F).withOpacity(0.05),
-                      shape: BoxShape.circle,
-                      border: isSelected
-                          ? Border.all(color: const Color(0xFFBF092F), width: 2)
-                          : null,
-                    ),
-                    child: child.photoUrl != null && child.photoUrl!.isNotEmpty
-                        ? ClipOval(
-                            child: Image.network(
-                              child.photoUrl!,
-                              width: 40,
-                              height: 40,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Center(
-                                child: Icon(Icons.child_care,
-                                    size: 20, color: Color(0xFFBF092F)),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: children.map((child) {
+                      final isSelected = child.childId == widget.childId;
+                      return ListTile(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          if (!isSelected) {
+                            // Navigate to this child's data page
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChildDataProfilePage(
+                                    childId: child.childId),
                               ),
-                            ),
-                          )
-                        : const Center(
-                            child: Icon(Icons.child_care,
-                                size: 20, color: Color(0xFFBF092F)),
+                            );
+                          }
+                        },
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFBF092F).withOpacity(0.05),
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(
+                                    color: const Color(0xFFBF092F), width: 2)
+                                : null,
                           ),
+                          child: child.photoUrl != null &&
+                                  child.photoUrl!.isNotEmpty
+                              ? ClipOval(
+                                  child: Image.network(
+                                    child.photoUrl!,
+                                    width: 40,
+                                    height: 40,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Center(
+                                      child: Icon(Icons.child_care,
+                                          size: 20, color: Color(0xFFBF092F)),
+                                    ),
+                                  ),
+                                )
+                              : const Center(
+                                  child: Icon(Icons.child_care,
+                                      size: 20, color: Color(0xFFBF092F)),
+                                ),
+                        ),
+                        title: Text(
+                          child.fullName,
+                          style: TextStyle(
+                            fontFamily: _kFontFamily,
+                            fontSize: 16,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected
+                                ? const Color(0xFFBF092F)
+                                : Colors.black,
+                          ),
+                        ),
+                        subtitle: Text(
+                          child.ageText,
+                          style: const TextStyle(
+                            fontFamily: _kFontFamily,
+                            fontSize: 13,
+                            color: Color(0xFF7C7C7C),
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle,
+                                color: Color(0xFFBF092F), size: 24)
+                            : null,
+                      );
+                    }).toList(),
                   ),
-                  title: Text(
-                    child.fullName,
-                    style: TextStyle(
-                      fontFamily: _kFontFamily,
-                      fontSize: 16,
-                      fontWeight:
-                          isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color:
-                          isSelected ? const Color(0xFFBF092F) : Colors.black,
-                    ),
-                  ),
-                  subtitle: Text(
-                    child.ageText,
-                    style: const TextStyle(
-                      fontFamily: _kFontFamily,
-                      fontSize: 13,
-                      color: Color(0xFF7C7C7C),
-                    ),
-                  ),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle,
-                          color: Color(0xFFBF092F), size: 24)
-                      : null,
-                );
-              }),
+                ),
+              ),
             ],
           ),
         ),

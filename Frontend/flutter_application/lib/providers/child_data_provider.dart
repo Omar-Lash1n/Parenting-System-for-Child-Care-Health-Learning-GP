@@ -190,6 +190,8 @@ class ChildDataProvider extends ChangeNotifier {
   /// Clear all fields for the "Fill Data" fresh-start flow
   void clearForFillData() {
     _name = '';
+    _childName = '';
+    _fullName = '';
     _age = '';
     _gender = '';
     _selectedGenderIndex = -1;
@@ -202,6 +204,7 @@ class ChildDataProvider extends ChangeNotifier {
     _bloodType = '';
     _medicalHistory = '';
     _profileCompletionPercent = 0.0;
+    _profileImageUrl = null;
     notifyListeners();
   }
 
@@ -258,7 +261,10 @@ class ChildDataProvider extends ChangeNotifier {
     _isLoading = true;
     _hasError = false;
     _errorMessage = '';
-    notifyListeners();
+
+    // Clear out old data from previous profile immediately to prevent stale data
+    // appearing in forms if clicked quickly before the API response arrives.
+    clearForFillData();
 
     try {
       final data = await AuthService().getChildFileData(childId);
@@ -276,8 +282,17 @@ class ChildDataProvider extends ChangeNotifier {
         _age = _formatAge(years, months, days);
 
         // Gender
-        _gender = (data['gender'] ?? '').toString();
-        _selectedGenderIndex = _gender == 'أنثى' ? 1 : 0;
+        final rawGender = (data['gender'] ?? '').toString().toLowerCase();
+        if (rawGender == 'female' || rawGender == 'أنثى') {
+          _gender = 'أنثى';
+          _selectedGenderIndex = 1;
+        } else if (rawGender == 'male' || rawGender == 'ذكر') {
+          _gender = 'ذكر';
+          _selectedGenderIndex = 0;
+        } else {
+          _gender = 'غير محدد';
+          _selectedGenderIndex = 0;
+        }
 
         // Date of Birth
         final birthDateStr = data['birthDate']?.toString();
@@ -502,7 +517,54 @@ class ChildDataProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Personal Profile Items ---
+  // --- API Account Editing Bridges ---
+
+  Future<(bool, String)> updateAccountLoginId(String newId) async {
+    if (_childId.isEmpty) return (false, 'معرف الطفل غير موجود');
+    final result = await AuthService().updateChildLoginId(
+      childId: _childId,
+      newChildLoginId: newId,
+    );
+    if (result.$1) {
+      setChildCode(newId);
+    }
+    return result;
+  }
+
+  Future<(bool, String)> updateAccountPassword(
+      List<String> oldCodes,
+      List<String> newCodes,
+      List<String> confirmCodes,
+      List<String> newImages) async {
+    if (_childId.isEmpty) return (false, 'معرف الطفل غير موجود');
+    final result = await AuthService().updateChildPassword(
+      childId: _childId,
+      oldFruitPasswordCodes: oldCodes,
+      newFruitPasswordCodes: newCodes,
+      confirmFruitPasswordCodes: confirmCodes,
+    );
+    if (result.$1) {
+      setFruitPassword(newCodes, newImages);
+    }
+    return result;
+  }
+
+  Future<(bool, String)> toggleAccountStatus(bool isActive) async {
+    if (_childId.isEmpty) return (false, 'معرف الطفل غير موجود');
+    final result = await AuthService().toggleChildAccount(
+      childId: _childId,
+      isActive: isActive,
+    );
+    if (result.$1) {
+      if (isActive) {
+        activateAccount();
+      } else {
+        deactivateAccount();
+      }
+    }
+    return result;
+  } // --- Personal Profile Items ---
+
   List<ProfileInfoItem> get personalItems => [
         ProfileInfoItem(
           label: ChildDataStrings.nameLabel,

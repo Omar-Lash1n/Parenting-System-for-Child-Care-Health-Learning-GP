@@ -7,6 +7,7 @@ import 'package:Ajial/providers/child_data_provider.dart';
 import 'package:Ajial/providers/child_profile_provider.dart';
 import 'package:Ajial/providers/add_child_flow_provider.dart';
 import 'package:flutter/services.dart';
+import 'package:Ajial/api/auth_service.dart';
 
 const Color _kPrimaryRed = Color(0xFFBF092F);
 const String _kFontFamily = 'IBM Plex Sans Arabic';
@@ -26,7 +27,8 @@ const List<Color> _fruitBgColors = [
 ];
 
 class MakingChildAccountPage extends StatefulWidget {
-  const MakingChildAccountPage({super.key});
+  final String childId;
+  const MakingChildAccountPage({super.key, required this.childId});
 
   @override
   State<MakingChildAccountPage> createState() => _MakingChildAccountPageState();
@@ -72,13 +74,16 @@ class _MakingChildAccountPageState extends State<MakingChildAccountPage> {
     }
   }
 
-  void _onSave() {
+  bool _isLoading = false;
+
+  void _onSave() async {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty || code.length != 4) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يجب أن يتكون كود الطفل من 4 أرقام',
               style: TextStyle(fontFamily: _kFontFamily)),
+          backgroundColor: Colors.red,
         ),
       );
       return;
@@ -88,6 +93,7 @@ class _MakingChildAccountPageState extends State<MakingChildAccountPage> {
         const SnackBar(
           content: Text('يرجى اختيار 5 فواكه لكلمة السر',
               style: TextStyle(fontFamily: _kFontFamily)),
+          backgroundColor: Colors.red,
         ),
       );
       return;
@@ -95,20 +101,71 @@ class _MakingChildAccountPageState extends State<MakingChildAccountPage> {
 
     final fruitCodes =
         _selectedFruitIndices.map((i) => _fruits[i].code).toList();
-    final fruitImages =
-        _selectedFruitIndices.map((i) => _fruits[i].imagePath).toList();
 
-    // Save to provider
-    context.read<ChildDataProvider>().createAccount(
-          code,
-          fruitCodes,
-          fruitImages,
-        );
+    final provider = context.read<ChildDataProvider>();
 
-    // Sync to ChildProfileProvider
-    context.read<ChildProfileProvider>().setAccountCreated(true);
+    setState(() {
+      _isLoading = true;
+    });
 
-    Navigator.of(context).pop(true);
+    // Getting the exact values from provider to recreate the child
+    String fullName = provider.fullName;
+    if (fullName.isEmpty) {
+      fullName = provider.name;
+    }
+    if (fullName.isEmpty) {
+      fullName = provider.childName;
+    }
+
+    // Ensure the name has at least two words as the backend might require "Full Name"
+    final nameParts = fullName.trim().split(RegExp(r'\s+'));
+    if (nameParts.length < 2) {
+      fullName =
+          '$fullName العائلة'; // Fallback if the user only provided one name
+    }
+
+    final result = await AuthService().createChildAccount(
+      childId: widget.childId,
+      childLoginId: code,
+      fruitPasswordCodes: fruitCodes,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result.$1) {
+      // Sync to Provider so UI updates immediately
+      provider.createAccount(
+        code,
+        fruitCodes,
+        _selectedFruitIndices.map((i) => _fruits[i].imagePath).toList(),
+      );
+      context.read<ChildProfileProvider>().setAccountCreated(true);
+      context
+          .read<ChildProfileProvider>()
+          .fetchProfileSummary(provider.childId);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text(result.$2, style: const TextStyle(fontFamily: _kFontFamily)),
+          backgroundColor: const Color(0xFF01A449),
+        ),
+      );
+
+      Navigator.of(context).pop(true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text(result.$2, style: const TextStyle(fontFamily: _kFontFamily)),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -120,9 +177,9 @@ class _MakingChildAccountPageState extends State<MakingChildAccountPage> {
         body: SafeArea(
           child: Column(
             children: [
-              // Close button (top-right in RTL = top-left visual)
+              // Close button (Visual Right / RTL Left)
               Align(
-                alignment: Alignment.centerRight,
+                alignment: Alignment.centerLeft,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: GestureDetector(
@@ -382,24 +439,33 @@ class _MakingChildAccountPageState extends State<MakingChildAccountPage> {
       children: [
         // Primary: Create Account
         GestureDetector(
-          onTap: _onSave,
+          onTap: _isLoading ? null : _onSave,
           child: Container(
             width: double.infinity,
             height: 50,
             decoration: BoxDecoration(
-              color: _kPrimaryRed,
+              color: _isLoading ? Colors.grey : _kPrimaryRed,
               borderRadius: BorderRadius.circular(50),
             ),
-            child: const Center(
-              child: Text(
-                'انشاء حساب',
-                style: TextStyle(
-                  fontFamily: _kFontFamily,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-              ),
+            child: Center(
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text(
+                      'انشاء حساب',
+                      style: TextStyle(
+                        fontFamily: _kFontFamily,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
           ),
         ),

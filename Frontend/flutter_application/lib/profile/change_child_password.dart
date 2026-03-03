@@ -68,29 +68,17 @@ class _ChangeChildPasswordPageState extends State<ChangeChildPasswordPage> {
     }
   }
 
-  void _onSave() {
+  bool _isLoading = false;
+
+  void _onSave() async {
+    if (_isLoading) return;
+
     final provider = context.read<ChildDataProvider>();
 
-    // Validate old password
+    // Validate old password length
     final oldCodes = _passwords[0].map((i) => _fruits[i].code).toList();
     if (oldCodes.length != 5) {
       _showError('يرجى إدخال كلمة المرور القديمة كاملة');
-      return;
-    }
-
-    // Check old password matches stored
-    final stored = provider.fruitPasswordCodes;
-    bool match = oldCodes.length == stored.length;
-    if (match) {
-      for (int i = 0; i < oldCodes.length; i++) {
-        if (oldCodes[i] != stored[i]) {
-          match = false;
-          break;
-        }
-      }
-    }
-    if (!match) {
-      _showError('كلمة المرور القديمة غير صحيحة');
       return;
     }
 
@@ -121,18 +109,33 @@ class _ChangeChildPasswordPageState extends State<ChangeChildPasswordPage> {
       return;
     }
 
-    // Save
     final newImages = _passwords[1].map((i) => _fruits[i].imagePath).toList();
-    provider.setFruitPassword(newCodes, newImages);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('تم تغيير كلمة المرور بنجاح',
-            style: TextStyle(fontFamily: _kFontFamily)),
-        backgroundColor: _kGreen,
-      ),
-    );
-    Navigator.of(context).pop();
+    setState(() {
+      _isLoading = true;
+    });
+
+    final result = await provider.updateAccountPassword(
+        oldCodes, newCodes, confirmCodes, newImages);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result.$1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text(result.$2, style: const TextStyle(fontFamily: _kFontFamily)),
+          backgroundColor: _kGreen,
+        ),
+      );
+      Navigator.of(context).pop();
+    } else {
+      _showError(result.$2);
+    }
   }
 
   void _showError(String msg) {
@@ -154,9 +157,9 @@ class _ChangeChildPasswordPageState extends State<ChangeChildPasswordPage> {
         body: SafeArea(
           child: Column(
             children: [
-              // Close button
+              // Close button (Visual Right / RTL Left)
               Align(
-                alignment: Alignment.centerRight,
+                alignment: Alignment.centerLeft,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: GestureDetector(
@@ -357,15 +360,24 @@ class _ChangeChildPasswordPageState extends State<ChangeChildPasswordPage> {
               borderRadius: BorderRadius.circular(50),
             ),
             child: Center(
-              child: Text(
-                ChildDataStrings.changePasswordButton,
-                style: const TextStyle(
-                  fontFamily: _kFontFamily,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : const Text(
+                      ChildDataStrings.changePasswordButton,
+                      style: TextStyle(
+                        fontFamily: _kFontFamily,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
           ),
         ),

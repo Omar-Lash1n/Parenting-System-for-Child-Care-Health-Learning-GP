@@ -545,7 +545,8 @@ class _MyChildProfilePageState extends State<MyChildProfilePage> {
                 onTap: () async {
                   final result = await Navigator.of(context).push<bool>(
                     MaterialPageRoute(
-                      builder: (_) => const MakingChildAccountPage(),
+                      builder: (_) =>
+                          MakingChildAccountPage(childId: widget.childId ?? ''),
                     ),
                   );
                   if (result == true) {
@@ -577,74 +578,9 @@ class _MyChildProfilePageState extends State<MyChildProfilePage> {
     }
 
     // view_account → has account: show "view details" button
+    // Removed based on user request to not show this green card anymore.
     if (action == 'view_account') {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(17),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.centerRight,
-              end: Alignment.centerLeft,
-              colors: [
-                Color(0xFF01A449),
-                Color(0xB301A449),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 2,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                provider.accountStatusMessage.isNotEmpty
-                    ? provider.accountStatusMessage
-                    : ChildDataStrings.accountCardTitle(provider.childName),
-                style: const TextStyle(
-                  fontFamily: _kFontFamily,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.right,
-              ),
-              const SizedBox(height: 12),
-              GestureDetector(
-                onTap: () {
-                  // Navigate to child data profile (account settings)
-                  Navigator.pushNamed(context, '/child-data');
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(50),
-                  ),
-                  child: const Text(
-                    'عرض تفاصيل الحساب',
-                    style: TextStyle(
-                      fontFamily: _kFontFamily,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF01A449),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     return const SizedBox.shrink();
@@ -764,8 +700,8 @@ class _MyChildProfilePageState extends State<MyChildProfilePage> {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) =>
-                          const ChildDataProfileFormPage(prefill: true),
+                      builder: (_) => ChildDataProfileFormPage(
+                          prefill: true, childId: widget.childId),
                     ),
                   );
                 },
@@ -1109,74 +1045,82 @@ class _MyChildProfilePageState extends State<MyChildProfilePage> {
                 ),
               ),
               const SizedBox(height: 16),
-              ...children.map((child) {
-                final isSelected = child.childId == widget.childId;
-                return ListTile(
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    if (!isSelected) {
-                      // Navigate to this child's profile
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              MyChildProfilePage(childId: child.childId),
-                        ),
-                      );
-                    }
-                  },
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _kPrimaryRed.withOpacity(0.05),
-                      shape: BoxShape.circle,
-                      border: isSelected
-                          ? Border.all(color: _kPrimaryRed, width: 2)
-                          : null,
-                    ),
-                    child: child.photoUrl != null && child.photoUrl!.isNotEmpty
-                        ? ClipOval(
-                            child: Image.network(
-                              child.photoUrl!,
-                              width: 40,
-                              height: 40,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Center(
-                                child: Icon(Icons.child_care,
-                                    size: 20, color: _kPrimaryRed),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: children.map((child) {
+                      final isSelected = child.childId == widget.childId;
+                      return ListTile(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          if (!isSelected) {
+                            // Navigate to this child's profile
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    MyChildProfilePage(childId: child.childId),
                               ),
-                            ),
-                          )
-                        : const Center(
-                            child: Icon(Icons.child_care,
-                                size: 20, color: _kPrimaryRed),
+                            );
+                          }
+                        },
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: _kPrimaryRed.withOpacity(0.05),
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(color: _kPrimaryRed, width: 2)
+                                : null,
                           ),
+                          child: child.photoUrl != null &&
+                                  child.photoUrl!.isNotEmpty
+                              ? ClipOval(
+                                  child: Image.network(
+                                    child.photoUrl!,
+                                    width: 40,
+                                    height: 40,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Center(
+                                      child: Icon(Icons.child_care,
+                                          size: 20, color: _kPrimaryRed),
+                                    ),
+                                  ),
+                                )
+                              : const Center(
+                                  child: Icon(Icons.child_care,
+                                      size: 20, color: _kPrimaryRed),
+                                ),
+                        ),
+                        title: Text(
+                          child.fullName,
+                          style: TextStyle(
+                            fontFamily: _kFontFamily,
+                            fontSize: 16,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? _kPrimaryRed : Colors.black,
+                          ),
+                        ),
+                        subtitle: Text(
+                          child.ageText,
+                          style: const TextStyle(
+                            fontFamily: _kFontFamily,
+                            fontSize: 13,
+                            color: _kTextGrey,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle,
+                                color: _kPrimaryRed, size: 24)
+                            : null,
+                      );
+                    }).toList(),
                   ),
-                  title: Text(
-                    child.fullName,
-                    style: TextStyle(
-                      fontFamily: _kFontFamily,
-                      fontSize: 16,
-                      fontWeight:
-                          isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? _kPrimaryRed : Colors.black,
-                    ),
-                  ),
-                  subtitle: Text(
-                    child.ageText,
-                    style: const TextStyle(
-                      fontFamily: _kFontFamily,
-                      fontSize: 13,
-                      color: _kTextGrey,
-                    ),
-                  ),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle,
-                          color: _kPrimaryRed, size: 24)
-                      : null,
-                );
-              }),
+                ),
+              ),
             ],
           ),
         ),

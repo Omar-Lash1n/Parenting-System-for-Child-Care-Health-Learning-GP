@@ -15,7 +15,9 @@ const String _kFontFamily = 'IBM Plex Sans Arabic';
 /// Pass [prefill] = false from "ملئ البيانات" button to start with empty fields
 class ChildDataProfileFormPage extends StatefulWidget {
   final bool prefill;
-  const ChildDataProfileFormPage({super.key, this.prefill = true});
+  final String? childId;
+  const ChildDataProfileFormPage(
+      {super.key, this.prefill = true, this.childId});
 
   @override
   State<ChildDataProfileFormPage> createState() =>
@@ -33,13 +35,30 @@ class _ChildDataProfileFormPageState extends State<ChildDataProfileFormPage> {
   String? _selectedMonth;
   String? _selectedBloodType;
   int _genderIndex = 0;
+  bool _isInitializing = false;
 
   final _bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
   @override
   void initState() {
     super.initState();
+    _initData();
+  }
+
+  Future<void> _initData() async {
     final p = Provider.of<ChildDataProvider>(context, listen: false);
+
+    // If we need to fetch data for a specific child before prefilling
+    if (widget.childId != null && p.childId != widget.childId) {
+      if (mounted) {
+        setState(() {
+          _isInitializing = true;
+        });
+      }
+      await p.fetchFileData(widget.childId!);
+    }
+
+    if (!mounted) return;
 
     if (widget.prefill) {
       // Edit mode: pre-fill with existing values
@@ -63,6 +82,12 @@ class _ChildDataProfileFormPageState extends State<ChildDataProfileFormPage> {
       _selectedMonth = null;
       _selectedBloodType = null;
       _genderIndex = 0; // default to male
+    }
+
+    if (_isInitializing && mounted) {
+      setState(() {
+        _isInitializing = false;
+      });
     }
   }
 
@@ -163,13 +188,23 @@ class _ChildDataProfileFormPageState extends State<ChildDataProfileFormPage> {
     if (_selectedBloodType != null && _selectedBloodType != p.bloodType) {
       body['bloodType'] = _selectedBloodType;
     }
+    if (_genderIndex >= 0) {
+      final genderStr = _genderIndex == 0 ? 'Male' : 'Female';
+      // p.gender uses Arabic internally ('ذكر' / 'أنثى')
+      final oldGenderStr = p.gender == 'ذكر' ? 'Male' : 'Female';
+      if (genderStr != oldGenderStr) {
+        body['gender'] = genderStr;
+      }
+    }
 
     // --- Also update local state ---
     if (name.isNotEmpty) p.setName(name);
     if (_selectedMonth != null) {
       p.setDob(_dobDayC.text, _selectedMonth!, _dobYearC.text);
     }
-    if (_genderIndex >= 0) p.setGender(_genderIndex);
+    if (_genderIndex >= 0) {
+      p.setGender(_genderIndex);
+    }
     if (heightStr.isNotEmpty) p.setHeight(heightStr);
     if (weightStr.isNotEmpty) p.setWeight(weightStr);
     if (headCircStr.isNotEmpty) p.setHeadCircumference(headCircStr);
@@ -237,119 +272,126 @@ class _ChildDataProfileFormPageState extends State<ChildDataProfileFormPage> {
               child: Column(
                 children: [
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 8),
+                    child: _isInitializing
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: _kPrimaryRed,
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 8),
 
-                          // ── Close button ──────────────────────────────
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              GestureDetector(
-                                onTap: () => Navigator.of(context).pop(),
-                                child: Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: Icon(Icons.close,
-                                        size: 20, color: _kTextBlack),
-                                  ),
+                                // ── Close button ──────────────────────────────
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => Navigator.of(context).pop(),
+                                      child: Container(
+                                        width: 38,
+                                        height: 38,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Center(
+                                          child: Icon(Icons.close,
+                                              size: 20, color: _kTextBlack),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
+
+                                const SizedBox(height: 16),
+                                _buildAvatarSection(provider),
+                                const SizedBox(height: 24),
+
+                                // ── Name ──────────────────────────────────────
+                                _buildLabel(ChildDataStrings.formNameLabel),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                    _nameC, ChildDataStrings.formNameHint),
+
+                                const SizedBox(height: 16),
+
+                                // ── Date of Birth ─────────────────────────────
+                                _buildLabel(ChildDataStrings.formDobLabel),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    // Day
+                                    Expanded(
+                                      child: _buildNumberField(_dobDayC,
+                                          ChildDataStrings.formDobDay),
+                                    ),
+                                    const SizedBox(width: 11),
+                                    // Month dropdown
+                                    Expanded(
+                                      child: _buildMonthDropdown(),
+                                    ),
+                                    const SizedBox(width: 11),
+                                    // Year
+                                    Expanded(
+                                      child: _buildNumberField(_dobYearC,
+                                          ChildDataStrings.formDobYear),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 16),
+
+                                // ── Gender ────────────────────────────────────
+                                _buildLabel(ChildDataStrings.formGenderLabel),
+                                const SizedBox(height: 8),
+                                _buildGenderToggle(),
+
+                                const SizedBox(height: 16),
+
+                                // ── Height ────────────────────────────────────
+                                _buildLabel(ChildDataStrings.formHeightLabel),
+                                const SizedBox(height: 8),
+                                _buildMeasurementField(
+                                    _heightC,
+                                    ChildDataStrings.formHeightHint,
+                                    ChildDataStrings.formUnitCm),
+
+                                const SizedBox(height: 16),
+
+                                // ── Weight ────────────────────────────────────
+                                _buildLabel(ChildDataStrings.formWeightLabel),
+                                const SizedBox(height: 8),
+                                _buildMeasurementField(
+                                    _weightC,
+                                    ChildDataStrings.formWeightHint,
+                                    ChildDataStrings.formUnitKg),
+
+                                const SizedBox(height: 16),
+
+                                // ── Blood Type ────────────────────────────────
+                                _buildLabel(
+                                    ChildDataStrings.formBloodTypeLabel),
+                                const SizedBox(height: 8),
+                                _buildBloodTypeSelector(),
+
+                                const SizedBox(height: 16),
+
+                                // ── Head Circumference ────────────────────────
+                                _buildLabel(ChildDataStrings.formHeadCircLabel),
+                                const SizedBox(height: 8),
+                                _buildMeasurementField(
+                                    _headCircC,
+                                    ChildDataStrings.formHeadCircHint,
+                                    ChildDataStrings.formUnitCm),
+
+                                const SizedBox(height: 24),
+                              ],
+                            ),
                           ),
-
-                          const SizedBox(height: 16),
-                          _buildAvatarSection(provider),
-                          const SizedBox(height: 24),
-
-                          // ── Name ──────────────────────────────────────
-                          _buildLabel(ChildDataStrings.formNameLabel),
-                          const SizedBox(height: 8),
-                          _buildTextField(
-                              _nameC, ChildDataStrings.formNameHint),
-
-                          const SizedBox(height: 16),
-
-                          // ── Date of Birth ─────────────────────────────
-                          _buildLabel(ChildDataStrings.formDobLabel),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              // Day
-                              Expanded(
-                                child: _buildNumberField(
-                                    _dobDayC, ChildDataStrings.formDobDay),
-                              ),
-                              const SizedBox(width: 11),
-                              // Month dropdown
-                              Expanded(
-                                child: _buildMonthDropdown(),
-                              ),
-                              const SizedBox(width: 11),
-                              // Year
-                              Expanded(
-                                child: _buildNumberField(
-                                    _dobYearC, ChildDataStrings.formDobYear),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // ── Gender ────────────────────────────────────
-                          _buildLabel(ChildDataStrings.formGenderLabel),
-                          const SizedBox(height: 8),
-                          _buildGenderToggle(),
-
-                          const SizedBox(height: 16),
-
-                          // ── Height ────────────────────────────────────
-                          _buildLabel(ChildDataStrings.formHeightLabel),
-                          const SizedBox(height: 8),
-                          _buildMeasurementField(
-                              _heightC,
-                              ChildDataStrings.formHeightHint,
-                              ChildDataStrings.formUnitCm),
-
-                          const SizedBox(height: 16),
-
-                          // ── Weight ────────────────────────────────────
-                          _buildLabel(ChildDataStrings.formWeightLabel),
-                          const SizedBox(height: 8),
-                          _buildMeasurementField(
-                              _weightC,
-                              ChildDataStrings.formWeightHint,
-                              ChildDataStrings.formUnitKg),
-
-                          const SizedBox(height: 16),
-
-                          // ── Blood Type ────────────────────────────────
-                          _buildLabel(ChildDataStrings.formBloodTypeLabel),
-                          const SizedBox(height: 8),
-                          _buildBloodTypeSelector(),
-
-                          const SizedBox(height: 16),
-
-                          // ── Head Circumference ────────────────────────
-                          _buildLabel(ChildDataStrings.formHeadCircLabel),
-                          const SizedBox(height: 8),
-                          _buildMeasurementField(
-                              _headCircC,
-                              ChildDataStrings.formHeadCircHint,
-                              ChildDataStrings.formUnitCm),
-
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
                   ),
 
                   // ── Bottom buttons ────────────────────────────────────
