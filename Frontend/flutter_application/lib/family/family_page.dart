@@ -7,9 +7,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:Ajial/providers/family_provider.dart';
+import 'package:Ajial/providers/nav_bar_provider.dart';
+import 'package:Ajial/providers/child_data_provider.dart';
 import 'package:Ajial/family/models/child_model.dart';
 import 'package:Ajial/profile/my_child_profile.dart';
 import 'package:Ajial/profile/child_data_profile_form.dart';
+import 'package:Ajial/profile/confirm_delete_child.dart';
 
 // ─────────────────────────────────────────────
 // Design Tokens
@@ -56,6 +59,7 @@ class _FamilyPageState extends State<FamilyPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.white,
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 1),
         body: SafeArea(
           bottom: false,
           child: Consumer<FamilyProvider>(
@@ -624,6 +628,44 @@ class _CardPopupMenu extends StatelessWidget {
   const _CardPopupMenu(
       {required this.childId, required this.childName, required this.onDelete});
 
+  /// Fetch child data then open the edit form pre-filled.
+  Future<void> _openEditForm(BuildContext context, String childId) async {
+    final dataProv = Provider.of<ChildDataProvider>(context, listen: false);
+
+    // Show loading dialog while fetching
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: _kPrimary),
+      ),
+    );
+
+    await dataProv.fetchFileData(childId);
+
+    if (!context.mounted) return;
+    Navigator.of(context).pop(); // dismiss loading dialog
+
+    if (dataProv.hasError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            dataProv.errorMessage,
+            style: const TextStyle(fontFamily: _kFont),
+          ),
+          backgroundColor: _kDeleteRed,
+        ),
+      );
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const ChildDataProfileFormPage(prefill: true),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
@@ -677,14 +719,17 @@ class _CardPopupMenu extends StatelessWidget {
             );
             break;
           case 'edit':
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const ChildDataProfileFormPage(prefill: true),
-              ),
-            );
+            _openEditForm(context, childId);
             break;
           case 'delete':
-            onDelete();
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ConfirmDeleteChildPage(
+                  childId: childId,
+                  childName: childName,
+                ),
+              ),
+            );
             break;
         }
       },

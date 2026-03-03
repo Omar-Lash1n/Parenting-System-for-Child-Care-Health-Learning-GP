@@ -181,7 +181,8 @@ class ConfirmDeleteChildPage extends StatelessWidget {
                                                   context,
                                                   listen: false);
                                           final (success, message) =
-                                              await dataProv.deleteChild();
+                                              await dataProv.deleteChild(
+                                                  childId: childId);
                                           if (success && context.mounted) {
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
