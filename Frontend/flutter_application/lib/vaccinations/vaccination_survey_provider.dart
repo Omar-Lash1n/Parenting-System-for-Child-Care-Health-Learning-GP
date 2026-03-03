@@ -129,13 +129,15 @@ class VaccinationSurveyProvider extends ChangeNotifier {
           // Parse ageMonths from API response.
           _ageMonths = data['ageMonths'] ?? 0;
 
-          // Parse milestones into groups — only include basic milestones.
-          // Additional (school-age) milestones have an 'ageInYears' field
-          // and are handled separately by AdditionalVaccinationProvider.
+          // Parse milestones into groups — only include basic milestones
+          // (ageInMonths < 48, i.e. under 4 years). Additional (school-age)
+          // milestones are handled separately by AdditionalVaccinationProvider.
           final List<dynamic> milestones = data['milestones'] ?? [];
           _groups = milestones
               .where((m) =>
-                  m is Map<String, dynamic> && !m.containsKey('ageInYears'))
+                  m is Map<String, dynamic> &&
+                  !m.containsKey('ageInYears') &&
+                  (m['ageInMonths'] == null || (m['ageInMonths'] as int) < 48))
               .map((m) =>
                   VaccinationGroupModel.fromJson(m as Map<String, dynamic>))
               .toList();
