@@ -42,7 +42,7 @@ class AppBottomNavBar extends StatelessWidget {
       icon: Icons.child_care_outlined,
       activeIcon: Icons.child_care,
       label: 'عائلتي',
-      route: '/child-profile',
+      route: '/family',
     ),
     _NavItemData(
       icon: Icons.person_outline,

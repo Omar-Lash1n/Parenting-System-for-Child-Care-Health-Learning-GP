@@ -10,6 +10,7 @@ import 'package:Ajial/profile/profile_dialogs.dart';
 import 'package:Ajial/profile/change_password_page.dart';
 import 'package:Ajial/profile/change_email_page.dart';
 import 'package:Ajial/profile/delete_account_page.dart';
+import 'package:Ajial/profile/my_child_profile.dart';
 import 'package:Ajial/add-child/add-child-flow.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
 import 'package:Ajial/widgets/skeleton_loading.dart';
@@ -698,12 +699,12 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
               final child = children[index];
               return GestureDetector(
                 onTap: () {
-                  Navigator.pushNamed(
+                  Navigator.push(
                     context,
-                    '/vaccination-welcome',
-                    arguments: {
-                      'childId': child['childId'],
-                    },
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          MyChildProfilePage(childId: child['childId']),
+                    ),
                   );
                 },
                 child: Padding(

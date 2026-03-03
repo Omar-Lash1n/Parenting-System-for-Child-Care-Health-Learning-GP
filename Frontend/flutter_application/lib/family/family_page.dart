@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:Ajial/providers/family_provider.dart';
 import 'package:Ajial/family/models/child_model.dart';
+import 'package:Ajial/profile/my_child_profile.dart';
+import 'package:Ajial/profile/child_data_profile_form.dart';
 
 // ─────────────────────────────────────────────
 // Design Tokens
@@ -73,7 +75,7 @@ class _FamilyPageState extends State<FamilyPage> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                     child: _PrimaryActionButton(
-                      onTap: () {}, // TODO: navigate to add-child flow
+                      onTap: () => Navigator.pushNamed(context, '/add-child'),
                     ),
                   ),
                 ],
@@ -204,7 +206,8 @@ class _FamilyHeader extends StatelessWidget {
           ),
 
           // ── "اضف طفل" pill button — LAST = leftmost in RTL
-          _AddChildPill(onTap: () {}),
+          _AddChildPill(
+              onTap: () => Navigator.pushNamed(context, '/add-child')),
         ],
       ),
     );
@@ -428,6 +431,7 @@ class _ChildCard extends StatelessWidget {
 
                 // ── ⋮ Menu — LAST = leftmost in RTL
                 _CardPopupMenu(
+                  childId: child.childId,
                   childName: child.fullName,
                   onDelete: onDelete,
                 ),
@@ -447,7 +451,14 @@ class _ChildCard extends StatelessWidget {
               else
                 const SizedBox.shrink(),
               GestureDetector(
-                onTap: () {},
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          MyChildProfilePage(childId: child.childId),
+                    ),
+                  );
+                },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
@@ -607,9 +618,11 @@ class _BadgePill extends StatelessWidget {
 // _CardPopupMenu — The ⋮ ellipsis menu (State 3)
 // ─────────────────────────────────────────────
 class _CardPopupMenu extends StatelessWidget {
+  final String childId;
   final String childName;
   final VoidCallback onDelete;
-  const _CardPopupMenu({required this.childName, required this.onDelete});
+  const _CardPopupMenu(
+      {required this.childId, required this.childName, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -657,14 +670,20 @@ class _CardPopupMenu extends StatelessWidget {
       onSelected: (value) {
         switch (value) {
           case 'open':
-            debugPrint('Open profile: $childName');
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => MyChildProfilePage(childId: childId),
+              ),
+            );
             break;
           case 'edit':
-            debugPrint('Edit data: $childName');
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const ChildDataProfileFormPage(prefill: true),
+              ),
+            );
             break;
           case 'delete':
-            // Removes this child's card from the list.
-            // If this was the last child, the empty state is shown automatically.
             onDelete();
             break;
         }

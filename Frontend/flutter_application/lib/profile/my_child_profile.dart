@@ -3,8 +3,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:Ajial/providers/child_profile_provider.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
+import 'package:Ajial/providers/family_provider.dart';
+import 'package:Ajial/profile/child_data_profile.dart';
 import 'package:Ajial/profile/child_data_profile_form.dart';
 import 'package:Ajial/profile/making_child_account.dart';
 import 'package:Ajial/providers/child_data_provider.dart';
@@ -18,8 +21,27 @@ const Color _kBorderLight = Color(0xFFF3F4F6);
 const Color _kCardBorder = Color(0xFFF1F5F9);
 const String _kFontFamily = 'IBM Plex Sans Arabic';
 
-class MyChildProfilePage extends StatelessWidget {
-  const MyChildProfilePage({super.key});
+class MyChildProfilePage extends StatefulWidget {
+  final String? childId;
+  const MyChildProfilePage({super.key, this.childId});
+
+  @override
+  State<MyChildProfilePage> createState() => _MyChildProfilePageState();
+}
+
+class _MyChildProfilePageState extends State<MyChildProfilePage> {
+  @override
+  void initState() {
+    super.initState();
+    // Fetch from API if childId is provided
+    if (widget.childId != null && widget.childId!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context
+            .read<ChildProfileProvider>()
+            .fetchProfileSummary(widget.childId!);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,26 +57,33 @@ class MyChildProfilePage extends StatelessWidget {
                 children: [
                   // --- Scrollable Content ---
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 8),
-                          _buildHeader(context, provider),
-                          const SizedBox(height: 16),
-                          _buildHeroSection(provider),
-                          const SizedBox(height: 16),
-                          // Account card for 4+ (between hero and progress)
-                          if (provider.isOlderChild)
-                            _buildAccountCard(context, provider),
-                          if (provider.isOlderChild) const SizedBox(height: 12),
-                          _buildProgressCard(context, provider),
-                          const SizedBox(height: 12),
-                          _buildDashboardGrid(context, provider),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
-                    ),
+                    child: provider.isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: _kPrimaryRed,
+                            ),
+                          )
+                        : provider.hasError
+                            ? _buildErrorState(provider)
+                            : SingleChildScrollView(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    _buildHeader(context, provider),
+                                    const SizedBox(height: 16),
+                                    _buildHeroSection(provider),
+                                    const SizedBox(height: 16),
+                                    // Account card based on accountAction
+                                    _buildAccountCardSection(context, provider),
+                                    _buildProgressCard(context, provider),
+                                    const SizedBox(height: 12),
+                                    _buildDashboardGrid(context, provider),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+                              ),
                   ),
                   // --- Bottom Nav Bar ---
                   const AppBottomNavBar(currentIndex: 1),
@@ -64,6 +93,54 @@ class MyChildProfilePage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  // ============================================================
+  // ERROR / RETRY STATE
+  // ============================================================
+  Widget _buildErrorState(ChildProfileProvider provider) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: _kPrimaryRed),
+          const SizedBox(height: 12),
+          Text(
+            provider.errorMessage,
+            style: const TextStyle(
+              fontFamily: _kFontFamily,
+              fontSize: 16,
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: () {
+              if (widget.childId != null) {
+                provider.fetchProfileSummary(widget.childId!);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              decoration: BoxDecoration(
+                color: _kPrimaryRed,
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: const Text(
+                'إعادة المحاولة',
+                style: TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -114,51 +191,65 @@ class MyChildProfilePage extends StatelessWidget {
         ),
 
         // Left: Child selector dropdown pill
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(50),
-            border: Border.all(
-              color: Colors.black.withOpacity(0.25),
+        GestureDetector(
+          onTap: () => _showChildSelectorDropdown(context, provider),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(
+                color: Colors.black.withOpacity(0.25),
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Child avatar circle
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: _kPrimaryRed.withOpacity(0.05),
-                  shape: BoxShape.circle,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Child avatar circle — show network image if available
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: _kPrimaryRed.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: provider.profileImageUrl != null &&
+                          provider.profileImageUrl!.isNotEmpty
+                      ? ClipOval(
+                          child: Image.network(
+                            provider.profileImageUrl!,
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(
+                              child: Icon(Icons.child_care,
+                                  size: 16, color: _kPrimaryRed),
+                            ),
+                          ),
+                        )
+                      : const Center(
+                          child: Icon(Icons.child_care,
+                              size: 16, color: _kPrimaryRed),
+                        ),
                 ),
-                child: const Center(
-                  child: Icon(
-                    Icons.child_care,
-                    size: 16,
-                    color: _kPrimaryRed,
+                const SizedBox(width: 4),
+                // Name + dropdown arrow
+                Text(
+                  provider.childName,
+                  style: const TextStyle(
+                    fontFamily: _kFontFamily,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
                   ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              // Name + dropdown arrow
-              Text(
-                provider.childName,
-                style: const TextStyle(
-                  fontFamily: _kFontFamily,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+                const Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 20,
                   color: Colors.black,
                 ),
-              ),
-              const Icon(
-                Icons.keyboard_arrow_down,
-                size: 20,
-                color: Colors.black,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -208,6 +299,20 @@ class MyChildProfilePage extends StatelessWidget {
                           width: 104,
                           height: 104,
                           fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                value: loadingProgress.expectedTotalBytes !=
+                                        null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                                color: _kPrimaryRed,
+                              ),
+                            );
+                          },
                           errorBuilder: (_, __, ___) => const Center(
                             child: Icon(
                               Icons.child_care,
@@ -229,22 +334,25 @@ class MyChildProfilePage extends StatelessWidget {
               // Camera button at bottom center
               Positioned(
                 bottom: 0,
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _kPrimaryRed.withOpacity(0.25),
-                      width: 0.89,
+                child: GestureDetector(
+                  onTap: () => _showPhotoBottomSheet(context, provider),
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _kPrimaryRed.withOpacity(0.25),
+                        width: 0.89,
+                      ),
                     ),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.camera_alt_outlined,
-                      size: 16,
-                      color: _kPrimaryRed,
+                    child: const Center(
+                      child: Icon(
+                        Icons.camera_alt_outlined,
+                        size: 16,
+                        color: _kPrimaryRed,
+                      ),
                     ),
                   ),
                 ),
@@ -368,95 +476,177 @@ class MyChildProfilePage extends StatelessWidget {
   }
 
   // ============================================================
-  // B2. ACCOUNT CARD (4+ years, between hero and progress)
+  // B2. ACCOUNT CARD — driven by accountAction from API
   // ============================================================
-  Widget _buildAccountCard(
+  Widget _buildAccountCardSection(
       BuildContext context, ChildProfileProvider provider) {
-    if (!provider.isAccountCreated) {
-      // Scenario A: No account → Red gradient invite card
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(17),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.centerRight,
-            end: Alignment.centerLeft,
-            colors: [
-              Color(0xFFBF092F),
-              Color(0xB3BF092F), // 70% opacity
+    final action = provider.accountAction;
+
+    // not_eligible → under 4: show nothing (or disabled card inline in progress)
+    if (action == 'not_eligible') {
+      return const SizedBox.shrink();
+    }
+
+    // create_account → 4+, no account: red gradient invite card
+    if (action == 'create_account') {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.centerRight,
+              end: Alignment.centerLeft,
+              colors: [
+                Color(0xFFBF092F),
+                Color(0xB3BF092F), // 70% opacity
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
             ],
           ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 2,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              ChildDataStrings.accountCardTitle(provider.childName),
-              style: const TextStyle(
-                fontFamily: _kFontFamily,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-              textAlign: TextAlign.right,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              ChildDataStrings.accountCardDescription(provider.childName),
-              style: const TextStyle(
-                fontFamily: _kFontFamily,
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                color: Colors.white,
-                height: 1.25,
-              ),
-              textAlign: TextAlign.right,
-            ),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () async {
-                final result = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) => const MakingChildAccountPage(),
-                  ),
-                );
-                if (result == true) {
-                  provider.setAccountCreated(true);
-                }
-              },
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                decoration: BoxDecoration(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                provider.accountStatusMessage.isNotEmpty
+                    ? provider.accountStatusMessage
+                    : ChildDataStrings.accountCardTitle(provider.childName),
+                style: const TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(50),
                 ),
-                child: const Text(
-                  'انشاء حساب',
-                  style: TextStyle(
-                    fontFamily: _kFontFamily,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: _kPrimaryRed,
+                textAlign: TextAlign.right,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                ChildDataStrings.accountCardDescription(provider.childName),
+                style: const TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.white,
+                  height: 1.25,
+                ),
+                textAlign: TextAlign.right,
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () async {
+                  final result = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) => const MakingChildAccountPage(),
+                    ),
+                  );
+                  if (result == true) {
+                    provider.setAccountCreated(true);
+                  }
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: const Text(
+                    'انشاء حساب',
+                    style: TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: _kPrimaryRed,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
-    // Scenario B: Account exists → no additional card needed
-    // (stars/badges already shown in hero section)
+
+    // view_account → has account: show "view details" button
+    if (action == 'view_account') {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.centerRight,
+              end: Alignment.centerLeft,
+              colors: [
+                Color(0xFF01A449),
+                Color(0xB301A449),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                provider.accountStatusMessage.isNotEmpty
+                    ? provider.accountStatusMessage
+                    : ChildDataStrings.accountCardTitle(provider.childName),
+                style: const TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.right,
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () {
+                  // Navigate to child data profile (account settings)
+                  Navigator.pushNamed(context, '/child-data');
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: const Text(
+                    'عرض تفاصيل الحساب',
+                    style: TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF01A449),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return const SizedBox.shrink();
   }
 
@@ -614,42 +804,50 @@ class MyChildProfilePage extends StatelessWidget {
     return Column(
       children: [
         // Row 1: بيانات الطفل (left) | التطعيمات (right)
-        _buildDashboardRow(context, items[1], items[0]),
+        _buildDashboardRow(context, items[1], items[0], provider),
         const SizedBox(height: 12),
         // Row 2: المكافآت (left) | المهام (right)
-        _buildDashboardRow(context, items[3], items[2]),
+        _buildDashboardRow(context, items[3], items[2], provider),
         const SizedBox(height: 12),
         // Row 3: سجل النمو (left) | السجل الطبي (right)
-        _buildDashboardRow(context, items[5], items[4]),
+        _buildDashboardRow(context, items[5], items[4], provider),
       ],
     );
   }
 
-  Widget _buildDashboardRow(
-      BuildContext context, DashboardItem left, DashboardItem right) {
+  Widget _buildDashboardRow(BuildContext context, DashboardItem left,
+      DashboardItem right, ChildProfileProvider provider) {
     return Row(
       children: [
-        Expanded(child: _buildDashboardCard(context, left)),
+        Expanded(child: _buildDashboardCard(context, left, provider)),
         const SizedBox(width: 12),
-        Expanded(child: _buildDashboardCard(context, right)),
+        Expanded(child: _buildDashboardCard(context, right, provider)),
       ],
     );
   }
 
-  // Route mapping for dashboard cards
-  static const Map<String, String> _dashboardRoutes = {
-    'بيانات الطفل': '/child-data',
-  };
-
-  Widget _buildDashboardCard(BuildContext context, DashboardItem item) {
+  Widget _buildDashboardCard(
+      BuildContext context, DashboardItem item, ChildProfileProvider provider) {
     return GestureDetector(
       onTap: item.isLocked
           ? null
           : () {
-              final route = _dashboardRoutes[item.title];
-              if (route != null) {
-                Navigator.pushNamed(context, route);
+              if (item.title == 'بيانات الطفل') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        ChildDataProfilePage(childId: widget.childId),
+                  ),
+                );
+              } else if (item.title == 'التطعيمات') {
+                Navigator.pushNamed(
+                  context,
+                  '/vaccination-welcome',
+                  arguments: {'childId': widget.childId},
+                );
               }
+              // Other dashboard items can be wired here
             },
       child: Opacity(
         opacity: item.isLocked ? 0.5 : 1.0,
@@ -703,6 +901,282 @@ class MyChildProfilePage extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // PHOTO BOTTOM SHEET (Change / Delete)
+  // ============================================================
+  void _showPhotoBottomSheet(
+      BuildContext context, ChildProfileProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'صورة الطفل',
+                style: TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Camera
+                  _buildImageSourceOption(
+                    icon: Icons.camera_alt,
+                    label: 'الكاميرا',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pickAndUploadImage(ImageSource.camera, provider);
+                    },
+                  ),
+                  // Gallery
+                  _buildImageSourceOption(
+                    icon: Icons.photo_library,
+                    label: 'المعرض',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pickAndUploadImage(ImageSource.gallery, provider);
+                    },
+                  ),
+                  // Delete photo
+                  if (provider.profileImageUrl != null &&
+                      provider.profileImageUrl!.isNotEmpty)
+                    _buildImageSourceOption(
+                      icon: Icons.delete_outline,
+                      label: 'حذف الصورة',
+                      color: const Color(0xFFFF0000),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        // TODO: Call delete child photo API when available
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('حذف صورة الطفل غير متاح حالياً',
+                                style: TextStyle(fontFamily: _kFontFamily)),
+                            backgroundColor: _kOrange,
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageSourceOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color color = _kPrimaryRed,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: _kFontFamily,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadImage(
+      ImageSource source, ChildProfileProvider provider) async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+      if (pickedFile == null || !mounted) return;
+
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: _kPrimaryRed),
+        ),
+      );
+
+      final bytes = await pickedFile.readAsBytes();
+      final (success, message) =
+          await provider.uploadChildImage(bytes, pickedFile.name);
+
+      if (!mounted) return;
+      Navigator.of(context).pop(); // dismiss loading
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text(message, style: const TextStyle(fontFamily: _kFontFamily)),
+          backgroundColor: success ? const Color(0xFF01A449) : _kPrimaryRed,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('حدث خطأ في اختيار الصورة',
+              style: TextStyle(fontFamily: _kFontFamily)),
+          backgroundColor: _kPrimaryRed,
+        ),
+      );
+    }
+  }
+
+  // ============================================================
+  // CHILD SELECTOR DROPDOWN
+  // ============================================================
+  void _showChildSelectorDropdown(
+      BuildContext context, ChildProfileProvider provider) {
+    final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+    final children = familyProvider.children;
+
+    if (children.isEmpty) {
+      // If children list not loaded yet, try loading
+      familyProvider.loadChildren();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('جاري تحميل قائمة الأطفال...',
+              style: TextStyle(fontFamily: _kFontFamily)),
+          backgroundColor: _kOrange,
+          duration: Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'اختر طفلاً',
+                style: TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...children.map((child) {
+                final isSelected = child.childId == widget.childId;
+                return ListTile(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    if (!isSelected) {
+                      // Navigate to this child's profile
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              MyChildProfilePage(childId: child.childId),
+                        ),
+                      );
+                    }
+                  },
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _kPrimaryRed.withOpacity(0.05),
+                      shape: BoxShape.circle,
+                      border: isSelected
+                          ? Border.all(color: _kPrimaryRed, width: 2)
+                          : null,
+                    ),
+                    child: child.photoUrl != null && child.photoUrl!.isNotEmpty
+                        ? ClipOval(
+                            child: Image.network(
+                              child.photoUrl!,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Center(
+                                child: Icon(Icons.child_care,
+                                    size: 20, color: _kPrimaryRed),
+                              ),
+                            ),
+                          )
+                        : const Center(
+                            child: Icon(Icons.child_care,
+                                size: 20, color: _kPrimaryRed),
+                          ),
+                  ),
+                  title: Text(
+                    child.fullName,
+                    style: TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 16,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? _kPrimaryRed : Colors.black,
+                    ),
+                  ),
+                  subtitle: Text(
+                    child.ageText,
+                    style: const TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 13,
+                      color: _kTextGrey,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? const Icon(Icons.check_circle,
+                          color: _kPrimaryRed, size: 24)
+                      : null,
+                );
+              }),
             ],
           ),
         ),

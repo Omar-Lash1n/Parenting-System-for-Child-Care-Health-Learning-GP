@@ -763,6 +763,54 @@ class AuthService {
     }
   }
 
+  /// رفع صورة الطفل
+  /// POST /Parents/child/{childId}/profile-image
+  Future<(bool, String, String?)> uploadChildProfileImage(
+    String childId,
+    List<int> imageBytes,
+    String fileName,
+  ) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/child/$childId/profile-image';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.', null);
+    }
+
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+      request.headers.addAll({
+        'Authorization': 'Bearer $token',
+        'accept': 'text/plain',
+      });
+
+      final mimeType = lookupMimeType(fileName) ?? 'image/jpeg';
+      final mimeSplit = mimeType.split('/');
+
+      request.files.add(http.MultipartFile.fromBytes(
+        'image',
+        imageBytes,
+        filename: fileName,
+        contentType: MediaType(mimeSplit[0], mimeSplit[1]),
+      ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        final imageUrl = responseBody['data']?['profileImageUrl']?.toString();
+        return (true, 'تم رفع صورة الطفل بنجاح', imageUrl);
+      } else {
+        final errorMsg = responseBody['message'] ?? 'حدث خطأ في رفع الصورة';
+        return (false, errorMsg.toString(), null);
+      }
+    } catch (e) {
+      print('Connection Error in uploadChildProfileImage: $e');
+      return (false, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.', null);
+    }
+  }
+
   /// إرسال إيميل التحقق
   /// POST /Parents/send-verification-email
   Future<(bool, String)> sendVerificationEmail() async {
@@ -1319,6 +1367,195 @@ class AuthService {
     } catch (e) {
       print('Connection Error in submitAdditionalSurvey: $e');
       return null;
+    }
+  }
+
+  // ============================================================
+  // ============== Child Profile API Methods ====================
+  // ============================================================
+
+  /// GET /api/Parents/child/{childId}/profile-summary
+  /// Returns the child's basic profile data for the summary screen.
+  Future<Map<String, dynamic>?> getChildProfileSummary(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/child/$childId/profile-summary';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+
+      // Parse error
+      try {
+        final responseBody = jsonDecode(response.body);
+        final errors = responseBody['errors'] as List?;
+        if (errors != null && errors.isNotEmpty) {
+          print('getChildProfileSummary Error: ${errors.first}');
+        }
+      } catch (_) {}
+
+      print(
+          'getChildProfileSummary Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in getChildProfileSummary: $e');
+      return null;
+    }
+  }
+
+  /// GET /api/Parents/child/{childId}/file-data
+  /// Returns the child's detailed file data (medical, personal info).
+  Future<Map<String, dynamic>?> getChildFileData(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/child/$childId/file-data';
+    final String? token = await getToken();
+
+    if (token == null) {
+      print('Error: No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+
+      try {
+        final responseBody = jsonDecode(response.body);
+        final errors = responseBody['errors'] as List?;
+        if (errors != null && errors.isNotEmpty) {
+          print('getChildFileData Error: ${errors.first}');
+        }
+      } catch (_) {}
+
+      print(
+          'getChildFileData Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      print('Connection Error in getChildFileData: $e');
+      return null;
+    }
+  }
+
+  /// PUT /api/Parents/child/{childId}/medical-data
+  /// Updates the child's medical/personal data. Send only changed fields.
+  /// Returns (success, message, responseData).
+  Future<(bool, String, Map<String, dynamic>?)> updateChildMedicalData(
+      String childId, Map<String, dynamic> body) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/child/$childId/medical-data';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.', null);
+    }
+
+    if (body.isEmpty) {
+      return (false, 'لا توجد بيانات للتحديث', null);
+    }
+
+    try {
+      final response = await http
+          .put(
+            Uri.parse(apiUrl),
+            headers: {
+              'accept': 'application/json',
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        return (
+          true,
+          (responseBody['message'] ?? 'تم تحديث البيانات بنجاح').toString(),
+          responseBody['data'] as Map<String, dynamic>?,
+        );
+      } else {
+        // Extract error message
+        String errorMsg;
+        final errors = responseBody['errors'] as List?;
+        if (errors != null && errors.isNotEmpty) {
+          errorMsg = errors.first.toString();
+        } else {
+          errorMsg =
+              (responseBody['message'] ?? 'حدث خطأ في التحديث').toString();
+        }
+        return (false, errorMsg, null);
+      }
+    } catch (e) {
+      print('Connection Error in updateChildMedicalData: $e');
+      return (false, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.', null);
+    }
+  }
+
+  /// DELETE /api/Parents/child/{childId}
+  /// Permanently deletes the child and all related data.
+  Future<(bool, String)> deleteChild(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Parents/child/$childId';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'يرجى تسجيل الدخول أولاً');
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        return (
+          true,
+          (responseBody['message'] ?? 'تم حذف ملف الطفل بنجاح').toString(),
+        );
+      } else if (response.statusCode == 401) {
+        return (false, 'جلسة منتهية، يرجى تسجيل الدخول مرة أخرى');
+      } else {
+        final errors = responseBody['errors'] as List?;
+        final errorMsg = (errors != null && errors.isNotEmpty)
+            ? errors.first.toString()
+            : (responseBody['message'] ?? 'فشل حذف ملف الطفل').toString();
+        return (false, errorMsg);
+      }
+    } catch (e) {
+      print('Delete Child Error: $e');
+      return (false, 'خطأ في الاتصال');
     }
   }
 }

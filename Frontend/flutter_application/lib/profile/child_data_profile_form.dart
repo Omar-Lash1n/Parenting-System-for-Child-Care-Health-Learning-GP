@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:Ajial/providers/child_data_provider.dart';
 import 'package:Ajial/providers/child_profile_provider.dart';
 
@@ -76,29 +77,152 @@ class _ChildDataProfileFormPageState extends State<ChildDataProfileFormPage> {
     super.dispose();
   }
 
-  void _saveAll() {
+  Future<void> _saveAll() async {
     final p = Provider.of<ChildDataProvider>(context, listen: false);
-    if (_nameC.text.isNotEmpty) p.setName(_nameC.text);
+
+    // --- Client-side Validation ---
+    final name = _nameC.text.trim();
+    if (name.isNotEmpty && name.split(RegExp(r'\s+')).length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('الاسم يجب أن يكون كلمتين على الأقل',
+              style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+          backgroundColor: Color(0xFFBF092F),
+        ),
+      );
+      return;
+    }
+
+    final heightStr = _heightC.text.trim();
+    if (heightStr.isNotEmpty && double.tryParse(heightStr) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('الطول يجب أن يكون رقمًا صحيحًا',
+              style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+          backgroundColor: Color(0xFFBF092F),
+        ),
+      );
+      return;
+    }
+
+    final weightStr = _weightC.text.trim();
+    if (weightStr.isNotEmpty && double.tryParse(weightStr) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('الوزن يجب أن يكون رقمًا صحيحًا',
+              style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+          backgroundColor: Color(0xFFBF092F),
+        ),
+      );
+      return;
+    }
+
+    final headCircStr = _headCircC.text.trim();
+    if (headCircStr.isNotEmpty && double.tryParse(headCircStr) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('محيط الرأس يجب أن يكون رقمًا صحيحًا',
+              style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+          backgroundColor: Color(0xFFBF092F),
+        ),
+      );
+      return;
+    }
+
+    // --- Build API body with only changed fields ---
+    final Map<String, dynamic> body = {};
+
+    if (name.isNotEmpty && name != p.name) {
+      body['fullName'] = name;
+    }
+
+    // Build birthDate if DOB fields changed
+    if (_selectedMonth != null &&
+        _dobDayC.text.isNotEmpty &&
+        _dobYearC.text.isNotEmpty) {
+      final monthIndex = ChildDataProvider.monthNames.indexOf(_selectedMonth!);
+      if (monthIndex >= 0) {
+        final day = int.tryParse(_dobDayC.text);
+        final year = int.tryParse(_dobYearC.text);
+        if (day != null && year != null) {
+          final dt = DateTime(year, monthIndex + 1, day);
+          body['birthDate'] = dt.toIso8601String();
+        }
+      }
+    }
+
+    if (heightStr.isNotEmpty && heightStr != p.heightVal) {
+      body['height'] = double.parse(heightStr);
+    }
+    if (weightStr.isNotEmpty && weightStr != p.weightVal) {
+      body['weight'] = double.parse(weightStr);
+    }
+    if (headCircStr.isNotEmpty && headCircStr != p.headCircumference) {
+      body['headCircumference'] = double.parse(headCircStr);
+    }
+    if (_selectedBloodType != null && _selectedBloodType != p.bloodType) {
+      body['bloodType'] = _selectedBloodType;
+    }
+
+    // --- Also update local state ---
+    if (name.isNotEmpty) p.setName(name);
     if (_selectedMonth != null) {
       p.setDob(_dobDayC.text, _selectedMonth!, _dobYearC.text);
     }
     if (_genderIndex >= 0) p.setGender(_genderIndex);
-    if (_heightC.text.isNotEmpty) p.setHeight(_heightC.text);
-    if (_weightC.text.isNotEmpty) p.setWeight(_weightC.text);
-    if (_headCircC.text.isNotEmpty) p.setHeadCircumference(_headCircC.text);
+    if (heightStr.isNotEmpty) p.setHeight(heightStr);
+    if (weightStr.isNotEmpty) p.setWeight(weightStr);
+    if (headCircStr.isNotEmpty) p.setHeadCircumference(headCircStr);
     if (_selectedBloodType != null) p.setBloodType(_selectedBloodType!);
 
-    // Sync to ChildProfileProvider so my_child_profile updates
-    final profileProv =
-        Provider.of<ChildProfileProvider>(context, listen: false);
-    profileProv.setChildData(
-      name: p.name.isNotEmpty ? p.name : p.childName,
-      age: p.age,
-    );
-    profileProv.setAgeInYears(p.childAgeInYears);
-    profileProv.setAccountCreated(p.isAccountCreated);
+    // --- Submit to API if there are changed fields ---
+    if (body.isNotEmpty) {
+      final (success, message) = await p.submitUpdates(body);
 
-    Navigator.of(context).pop();
+      if (!mounted) return;
+
+      if (success) {
+        // Sync completion to ChildProfileProvider
+        final profileProv =
+            Provider.of<ChildProfileProvider>(context, listen: false);
+        profileProv.updateCompletionFromApi(
+            (p.profileCompletionPercent * 100).toInt());
+        profileProv.setChildData(
+          name: p.name.isNotEmpty ? p.name : p.childName,
+          age: p.age,
+        );
+        profileProv.setAgeInYears(p.childAgeInYears);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message,
+                style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+            backgroundColor: const Color(0xFF01A449),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message,
+                style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+            backgroundColor: const Color(0xFFBF092F),
+          ),
+        );
+        return; // Don't pop on error
+      }
+    } else {
+      // No API changes, just sync locally
+      final profileProv =
+          Provider.of<ChildProfileProvider>(context, listen: false);
+      profileProv.setChildData(
+        name: p.name.isNotEmpty ? p.name : p.childName,
+        age: p.age,
+      );
+      profileProv.setAgeInYears(p.childAgeInYears);
+      profileProv.setAccountCreated(p.isAccountCreated);
+    }
+
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -323,32 +447,66 @@ class _ChildDataProfileFormPageState extends State<ChildDataProfileFormPage> {
                     color: _kPrimaryRed.withOpacity(0.05),
                     shape: BoxShape.circle,
                   ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.child_care,
-                      size: 32,
-                      color: _kPrimaryRed,
-                    ),
-                  ),
+                  child: provider.profileImageUrl != null &&
+                          provider.profileImageUrl!.isNotEmpty
+                      ? ClipOval(
+                          child: Image.network(
+                            provider.profileImageUrl!,
+                            width: 90,
+                            height: 90,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  value: loadingProgress.expectedTotalBytes !=
+                                          null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  color: _kPrimaryRed,
+                                ),
+                              );
+                            },
+                            errorBuilder: (_, __, ___) => const Center(
+                              child: Icon(
+                                Icons.child_care,
+                                size: 32,
+                                color: _kPrimaryRed,
+                              ),
+                            ),
+                          ),
+                        )
+                      : const Center(
+                          child: Icon(
+                            Icons.child_care,
+                            size: 32,
+                            color: _kPrimaryRed,
+                          ),
+                        ),
                 ),
 
                 // Camera button at bottom center
                 Positioned(
                   bottom: 0,
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: _kPrimaryRed.withOpacity(0.25),
-                        width: 0.9,
+                  child: GestureDetector(
+                    onTap: () => _showPhotoBottomSheet(context, provider),
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _kPrimaryRed.withOpacity(0.25),
+                          width: 0.9,
+                        ),
                       ),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.camera_alt_outlined,
-                          size: 16, color: _kPrimaryRed),
+                      child: const Center(
+                        child: Icon(Icons.camera_alt_outlined,
+                            size: 16, color: _kPrimaryRed),
+                      ),
                     ),
                   ),
                 ),
@@ -614,5 +772,162 @@ class _ChildDataProfileFormPageState extends State<ChildDataProfileFormPage> {
         ),
       ),
     );
+  }
+
+  // ============================================================
+  // PHOTO BOTTOM SHEET (Change / Delete)
+  // ============================================================
+  void _showPhotoBottomSheet(BuildContext context, ChildDataProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'صورة الطفل',
+                style: TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Camera
+                  _buildImageSourceOption(
+                    icon: Icons.camera_alt,
+                    label: 'الكاميرا',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pickAndUploadImage(ImageSource.camera, provider);
+                    },
+                  ),
+                  // Gallery
+                  _buildImageSourceOption(
+                    icon: Icons.photo_library,
+                    label: 'المعرض',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pickAndUploadImage(ImageSource.gallery, provider);
+                    },
+                  ),
+                  // Delete photo
+                  if (provider.profileImageUrl != null &&
+                      provider.profileImageUrl!.isNotEmpty)
+                    _buildImageSourceOption(
+                      icon: Icons.delete_outline,
+                      label: 'حذف الصورة',
+                      color: const Color(0xFFFF0000),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        // TODO: Call delete child photo API when available
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('حذف صورة الطفل غير متاح حالياً',
+                                style: TextStyle(fontFamily: _kFontFamily)),
+                            backgroundColor: Color(0xFFFE8401), // Orange
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageSourceOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color color = _kPrimaryRed,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: _kFontFamily,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadImage(
+      ImageSource source, ChildDataProvider provider) async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+      if (pickedFile == null || !mounted) return;
+
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: _kPrimaryRed),
+        ),
+      );
+
+      final bytes = await pickedFile.readAsBytes();
+      final (success, message) =
+          await provider.uploadChildImage(bytes, pickedFile.name);
+
+      if (!mounted) return;
+      Navigator.of(context).pop(); // dismiss loading
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text(message, style: const TextStyle(fontFamily: _kFontFamily)),
+          backgroundColor: success ? const Color(0xFF01A449) : _kPrimaryRed,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('حدث خطأ في اختيار الصورة',
+              style: TextStyle(fontFamily: _kFontFamily)),
+          backgroundColor: _kPrimaryRed,
+        ),
+      );
+    }
   }
 }
