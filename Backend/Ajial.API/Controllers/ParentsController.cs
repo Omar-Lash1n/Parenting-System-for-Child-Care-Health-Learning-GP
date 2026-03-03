@@ -1163,4 +1163,34 @@ public class ParentsController : ControllerBase
                 "حدث خطأ في الخادم", new List<string> { "حدث خطأ غير متوقع" }));
         }
     }
+
+    /// <summary>
+    /// حذف صورة ملف الطفل والعودة للصورة الافتراضية - Delete child profile image and reset to default
+    /// </summary>
+    [HttpDelete("child/{childId}/profile-image")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<UploadChildImageResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<UploadChildImageResponseDto>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DeleteChildProfileImage(Guid childId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                return Unauthorized(ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            var result = await _childService.DeleteChildProfileImageAsync(childId, parentUserId);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting profile image for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم", new List<string> { "حدث خطأ غير متوقع" }));
+        }
+    }
 }

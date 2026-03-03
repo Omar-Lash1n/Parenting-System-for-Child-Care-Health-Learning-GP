@@ -923,4 +923,61 @@ public class ChildService : IChildService
             );
         }
     }
+
+    public async Task<ApiResponse<UploadChildImageResponseDto>> DeleteChildProfileImageAsync(
+        Guid childId, Guid parentUserId)
+    {
+        try
+        {
+            var (parent, child, error) = await ValidateParentChildAccessAsync(childId, parentUserId);
+            if (error != null)
+            {
+                return ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                    "فشل في حذف الصورة",
+                    new List<string> { error }
+                );
+            }
+
+            // Get the default avatar URL based on child's gender
+            string defaultImageUrl = _imageService.GetDefaultChildAvatar(child!.Gender);
+
+            // Delete old image from Azure only if it's a custom uploaded image (not already a default)
+            if (!string.IsNullOrEmpty(child.ProfileImageUrl) &&
+                !child.ProfileImageUrl.Contains("/defaults/"))
+            {
+                try
+                {
+                    await _imageService.DeleteImageAsync(child.ProfileImageUrl);
+                }
+                catch
+                {
+                    // Continue even if Azure deletion fails
+                }
+            }
+
+            // Reset to default
+            child.ProfileImageUrl = defaultImageUrl;
+            child.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.Children.UpdateAsync(child);
+            await _unitOfWork.SaveAsync();
+
+            var response = new UploadChildImageResponseDto
+            {
+                ChildId = child.Id,
+                ProfileImageUrl = defaultImageUrl,
+                UploadedAt = DateTime.UtcNow,
+                Message = "تم إعادة تعيين الصورة إلى الصورة الافتراضية"
+            };
+
+            return ApiResponse<UploadChildImageResponseDto>.SuccessResponse(
+                response, "تم حذف صورة الطفل وإعادة تعيين الصورة الافتراضية بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                "حدث خطأ أثناء حذف الصورة",
+                new List<string> { ex.Message }
+            );
+        }
+    }
 }
