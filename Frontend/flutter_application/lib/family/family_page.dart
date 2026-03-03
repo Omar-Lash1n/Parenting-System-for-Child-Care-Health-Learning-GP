@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:Ajial/providers/family_provider.dart';
+import 'package:Ajial/providers/nav_bar_provider.dart';
 import 'package:Ajial/family/models/child_model.dart';
 
 // ─────────────────────────────────────────────
@@ -54,6 +55,7 @@ class _FamilyPageState extends State<FamilyPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.white,
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 1),
         body: SafeArea(
           bottom: false,
           child: Consumer<FamilyProvider>(
