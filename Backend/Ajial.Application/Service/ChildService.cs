@@ -4,6 +4,7 @@ using Ajial.Application.Interfaces;
 using Ajial.Application.Validators;
 using Ajial.Domain.Entities;
 using Ajlal.Application.Interfaces;
+using Microsoft.AspNetCore.Http;
 
 namespace Ajial.Application.Services;
 
@@ -595,6 +596,86 @@ public class ChildService : IChildService
         {
             return ApiResponse<DeleteChildResponseDto>.FailureResponse(
                 "حدث خطأ أثناء حذف الطفل",
+                new List<string> { ex.Message }
+            );
+        }
+    }
+
+    public async Task<ApiResponse<UploadChildImageResponseDto>> UploadChildProfileImageAsync(
+        Guid childId, Guid parentUserId, IFormFile image)
+    {
+        try
+        {
+            // Step 1: Validate image
+            if (image == null || image.Length == 0)
+            {
+                return ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                    "الصورة مطلوبة",
+                    new List<string> { "يجب اختيار صورة للرفع" }
+                );
+            }
+
+            // Step 2: Validate parent-child ownership
+            var (parent, child, error) = await ValidateParentChildAccessAsync(childId, parentUserId);
+            if (error != null)
+            {
+                return ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                    "فشل في رفع الصورة",
+                    new List<string> { error }
+                );
+            }
+
+            // Step 3: Delete old image if it exists (and is not the default avatar)
+            if (!string.IsNullOrEmpty(child!.ProfileImageUrl) &&
+                !child.ProfileImageUrl.Contains("default"))
+            {
+                try
+                {
+                    await _imageService.DeleteImageAsync(child.ProfileImageUrl);
+                }
+                catch
+                {
+                    // Continue even if old image deletion fails
+                }
+            }
+
+            // Step 4: Upload new image
+            string newImageUrl;
+            try
+            {
+                newImageUrl = await _imageService.UploadChildImageAsync(image, child.Id);
+            }
+            catch (ArgumentException ex)
+            {
+                return ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                    "فشل في رفع الصورة",
+                    new List<string> { ex.Message }
+                );
+            }
+
+            // Step 5: Update child record
+            child.ProfileImageUrl = newImageUrl;
+            child.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.Children.UpdateAsync(child);
+            await _unitOfWork.SaveAsync();
+
+            var response = new UploadChildImageResponseDto
+            {
+                ChildId = child.Id,
+                ProfileImageUrl = newImageUrl,
+                UploadedAt = DateTime.UtcNow,
+                Message = "تم رفع الصورة بنجاح"
+            };
+
+            return ApiResponse<UploadChildImageResponseDto>.SuccessResponse(
+                response,
+                "تم تحديث صورة ملف الطفل بنجاح"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                "حدث خطأ أثناء رفع الصورة",
                 new List<string> { ex.Message }
             );
         }

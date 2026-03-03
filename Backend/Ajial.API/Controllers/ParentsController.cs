@@ -1002,4 +1002,41 @@ public class ParentsController : ControllerBase
             ));
         }
     }
+
+    /// <summary>
+    /// رفع أو تحديث صورة ملف الطفل - Upload or update child profile image
+    /// </summary>
+    [HttpPost("child/{childId}/profile-image")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ApiResponse<UploadChildImageResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<UploadChildImageResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UploadChildProfileImage(Guid childId, IFormFile image)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+            {
+                _logger.LogWarning("Unauthorized attempt to upload child image. Invalid user ID claim");
+                return Unauthorized(ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                    "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+            }
+
+            _logger.LogInformation("Parent {ParentId} uploading image for child {ChildId}", parentUserId, childId);
+            var result = await _childService.UploadChildProfileImageAsync(childId, parentUserId, image);
+
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading image for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<UploadChildImageResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع" }
+            ));
+        }
+    }
 }
