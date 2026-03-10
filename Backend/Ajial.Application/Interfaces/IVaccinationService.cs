@@ -36,4 +36,11 @@ public interface IVaccinationService
     /// </summary>
     Task<ApiResponse<SubmitVaccinationSurveyResponseDto>> SubmitAdditionalVaccinationSurveyAsync(
         SubmitVaccinationSurveyRequestDto request, Guid parentUserId);
+
+    /// <summary>
+    /// ملف تطعيمات الطفل - Get the child's vaccination file with labeled cards and counts
+    /// يظهر فقط بعد إكمال استبيان التطعيمات الأساسية
+    /// </summary>
+    Task<ApiResponse<GetVaccinationFileResponseDto>> GetVaccinationFileAsync(
+        Guid childId, Guid parentUserId);
 }

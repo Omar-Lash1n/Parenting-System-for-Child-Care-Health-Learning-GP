@@ -394,4 +394,87 @@ public class VaccinationController : ControllerBase
             ));
         }
     }
+
+    // ────────────────────────────────────────────
+    // 6. Get Vaccination File
+    // ────────────────────────────────────────────
+
+    /// <summary>
+    /// ملف تطعيمات الطفل - Get the child's complete vaccination file
+    /// </summary>
+    /// <remarks>
+    /// Returns all vaccination records for a child, grouped into Main (0–18 months)
+    /// and Additional (4–15 years) sections, with labeled cards and category counts.
+    ///
+    /// **Prerequisite:** The child must have completed the main vaccination survey.
+    /// If not, returns 400 — Flutter should redirect to the survey first.
+    ///
+    /// **Each card includes:**
+    /// - **Label**: حالي (Current) | فائت (Missed) | قادم (Upcoming) | تم (Done)
+    /// - **DueDate**: calculated from BirthDate + AgeInMonths
+    /// - **MissedSinceDays**: number of days since due date (only for فائت)
+    /// - **CompletedDate**: when the vaccination was marked as taken (only for تم)
+    /// - **IsTaken / IsDisabled**: toggle state for the UI
+    ///
+    /// **Main section tabs:** الكل | الحالي | الفائت | القادم | تم
+    /// **Additional section tabs:** الكل | القادم | تم (only if child ≥ 4 years)
+    ///
+    /// Requires authentication — the child must belong to the logged-in parent.
+    /// </remarks>
+    /// <param name="childId">معرّف الطفل - Child's unique identifier</param>
+    [HttpGet("file/{childId}")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<GetVaccinationFileResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<GetVaccinationFileResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<GetVaccinationFileResponseDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<GetVaccinationFileResponseDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<GetVaccinationFileResponseDto>), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetVaccinationFile(Guid childId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                _logger.LogWarning("Unauthorized vaccination file access attempt - invalid user ID claim");
+                return Unauthorized(ApiResponse<GetVaccinationFileResponseDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول للوصول إلى ملف التطعيمات" }
+                ));
+            }
+
+            _logger.LogInformation(
+                "Vaccination file requested by parent {UserId} for child {ChildId}",
+                userId, childId);
+
+            var result = await _vaccinationService.GetVaccinationFileAsync(childId, userId);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning(
+                    "Failed to get vaccination file for child {ChildId}. Errors: {Errors}",
+                    childId, string.Join(", ", result.Errors));
+
+                if (result.Errors.Any(e => e.Contains("غير موجود")))
+                    return NotFound(result);
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation(
+                "Vaccination file returned for child {ChildId}. Main: {MainCount}, Additional available: {AdditionalAvailable}",
+                childId, result.Data?.MainVaccinations?.AllCount, result.Data?.AdditionalVaccinations?.IsAvailable);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetVaccinationFile endpoint for child {ChildId}", childId);
+            return StatusCode(500, ApiResponse<GetVaccinationFileResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع أثناء جلب ملف التطعيمات" }
+            ));
+        }
+    }
 }

@@ -629,4 +629,241 @@ public class VaccinationService : IVaccinationService
         18 => "ثماني عشرة سنة",
         _ => $"{years} سنة"
     };
+
+    // ────────────────────────────────────────────
+    // 6. Get Vaccination File
+    // ────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<ApiResponse<GetVaccinationFileResponseDto>> GetVaccinationFileAsync(
+        Guid childId, Guid parentUserId)
+    {
+        try
+        {
+            var (parent, child, error) = await ValidateParentChildAsync<GetVaccinationFileResponseDto>(childId, parentUserId);
+            if (error != null) return error;
+
+            // Guard: must complete main survey first
+            if (!child!.HasCompletedVaccinationSurvey)
+            {
+                return ApiResponse<GetVaccinationFileResponseDto>.FailureResponse(
+                    "يجب إكمال استبيان التطعيمات أولاً",
+                    new List<string> { "لا يمكن عرض ملف التطعيمات قبل إكمال الاستبيان الأساسي" }
+                );
+            }
+
+            // Calculate age
+            var (ageMonths, ageDays) = CalculateAgeInMonthsAndDays(child.BirthDate);
+            int ageYears = ageMonths / 12;
+            var today = DateTime.UtcNow.Date;
+
+            // Load all milestones + existing records
+            var allMilestones = (await _unitOfWork.VaccinationMilestones.GetAllAsync())
+                .Where(m => m.IsActive)
+                .OrderBy(m => m.SortOrder)
+                .ToList();
+
+            var existingRecords = (await _unitOfWork.ChildVaccinations.FindAsync(
+                cv => cv.ChildId == childId
+            )).ToDictionary(cv => cv.VaccinationMilestoneId);
+
+            // ── Build Main Vaccination Cards ──
+            var mainMilestones = allMilestones.Where(m => m.Category == "Main").ToList();
+            var mainCards = new List<VaccinationCardDto>();
+
+            foreach (var m in mainMilestones)
+            {
+                var dueDate = child.BirthDate.AddMonths(m.AgeInMonths);
+                bool isTaken = existingRecords.TryGetValue(m.Id, out var record) && record.IsTaken;
+                DateTime? completedDate = isTaken ? record!.UpdatedAt : null;
+
+                var (label, labelEn, isDisabled, missedDays) =
+                    AssignMainLabel(m.AgeInMonths, ageMonths, isTaken, dueDate, today);
+
+                mainCards.Add(new VaccinationCardDto
+                {
+                    MilestoneId = m.Id,
+                    NameAr = m.NameAr,
+                    NameEn = m.NameEn,
+                    VaccinesAr = m.VaccinesAr,
+                    VaccinesEn = m.VaccinesEn,
+                    Label = label,
+                    LabelEn = labelEn,
+                    DueDate = dueDate,
+                    DueDateFormatted = FormatDateArabic(dueDate),
+                    IsTaken = isTaken,
+                    IsDisabled = isDisabled,
+                    MissedSinceDays = missedDays,
+                    CompletedDate = completedDate,
+                    CompletedDateFormatted = completedDate.HasValue
+                        ? $"تم في {FormatDateArabic(completedDate.Value)}"
+                        : null
+                });
+            }
+
+            var mainSection = new MainVaccinationSectionDto
+            {
+                AllCount = mainCards.Count,
+                CurrentCount = mainCards.Count(c => c.LabelEn == "Current"),
+                MissedCount = mainCards.Count(c => c.LabelEn == "Missed"),
+                UpcomingCount = mainCards.Count(c => c.LabelEn == "Upcoming"),
+                DoneCount = mainCards.Count(c => c.LabelEn == "Done"),
+                Vaccinations = mainCards
+            };
+
+            // ── Build Additional Vaccination Cards ──
+            var additionalSection = new AdditionalVaccinationSectionDto();
+
+            if (ageYears >= 4)
+            {
+                additionalSection.IsAvailable = true;
+
+                var additionalMilestones = allMilestones.Where(m => m.Category == "Additional").ToList();
+                var additionalCards = new List<VaccinationCardDto>();
+
+                foreach (var m in additionalMilestones)
+                {
+                    var dueDate = child.BirthDate.AddMonths(m.AgeInMonths);
+                    bool isTaken = existingRecords.TryGetValue(m.Id, out var record) && record.IsTaken;
+                    DateTime? completedDate = isTaken ? record!.UpdatedAt : null;
+
+                    int milestoneAgeYears = m.AgeInMonths / 12;
+                    var (label, labelEn, isDisabled) =
+                        AssignAdditionalLabel(milestoneAgeYears, ageYears, isTaken);
+
+                    additionalCards.Add(new VaccinationCardDto
+                    {
+                        MilestoneId = m.Id,
+                        NameAr = m.NameAr,
+                        NameEn = m.NameEn,
+                        VaccinesAr = m.VaccinesAr,
+                        VaccinesEn = m.VaccinesEn,
+                        Label = label,
+                        LabelEn = labelEn,
+                        DueDate = dueDate,
+                        DueDateFormatted = FormatDateArabic(dueDate),
+                        IsTaken = isTaken,
+                        IsDisabled = isDisabled,
+                        MissedSinceDays = null,
+                        CompletedDate = completedDate,
+                        CompletedDateFormatted = completedDate.HasValue
+                            ? $"تم في {FormatDateArabic(completedDate.Value)}"
+                            : null
+                    });
+                }
+
+                additionalSection.AllCount = additionalCards.Count;
+                additionalSection.UpcomingCount = additionalCards.Count(c => c.LabelEn == "Upcoming");
+                additionalSection.DoneCount = additionalCards.Count(c => c.LabelEn == "Done");
+                additionalSection.Vaccinations = additionalCards;
+            }
+            else
+            {
+                additionalSection.IsAvailable = false;
+            }
+
+            var response = new GetVaccinationFileResponseDto
+            {
+                ChildId = child.Id,
+                ChildName = child.FullName.Split(' ')[0],
+                ChildImageUrl = child.ProfileImageUrl,
+                AgeMonths = ageMonths,
+                AgeDays = ageDays,
+                AgeFormatted = FormatAgeArabic(ageMonths, ageDays),
+                MainVaccinations = mainSection,
+                AdditionalVaccinations = additionalSection
+            };
+
+            return ApiResponse<GetVaccinationFileResponseDto>.SuccessResponse(
+                response,
+                $"تم جلب ملف تطعيمات {child.FullName}"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<GetVaccinationFileResponseDto>.FailureResponse(
+                "حدث خطأ أثناء جلب ملف التطعيمات",
+                new List<string> { ex.Message }
+            );
+        }
+    }
+
+    // ────────────────────────────────────────────
+    // Label Helpers
+    // ────────────────────────────────────────────
+
+    /// <summary>
+    /// تحديد تصنيف التطعيم الأساسي (حالي/فائت/قادم/تم)
+    /// </summary>
+    private static (string label, string labelEn, bool isDisabled, int? missedDays)
+        AssignMainLabel(int milestoneAgeMonths, int childAgeMonths, bool isTaken,
+            DateTime dueDate, DateTime today)
+    {
+        if (isTaken)
+            return ("تم", "Done", false, null);
+
+        // Child is 18+ months → all untaken main milestones are missed
+        if (childAgeMonths >= 18)
+        {
+            int missed = Math.Max(0, (int)(today - dueDate.Date).TotalDays);
+            return ("فائت", "Missed", false, missed);
+        }
+
+        if (milestoneAgeMonths < childAgeMonths)
+        {
+            int missed = Math.Max(0, (int)(today - dueDate.Date).TotalDays);
+            return ("فائت", "Missed", false, missed);
+        }
+
+        if (milestoneAgeMonths == childAgeMonths)
+            return ("حالي", "Current", false, null);
+
+        // milestoneAgeMonths > childAgeMonths
+        return ("قادم", "Upcoming", true, null);
+    }
+
+    /// <summary>
+    /// تحديد تصنيف التطعيم الإضافي (قادم/تم)
+    /// </summary>
+    private static (string label, string labelEn, bool isDisabled)
+        AssignAdditionalLabel(int milestoneAgeYears, int childAgeYears, bool isTaken)
+    {
+        if (isTaken)
+            return ("تم", "Done", false);
+
+        if (milestoneAgeYears > childAgeYears)
+            return ("قادم", "Upcoming", true);
+
+        // milestoneAgeYears <= childAgeYears && !isTaken
+        return ("قادم", "Upcoming", false);
+    }
+
+    // ────────────────────────────────────────────
+    // Date Formatting Helper
+    // ────────────────────────────────────────────
+
+    /// <summary>
+    /// تنسيق التاريخ بالعربي — e.g. "1 مايو 2026"
+    /// </summary>
+    private static string FormatDateArabic(DateTime date)
+    {
+        var monthName = date.Month switch
+        {
+            1 => "يناير",
+            2 => "فبراير",
+            3 => "مارس",
+            4 => "أبريل",
+            5 => "مايو",
+            6 => "يونيو",
+            7 => "يوليو",
+            8 => "أغسطس",
+            9 => "سبتمبر",
+            10 => "أكتوبر",
+            11 => "نوفمبر",
+            12 => "ديسمبر",
+            _ => ""
+        };
+
+        return $"{date.Day} {monthName} {date.Year}";
+    }
 }
