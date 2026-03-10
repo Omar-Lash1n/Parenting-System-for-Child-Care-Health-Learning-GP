@@ -37,6 +37,7 @@ import 'package:Ajial/vaccinations/vaccination_survey_select_page.dart';
 import 'package:Ajial/vaccinations/additional_vaccination_provider.dart';
 import 'package:Ajial/vaccinations/additional_vaccination_survey_page.dart';
 import 'package:Ajial/vaccinations/vaccination_success_page.dart';
+import 'package:Ajial/vaccinations/kids_vaccination_home_page.dart';
 import 'package:Ajial/family/family_page.dart';
 
 void main() async {
@@ -105,6 +106,7 @@ class AjialApp extends StatelessWidget {
         '/additional-vaccination-survey': (context) =>
             const AdditionalVaccinationSurveyPage(),
         '/vaccination-success': (context) => const VaccinationSuccessPage(),
+        '/kids-vaccination-home': (context) => const KidsVaccinationHomePage(),
         '/family': (context) => const FamilyPage(),
         '/child-profile': (context) => const MyChildProfilePage(),
         '/child-data': (context) => const ChildDataProfilePage(),
