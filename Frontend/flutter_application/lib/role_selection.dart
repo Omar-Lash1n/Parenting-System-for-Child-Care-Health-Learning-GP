@@ -2,6 +2,7 @@ import 'package:Ajial/child-app/child-sign-in.dart';
 import 'package:flutter/material.dart';
 // Import ParentWelcomeScreen for parent navigation
 import 'ParentWelcomeScreen.dart';
+import 'package:Ajial/specialist-app/registeration-pages/specialist-login.dart';
 
 // تعريف كلاس للصفحة الجديدة
 class RoleSelectionScreen extends StatefulWidget {
@@ -130,8 +131,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               builder: (context) => const ChildLoginScreen(),
                             ),
                           );
+                        } else if (_selectedRole == "specialist") {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (context) => const SpecialistLoginScreen(),
+                            ),
+                          );
                         } else {
-                          // يمكنك إضافة منطق للانتقال لأدوار أخرى (طفل، متخصص)
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('تم اختيار دور: $_selectedRole'),
