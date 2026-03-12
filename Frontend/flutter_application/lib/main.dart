@@ -38,6 +38,7 @@ import 'package:Ajial/vaccinations/additional_vaccination_provider.dart';
 import 'package:Ajial/vaccinations/additional_vaccination_survey_page.dart';
 import 'package:Ajial/vaccinations/vaccination_success_page.dart';
 import 'package:Ajial/vaccinations/kids_vaccination_home_page.dart';
+import 'package:Ajial/vaccinations/vaccination_dashboard_page.dart';
 import 'package:Ajial/family/family_page.dart';
 
 void main() async {
@@ -91,7 +92,8 @@ class AjialApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
 
-      initialRoute: '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
+      initialRoute:
+          '/vaccination-dashboard', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
       routes: {
         '/splash': (context) => SplashScreen(),
         '/login': (context) => const LoginScreen(),
@@ -107,6 +109,7 @@ class AjialApp extends StatelessWidget {
             const AdditionalVaccinationSurveyPage(),
         '/vaccination-success': (context) => const VaccinationSuccessPage(),
         '/kids-vaccination-home': (context) => const KidsVaccinationHomePage(),
+        '/vaccination-dashboard': (context) => const VaccinationDashboardPage(),
         '/family': (context) => const FamilyPage(),
         '/child-profile': (context) => const MyChildProfilePage(),
         '/child-data': (context) => const ChildDataProfilePage(),

@@ -1373,6 +1373,63 @@ class AuthService {
     }
   }
 
+  /// جلب ملف التطعيمات الكامل للطفل
+  /// GET /api/Vaccination/file/{childId}
+  /// Requires parent JWT token.
+  ///
+  /// Returns a record: (data, statusCode, errorMessage)
+  /// - data != null  → success
+  /// - statusCode == 400 → survey not completed, redirect to survey
+  /// - statusCode == 401 → unauthorized
+  /// - statusCode == 404 → child not found
+  Future<(Map<String, dynamic>? data, int statusCode, String? errorMessage)>
+      getVaccinationFile(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/file/$childId';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (null, 401, 'غير مصرح. يرجى تسجيل الدخول أولاً.');
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return (
+            responseBody['data'] as Map<String, dynamic>,
+            200,
+            null,
+          );
+        }
+        final msg =
+            responseBody['message']?.toString() ?? 'حدث خطأ غير معروف';
+        return (null, 200, msg);
+      }
+
+      // Parse error message from body if available
+      String? errorMsg;
+      try {
+        final body = jsonDecode(response.body);
+        errorMsg = body['message']?.toString();
+      } catch (_) {}
+
+      print(
+          'getVaccinationFile Error: ${response.statusCode} - ${response.body}');
+      return (null, response.statusCode, errorMsg);
+    } catch (e) {
+      print('Connection Error in getVaccinationFile: $e');
+      return (null, 0, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
+    }
+  }
+
   /// جلب بيانات استبيان التطعيمات للطفل
   /// GET /api/Vaccination/survey/{childId}
   /// Requires parent JWT token

@@ -12,6 +12,7 @@ import 'package:Ajial/providers/family_provider.dart';
 import 'package:Ajial/family/models/child_model.dart';
 import 'package:Ajial/vaccinations/widgets/select_child_bottom_sheet.dart';
 import 'package:Ajial/vaccinations/widgets/confirm_reset_vaccination_dialog.dart';
+import 'package:Ajial/api/auth_service.dart';
 
 // ─────────────────────────────────────────────
 // Design Tokens
@@ -266,6 +267,82 @@ class _ChildrenRow extends StatelessWidget {
   final List<ChildModel> children;
   const _ChildrenRow({required this.children});
 
+  /// Handles tapping a child avatar:
+  /// 1. Calls GET /api/Vaccination/welcome/{childId}
+  /// 2. Routes based on [hasCompletedVaccinationSurvey]
+  Future<void> _onChildTapped(BuildContext context, ChildModel child) async {
+    // Show a loading overlay
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: _kPrimary),
+      ),
+    );
+
+    try {
+      final data =
+          await AuthService().getVaccinationWelcome(child.childId);
+
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // dismiss loading
+
+      if (data == null) {
+        // API failed — fall back to welcome page
+        Navigator.pushNamed(
+          context,
+          '/vaccination-welcome',
+          arguments: {
+            'childId': child.childId,
+            'childName': child.fullName,
+            'childProfileImageUrl': child.photoUrl,
+          },
+        );
+        return;
+      }
+
+      final bool hasCompleted =
+          data['hasCompletedVaccinationSurvey'] == true;
+
+      if (hasCompleted) {
+        // TODO: Navigate to the vaccination summary / dashboard page
+        // (route will be provided by the user — placeholder for now)
+        Navigator.pushNamed(
+          context,
+          '/vaccination-dashboard', // ← placeholder route
+          arguments: {
+            'childId': child.childId,
+            'childName': child.fullName,
+            'childProfileImageUrl': child.photoUrl,
+          },
+        );
+      } else {
+        Navigator.pushNamed(
+          context,
+          '/vaccination-welcome',
+          arguments: {
+            'childId': child.childId,
+            'childName': child.fullName,
+            'childProfileImageUrl': child.photoUrl,
+          },
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // dismiss loading
+      // On error, fallback to welcome page
+      Navigator.pushNamed(
+        context,
+        '/vaccination-welcome',
+        arguments: {
+          'childId': child.childId,
+          'childName': child.fullName,
+          'childProfileImageUrl': child.photoUrl,
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -277,7 +354,10 @@ class _ChildrenRow extends StatelessWidget {
           // ── Child avatars (rightmost in RTL) ─────
           ...children.map((child) => Padding(
                 padding: const EdgeInsets.only(left: 16),
-                child: _ChildAvatar(child: child),
+                child: _ChildAvatar(
+                  child: child,
+                  onTap: () => _onChildTapped(context, child),
+                ),
               )),
 
           // ── "اضف طفل" dashed circle (leftmost in RTL) ──
@@ -356,58 +436,62 @@ class _AddChildAvatar extends StatelessWidget {
 // ─────────────────────────────────────────────
 class _ChildAvatar extends StatelessWidget {
   final ChildModel child;
-  const _ChildAvatar({required this.child});
+  final VoidCallback? onTap;
+  const _ChildAvatar({required this.child, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 74,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Photo circle
-          Container(
-            width: 74,
-            height: 74,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF0F0F0),
-              shape: BoxShape.circle,
-            ),
-            child: ClipOval(
-              child: child.photoUrl != null && child.photoUrl!.isNotEmpty
-                  ? Image.network(
-                      child.photoUrl!,
-                      fit: BoxFit.cover,
-                      width: 74,
-                      height: 74,
-                      errorBuilder: (_, __, ___) => const Icon(
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 74,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Photo circle
+            Container(
+              width: 74,
+              height: 74,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF0F0F0),
+                shape: BoxShape.circle,
+              ),
+              child: ClipOval(
+                child: child.photoUrl != null && child.photoUrl!.isNotEmpty
+                    ? Image.network(
+                        child.photoUrl!,
+                        fit: BoxFit.cover,
+                        width: 74,
+                        height: 74,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.person_rounded,
+                          size: 34,
+                          color: Color(0xFFBDBDBD),
+                        ),
+                      )
+                    : const Icon(
                         Icons.person_rounded,
                         size: 34,
                         color: Color(0xFFBDBDBD),
                       ),
-                    )
-                  : const Icon(
-                      Icons.person_rounded,
-                      size: 34,
-                      color: Color(0xFFBDBDBD),
-                    ),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          // Name
-          Text(
-            child.fullName,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: _kFont,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.black,
+            const SizedBox(height: 4),
+            // Name
+            Text(
+              child.fullName,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: _kFont,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.black,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
