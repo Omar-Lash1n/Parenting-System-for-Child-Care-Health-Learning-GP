@@ -93,7 +93,7 @@ class AjialApp extends StatelessWidget {
       ),
 
       initialRoute:
-          '/vaccination-dashboard', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
+          '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
       routes: {
         '/splash': (context) => SplashScreen(),
         '/login': (context) => const LoginScreen(),
