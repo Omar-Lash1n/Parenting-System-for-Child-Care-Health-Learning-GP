@@ -45,11 +45,9 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
   String _childName = '';
   String? _childPhotoUrl;
 
-  // ── Tabs ─────────────────────────────────────
+  // ── Tab State ─────────────────────────────────
   bool _isBasicTab = true;
-
-  // ── Filter index (0=الكل, 1=الحال, 2=الفائت, 3=القادم, 4=تم) ──
-  int _selectedFilterIndex = 0;
+  String _selectedFilterLabel = 'الكل';
 
   // ── Load state ───────────────────────────────
   _LoadState _state = _LoadState.idle;
@@ -128,7 +126,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
           _childPhotoUrl = dto.childImageUrl ?? _childPhotoUrl;
           _state = _LoadState.success;
           _isBasicTab = true;
-          _selectedFilterIndex = 0;
+          _selectedFilterLabel = 'الكل';
         });
       } catch (e) {
         debugPrint('Parse error: $e');
@@ -149,22 +147,9 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
   // Filtered vaccination list (current tab)
   // ─────────────────────────────────────────────
   List<VaccinationCardDto> get _filteredVaccinations {
-    final all = _isBasicTab
+    return _isBasicTab
         ? (_data?.mainVaccinations.vaccinations ?? [])
         : (_data?.additionalVaccinations.vaccinations ?? []);
-
-    switch (_selectedFilterIndex) {
-      case 1:
-        return all.where((v) => v.labelEn == 'Current').toList();
-      case 2:
-        return all.where((v) => v.labelEn == 'Missed').toList();
-      case 3:
-        return all.where((v) => v.labelEn == 'Upcoming').toList();
-      case 4:
-        return all.where((v) => v.labelEn == 'Done').toList();
-      default:
-        return all;
-    }
   }
 
   // ─────────────────────────────────────────────
@@ -182,7 +167,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
 
     setState(() {
       _isBasicTab = false;
-      _selectedFilterIndex = 0;
+      _selectedFilterLabel = 'الكل';
     });
   }
 
@@ -275,7 +260,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
             _childName = child.fullName;
             _childPhotoUrl = child.photoUrl;
             _isBasicTab = true;
-            _selectedFilterIndex = 0;
+            _selectedFilterLabel = 'الكل';
           });
           _loadData();
         },
@@ -355,19 +340,19 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
             ),
           ),
 
+          const SizedBox(width: 12),
+
           // Title
-          Expanded(
-            child: Text(
-              'تطعيمات $_childName',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: _kFont,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.black,
-              ),
+          Text(
+            'تطعيمات $_childName',
+            style: const TextStyle(
+              fontFamily: _kFont,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
             ),
           ),
+          const Spacer(),
 
           // Child selector dropdown
           Consumer<FamilyProvider>(builder: (ctx, fp, _) {
@@ -435,7 +420,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
             child: GestureDetector(
               onTap: () => setState(() {
                 _isBasicTab = true;
-                _selectedFilterIndex = 0;
+                _selectedFilterLabel = 'الكل';
               }),
               child: _tabItem('التطعيمات الاساسية', _isBasicTab),
             ),
@@ -501,9 +486,11 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
       ('تم', c4),
     ];
 
-    // Reset index if it's out of range when switching tabs
-    final safeIndex =
-        _selectedFilterIndex < chips.length ? _selectedFilterIndex : 0;
+    // Reset label if it's invalid for this tab
+    final validLabels = chips.map((c) => c.$1).toList();
+    if (!validLabels.contains(_selectedFilterLabel)) {
+      _selectedFilterLabel = 'الكل';
+    }
 
     return SizedBox(
       height: 36,
@@ -514,9 +501,9 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final chip = chips[i];
-          final isSelected = safeIndex == i;
+          final isSelected = _selectedFilterLabel == chip.$1;
           return GestureDetector(
-            onTap: () => setState(() => _selectedFilterIndex = i),
+            onTap: () => setState(() => _selectedFilterLabel = chip.$1),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               padding:
@@ -692,28 +679,28 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
       sections.add(const SizedBox(height: 16));
     }
 
-    final idx = _selectedFilterIndex;
-    final bool showAll = idx == 0;
+    final String activeLabel = _selectedFilterLabel;
+    final bool showAll = activeLabel == 'الكل';
 
     if (_isBasicTab) {
-      if (showAll || idx == 1)
+      if (showAll || activeLabel == 'الحال')
         addSection('جرعات حالية', current,
             'يبدو انه لا يوجد تطعيم في الوقت الحال');
-      if (showAll || idx == 2)
+      if (showAll || activeLabel == 'الفائت')
         addSection('جرعات فائتة', missed,
             'رائع! يبدو انه لا يوجد تطعيم فائت في الوقت الحال');
-      if (showAll || idx == 3)
+      if (showAll || activeLabel == 'القادم')
         addSection('جرعات قادمة', upcoming,
             'رائع! يبدو انه تم اتمام جميع التطعيمات  انتم حقاً والدين مميزين');
-      if (showAll || idx == 4)
+      if (showAll || activeLabel == 'تم')
         addSection('جرعات تمت', done,
             'رائع! يبدو انه لا يوجد تطعيمات فائتة انتم حقاً والدين مميزين');
     } else {
-      // Additional tab only has Upcoming + Done
-      if (showAll || idx == 3)
+      // Additional tab chips: الكل, القادم, تم
+      if (showAll || activeLabel == 'القادم')
         addSection('جرعات قادمة', upcoming,
             'رائع! تم اتمام جميع التطعيمات الإضافية القادمة');
-      if (showAll || idx == 4)
+      if (showAll || activeLabel == 'تم')
         addSection('جرعات تمت', done,
             'لا توجد تطعيمات إضافية مكتملة بعد');
     }
@@ -1042,7 +1029,7 @@ class _VaccinationCard extends StatelessWidget {
     }
     if (_isDone) {
       return Text(
-          'تم في ${item.completedDateFormatted ?? item.dueDateFormatted}',
+          item.completedDateFormatted ?? item.dueDateFormatted,
           style: TextStyle(
               fontFamily: _kFont,
               fontSize: 11,
