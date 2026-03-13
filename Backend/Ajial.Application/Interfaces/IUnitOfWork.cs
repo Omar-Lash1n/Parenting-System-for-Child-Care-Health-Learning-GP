@@ -1,4 +1,4 @@
-﻿using Ajial.Application.Interfaces;
+using Ajial.Application.Interfaces;
 using Ajial.Domain.Entities;
 
 namespace Ajlal.Application.Interfaces;
@@ -14,6 +14,7 @@ public interface IUnitOfWork : IDisposable
     IVoiceNoteRepository VoiceNotes { get; }
     IRepository<VaccinationMilestone> VaccinationMilestones { get; }
     IRepository<ChildVaccination> ChildVaccinations { get; }
+    IRepository<Specialist> Specialists { get; }
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

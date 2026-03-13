@@ -1,4 +1,4 @@
-﻿using Ajial.Application.DTOs.Auth;
+using Ajial.Application.DTOs.Auth;
 using Ajial.Application.DTOs.Common;
 
 namespace Ajlal.Application.Interfaces;
@@ -6,7 +6,9 @@ namespace Ajlal.Application.Interfaces;
 public interface IAuthService
 {
     Task<RegisterParentResponse> RegisterParentAsync(RegisterParentRequest request);
+    Task<RegisterSpecialistResponse> RegisterSpecialistAsync(RegisterSpecialistRequest request);
     Task<ApiResponse<LoginResponseDto>> LoginParentAsync(LoginRequestDto request);
+    Task<ApiResponse<LoginSpecialistResponseDto>> LoginSpecialistAsync(LoginRequestDto request);
 
     Task<ApiResponse<ForgotPasswordResponseDto>> ForgotPasswordAsync(ForgotPasswordRequestDto request);
 

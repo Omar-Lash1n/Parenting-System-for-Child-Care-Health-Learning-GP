@@ -82,6 +82,7 @@ builder.Services.AddScoped<IChildService, ChildService>();        // ✅ NEW - C
 builder.Services.AddScoped<IVoiceNoteService, VoiceNoteService>(); // ✅ Voice Note Upload
 builder.Services.AddScoped<IVaccinationService, VaccinationService>(); // ✅ Vaccination Feature
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ISpecialistService, SpecialistService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 // ✅ Infrastructure Services

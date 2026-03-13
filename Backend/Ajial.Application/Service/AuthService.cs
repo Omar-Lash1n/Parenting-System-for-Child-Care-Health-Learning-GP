@@ -1,4 +1,4 @@
-﻿using Ajial.Application.DTOs.Auth;
+using Ajial.Application.DTOs.Auth;
 using Ajial.Application.DTOs.Common;
 using Ajial.Application.Interfaces;
 using Ajial.Application.Validators;
@@ -13,18 +13,21 @@ public class AuthService : IAuthService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IEmailService _emailService;
-    private readonly IJwtTokenService _jwtTokenService;  // ✅ NEW
+    private readonly IJwtTokenService _jwtTokenService;
+    private readonly IImageService _imageService;
 
     public AuthService(
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IEmailService emailService,
-        IJwtTokenService jwtTokenService)  // ✅ NEW
+        IJwtTokenService jwtTokenService,
+        IImageService imageService)
     {
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _emailService = emailService;
-        _jwtTokenService = jwtTokenService;  // ✅ NEW
+        _jwtTokenService = jwtTokenService;
+        _imageService = imageService;
     }
 
     // ... (keep all other methods unchanged)
@@ -133,6 +136,121 @@ public class AuthService : IAuthService
     }
 
     // ... (keep all ForgotPasswordAsync, ResetPasswordAsync, RegisterParentAsync methods unchanged)
+
+    /// <summary>
+    /// تسجيل دخول الأخصائي/الطبيب مع JWT token
+    /// </summary>
+    public async Task<ApiResponse<LoginSpecialistResponseDto>> LoginSpecialistAsync(LoginRequestDto request)
+    {
+        try
+        {
+            // Step 1: Validate input
+            var validator = new LoginRequestValidator();
+            var (isValid, errors) = validator.Validate(request);
+
+            if (!isValid)
+            {
+                return ApiResponse<LoginSpecialistResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    errors
+                );
+            }
+
+            // Step 2: Find user by username
+            var user = await _unitOfWork.Users.GetFirstOrDefaultAsync(
+                u => u.Username == request.Username.Trim()
+            );
+
+            if (user == null)
+            {
+                return ApiResponse<LoginSpecialistResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    new List<string> { "اسم المستخدم أو كلمة المرور غير صحيحة" }
+                );
+            }
+
+            // Step 3: Verify password
+            bool isPasswordValid = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
+
+            if (!isPasswordValid)
+            {
+                return ApiResponse<LoginSpecialistResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    new List<string> { "اسم المستخدم أو كلمة المرور غير صحيحة" }
+                );
+            }
+
+            // Step 4: Check user type is Doctor
+            if (user.UserType != UserType.Doctor)
+            {
+                return ApiResponse<LoginSpecialistResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    new List<string> { "هذا الحساب ليس حساب أخصائي" }
+                );
+            }
+
+            // Step 5: Check account is active
+            if (!user.IsActive)
+            {
+                return ApiResponse<LoginSpecialistResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    new List<string> { "الحساب غير نشط. يرجى التواصل مع الدعم الفني" }
+                );
+            }
+
+            // Step 6: Get specialist profile
+            var specialist = await _unitOfWork.Specialists.GetFirstOrDefaultAsync(
+                s => s.UserId == user.Id
+            );
+
+            if (specialist == null)
+            {
+                return ApiResponse<LoginSpecialistResponseDto>.FailureResponse(
+                    "فشل في تسجيل الدخول",
+                    new List<string> { "لم يتم العثور على بيانات الأخصائي" }
+                );
+            }
+
+            // Step 7: Generate JWT Token
+            var token = _jwtTokenService.GenerateToken(
+                user.Id,
+                user.Username,
+                user.Email,
+                user.UserType.ToString()
+            );
+
+            // Step 8: Build response
+            var response = new LoginSpecialistResponseDto
+            {
+                UserId = user.Id,
+                SpecialistId = specialist.Id,
+                FullName = user.FullName,
+                Username = user.Username,
+                Email = user.Email,
+                Phone = specialist.Phone,
+                Specialization = specialist.Specialization,
+                Status = specialist.Status.ToString(),
+                PersonalPhotoUrl = specialist.PersonalPhotoUrl,
+                Message = specialist.Status == SpecialistStatus.Pending
+                    ? "تم تسجيل الدخول. حسابك في انتظار مراجعة الإدارة"
+                    : "تم تسجيل الدخول بنجاح",
+                LoginAt = DateTime.UtcNow,
+                Token = token
+            };
+
+            return ApiResponse<LoginSpecialistResponseDto>.SuccessResponse(
+                response,
+                response.Message
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<LoginSpecialistResponseDto>.FailureResponse(
+                "حدث خطأ أثناء تسجيل الدخول",
+                new List<string> { ex.Message }
+            );
+        }
+    }
 
     public async Task<ApiResponse<ForgotPasswordResponseDto>> ForgotPasswordAsync(
         ForgotPasswordRequestDto request)
@@ -717,6 +835,113 @@ public class AuthService : IAuthService
                 "حدث خطأ أثناء تسجيل الخروج",
                 new List<string> { ex.Message }
             );
+        }
+    }
+
+    /// <summary>
+    /// تسجيل أخصائي/طبيب جديد - Register a new specialist/doctor
+    /// </summary>
+    public async Task<RegisterSpecialistResponse> RegisterSpecialistAsync(RegisterSpecialistRequest request)
+    {
+        // Check if username already exists
+        var existingUsername = await _unitOfWork.Users.ExistsAsync(u => u.Username == request.Username);
+        if (existingUsername)
+        {
+            throw new ArgumentException("اسم المستخدم موجود بالفعل");
+        }
+
+        // Check if email already exists
+        var existingEmail = await _unitOfWork.Users.ExistsAsync(u => u.Email == request.Email);
+        if (existingEmail)
+        {
+            throw new ArgumentException("البريد الإلكتروني موجود بالفعل");
+        }
+
+        try
+        {
+            // Create User with Doctor type
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                FullName = request.FullName,
+                Username = request.Username,
+                Email = request.Email.ToLower(),
+                PasswordHash = _passwordHasher.HashPassword(request.Password),
+                UserType = UserType.Doctor,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            await _unitOfWork.Users.AddAsync(user);
+
+            var specialistId = Guid.NewGuid();
+
+            // Upload all images to Azure Blob Storage
+            var idFrontUrl = await _imageService.UploadSpecialistImageAsync(
+                request.IdFrontImage, specialistId, "id-front");
+
+            string? idBackUrl = null;
+            if (request.IdBackImage != null)
+            {
+                idBackUrl = await _imageService.UploadSpecialistImageAsync(
+                    request.IdBackImage, specialistId, "id-back");
+            }
+
+            var certUrl = await _imageService.UploadSpecialistImageAsync(
+                request.SpecializationCertificateImage, specialistId, "specialization-certificate");
+
+            var licenseUrl = await _imageService.UploadSpecialistImageAsync(
+                request.PracticeLicenseImage, specialistId, "practice-license");
+
+            var unionCardUrl = await _imageService.UploadSpecialistImageAsync(
+                request.UnionCardImage, specialistId, "union-card");
+
+            var personalPhotoUrl = await _imageService.UploadSpecialistImageAsync(
+                request.PersonalPhoto, specialistId, "personal-photo");
+
+            // Create Specialist profile
+            var specialist = new Specialist
+            {
+                Id = specialistId,
+                UserId = user.Id,
+                Phone = request.Phone,
+                Specialization = request.Specialization,
+                PracticeLicenseNumber = request.PracticeLicenseNumber,
+                IdFrontImageUrl = idFrontUrl,
+                IdBackImageUrl = idBackUrl,
+                SpecializationCertificateImageUrl = certUrl,
+                PracticeLicenseImageUrl = licenseUrl,
+                UnionCardImageUrl = unionCardUrl,
+                PersonalPhotoUrl = personalPhotoUrl,
+                Status = SpecialistStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Specialists.AddAsync(specialist);
+
+            // Single SaveChanges - EF Core handles transaction automatically
+            await _unitOfWork.SaveChangesAsync();
+
+            return new RegisterSpecialistResponse
+            {
+                UserId = user.Id,
+                SpecialistId = specialist.Id,
+                FullName = user.FullName,
+                Username = user.Username,
+                Email = user.Email,
+                Status = specialist.Status.ToString(),
+                Message = "تم إنشاء الحساب بنجاح. في انتظار مراجعة الإدارة",
+                CreatedAt = user.CreatedAt
+            };
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                "حدث خطأ أثناء إنشاء حساب الأخصائي. يرجى المحاولة مرة أخرى", ex);
         }
     }
 }

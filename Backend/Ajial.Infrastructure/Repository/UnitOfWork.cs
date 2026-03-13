@@ -1,4 +1,4 @@
-﻿using Ajial.Application.Interfaces;
+using Ajial.Application.Interfaces;
 using Ajial.Domain.Entities;
 using Ajial.Infrastructure.Data;
 using Ajlal.Application.Interfaces;
@@ -20,6 +20,7 @@ public class UnitOfWork : IUnitOfWork
     public IVoiceNoteRepository VoiceNotes { get; private set; }
     public IRepository<VaccinationMilestone> VaccinationMilestones { get; private set; }
     public IRepository<ChildVaccination> ChildVaccinations { get; private set; }
+    public IRepository<Specialist> Specialists { get; private set; }
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -34,6 +35,7 @@ public class UnitOfWork : IUnitOfWork
         VoiceNotes = new VoiceNoteRepository(_context);
         VaccinationMilestones = new Repository<VaccinationMilestone>(_context);
         ChildVaccinations = new Repository<ChildVaccination>(_context);
+        Specialists = new Repository<Specialist>(_context);
     }
 
     public async Task<int> SaveChangesAsync()

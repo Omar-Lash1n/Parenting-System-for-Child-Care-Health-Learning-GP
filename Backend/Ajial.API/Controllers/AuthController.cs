@@ -1,4 +1,4 @@
-﻿using Ajial.Application.DTOs.Auth;
+using Ajial.Application.DTOs.Auth;
 using Ajial.Application.DTOs.Common;
 using Ajlal.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -64,6 +64,51 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Register a new specialist/doctor
+    /// </summary>
+    /// <param name="request">Specialist registration information with document images</param>
+    /// <returns>Registration result</returns>
+    [HttpPost("register/specialist")]
+    [ProducesResponseType(typeof(ApiResponse<RegisterSpecialistResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<RegisterSpecialistResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<RegisterSpecialistResponse>), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> RegisterSpecialist([FromForm] RegisterSpecialistRequest request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+
+                return BadRequest(ApiResponse<RegisterSpecialistResponse>.FailureResponse(
+                    "خطأ في البيانات المدخلة", errors));
+            }
+
+            var result = await _authService.RegisterSpecialistAsync(request);
+
+            return CreatedAtAction(
+                nameof(RegisterSpecialist),
+                ApiResponse<RegisterSpecialistResponse>.SuccessResponse(
+                    result, "تم إنشاء حساب الأخصائي بنجاح. في انتظار مراجعة الإدارة"));
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Validation error during specialist registration");
+            return BadRequest(ApiResponse<RegisterSpecialistResponse>.FailureResponse(
+                ex.Message, new List<string> { ex.Message }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred during specialist registration");
+            return StatusCode(500, ApiResponse<RegisterSpecialistResponse>.FailureResponse(
+                "حدث خطأ أثناء إنشاء حساب الأخصائي. يرجى المحاولة مرة أخرى"));
+        }
+    }
+
     [HttpPost("login/parent")]
     [ProducesResponseType(typeof(ApiResponse<LoginResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LoginResponseDto>), StatusCodes.Status400BadRequest)]
@@ -114,12 +159,58 @@ public class AuthController : ControllerBase
 
 
     /// <summary>
+    /// تسجيل دخول الأخصائي/الطبيب - Specialist/Doctor Login
+    /// </summary>
+    [HttpPost("login/specialist")]
+    [ProducesResponseType(typeof(ApiResponse<LoginSpecialistResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<LoginSpecialistResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<LoginSpecialistResponseDto>), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> LoginSpecialist([FromBody] LoginRequestDto request)
+    {
+        try
+        {
+            _logger.LogInformation("Specialist login attempt for username: {Username}", request.Username);
+
+            var result = await _authService.LoginSpecialistAsync(request);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("Specialist login failed for username: {Username}. Errors: {Errors}",
+                    request.Username,
+                    string.Join(", ", result.Errors));
+
+                if (result.Errors.Any(e => e.Contains("اسم المستخدم أو كلمة المرور غير صحيحة")))
+                {
+                    return Unauthorized(result);
+                }
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("Specialist login successful for username: {Username}, SpecialistId: {Id}",
+                request.Username,
+                result.Data?.SpecialistId);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in LoginSpecialist endpoint for username: {Username}", request.Username);
+            return StatusCode(500, ApiResponse<LoginSpecialistResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
+            ));
+        }
+    }
+
+    /// <summary>
     /// تسجيل دخول الطفل باستخدام معرف الدخول وكلمة المرور البصرية (5 فواكه)
     /// Child login using login ID and visual password (5 fruits)
     /// </summary>
     /// <param name="request">بيانات تسجيل الدخول</param>
     /// <returns>نتيجة تسجيل الدخول</returns>
     [HttpPost("login/child")]
+
     [ProducesResponseType(typeof(ApiResponse<LoginChildResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LoginChildResponseDto>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<LoginChildResponseDto>), StatusCodes.Status401Unauthorized)]

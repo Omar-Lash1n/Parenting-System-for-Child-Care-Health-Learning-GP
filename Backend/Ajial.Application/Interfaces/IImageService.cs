@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 
 namespace Ajial.Application.Interfaces;
 
@@ -9,4 +9,5 @@ public interface IImageService
     string GetDefaultChildAvatar(string gender);
     Task<string> UploadParentImageAsync(IFormFile image, Guid parentId);
     Task<string> UploadVoiceNoteAsync(IFormFile voiceNote, Guid childId, string fileName);
+    Task<string> UploadSpecialistImageAsync(IFormFile image, Guid specialistId, string subfolder);
 }

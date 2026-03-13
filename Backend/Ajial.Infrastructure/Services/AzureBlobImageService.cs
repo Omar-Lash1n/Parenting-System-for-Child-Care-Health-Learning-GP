@@ -1,4 +1,4 @@
-﻿using Ajial.Application.Interfaces;
+using Ajial.Application.Interfaces;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.AspNetCore.Http;
@@ -202,5 +202,48 @@ public class AzureBlobImageService : IImageService
         {
             throw new Exception($"فشل في رفع الملاحظة الصوتية: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>
+    /// Upload specialist document/image to Azure Blob Storage (specialist-images container)
+    /// </summary>
+    public async Task<string> UploadSpecialistImageAsync(IFormFile image, Guid specialistId, string subfolder)
+    {
+        if (image == null || image.Length == 0)
+        {
+            throw new ArgumentException("الصورة فارغة");
+        }
+
+        // Validate image (size, format, etc.)
+        ValidateImage(image);
+
+        // Use specialist-images container
+        var specialistContainerName = _configuration["AzureStorage:SpecialistContainerName"] ?? "specialist-images";
+        var containerClient = _blobServiceClient.GetBlobContainerClient(specialistContainerName);
+        await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+        // Generate unique filename with subfolder organization
+        var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
+        var uniqueFileName = $"specialist_{specialistId}_{Guid.NewGuid()}{extension}";
+        var blobName = $"{subfolder}/{uniqueFileName}";
+
+        // Get blob client
+        var blobClient = containerClient.GetBlobClient(blobName);
+
+        // Set content type
+        var blobHttpHeaders = new BlobHttpHeaders
+        {
+            ContentType = image.ContentType,
+            CacheControl = "public, max-age=31536000"
+        };
+
+        // Upload file
+        using var stream = image.OpenReadStream();
+        await blobClient.UploadAsync(stream, new BlobUploadOptions
+        {
+            HttpHeaders = blobHttpHeaders
+        });
+
+        return blobClient.Uri.ToString();
     }
 }

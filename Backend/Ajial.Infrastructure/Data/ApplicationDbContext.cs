@@ -1,4 +1,4 @@
-﻿using Ajial.Domain.Entities;
+using Ajial.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ajial.Infrastructure.Data;
@@ -19,6 +19,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<VoiceNote> VoiceNotes { get; set; } = null!;
     public DbSet<VaccinationMilestone> VaccinationMilestones { get; set; } = null!;
     public DbSet<ChildVaccination> ChildVaccinations { get; set; } = null!;
+    public DbSet<Specialist> Specialists { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -259,6 +260,31 @@ public class ApplicationDbContext : DbContext
                 .IsUnique();
 
             entity.HasIndex(cv => cv.ChildId);
+        });
+
+        // Specialist Configuration
+        modelBuilder.Entity<Specialist>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.User)
+                  .WithOne()
+                  .HasForeignKey<Specialist>(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.Phone).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Specialization).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.PracticeLicenseNumber).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.IdFrontImageUrl).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.IdBackImageUrl).HasMaxLength(500);
+            entity.Property(e => e.SpecializationCertificateImageUrl).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.PracticeLicenseImageUrl).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.UnionCardImageUrl).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.PersonalPhotoUrl).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Status).IsRequired();
+
+            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasIndex(e => e.PracticeLicenseNumber).IsUnique();
         });
 
         // Seed data
