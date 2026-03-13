@@ -50,6 +50,40 @@ class VaccinationCardDto {
     this.completedDateFormatted,
   });
 
+  VaccinationCardDto copyWith({
+    int? milestoneId,
+    String? nameAr,
+    String? nameEn,
+    String? vaccinesAr,
+    String? vaccinesEn,
+    String? label,
+    String? labelEn,
+    String? dueDate,
+    String? dueDateFormatted,
+    bool? isTaken,
+    bool? isDisabled,
+    int? missedSinceDays,
+    String? completedDate,
+    String? completedDateFormatted,
+  }) {
+    return VaccinationCardDto(
+      milestoneId: milestoneId ?? this.milestoneId,
+      nameAr: nameAr ?? this.nameAr,
+      nameEn: nameEn ?? this.nameEn,
+      vaccinesAr: vaccinesAr ?? this.vaccinesAr,
+      vaccinesEn: vaccinesEn ?? this.vaccinesEn,
+      label: label ?? this.label,
+      labelEn: labelEn ?? this.labelEn,
+      dueDate: dueDate ?? this.dueDate,
+      dueDateFormatted: dueDateFormatted ?? this.dueDateFormatted,
+      isTaken: isTaken ?? this.isTaken,
+      isDisabled: isDisabled ?? this.isDisabled,
+      missedSinceDays: missedSinceDays ?? this.missedSinceDays,
+      completedDate: completedDate ?? this.completedDate,
+      completedDateFormatted: completedDateFormatted ?? this.completedDateFormatted,
+    );
+  }
+
   factory VaccinationCardDto.fromJson(Map<String, dynamic> json) {
     return VaccinationCardDto(
       milestoneId: json['milestoneId'] as int,
@@ -88,6 +122,24 @@ class MainVaccinationSectionDto {
     required this.vaccinations,
   });
 
+  MainVaccinationSectionDto copyWith({
+    int? allCount,
+    int? currentCount,
+    int? missedCount,
+    int? upcomingCount,
+    int? doneCount,
+    List<VaccinationCardDto>? vaccinations,
+  }) {
+    return MainVaccinationSectionDto(
+      allCount: allCount ?? this.allCount,
+      currentCount: currentCount ?? this.currentCount,
+      missedCount: missedCount ?? this.missedCount,
+      upcomingCount: upcomingCount ?? this.upcomingCount,
+      doneCount: doneCount ?? this.doneCount,
+      vaccinations: vaccinations ?? this.vaccinations,
+    );
+  }
+
   factory MainVaccinationSectionDto.fromJson(Map<String, dynamic> json) {
     final list = (json['vaccinations'] as List<dynamic>? ?? [])
         .map((e) => VaccinationCardDto.fromJson(e as Map<String, dynamic>))
@@ -119,6 +171,22 @@ class AdditionalVaccinationSectionDto {
     required this.doneCount,
     required this.vaccinations,
   });
+
+  AdditionalVaccinationSectionDto copyWith({
+    bool? isAvailable,
+    int? allCount,
+    int? upcomingCount,
+    int? doneCount,
+    List<VaccinationCardDto>? vaccinations,
+  }) {
+    return AdditionalVaccinationSectionDto(
+      isAvailable: isAvailable ?? this.isAvailable,
+      allCount: allCount ?? this.allCount,
+      upcomingCount: upcomingCount ?? this.upcomingCount,
+      doneCount: doneCount ?? this.doneCount,
+      vaccinations: vaccinations ?? this.vaccinations,
+    );
+  }
 
   factory AdditionalVaccinationSectionDto.fromJson(Map<String, dynamic> json) {
     final list = (json['vaccinations'] as List<dynamic>? ?? [])
@@ -156,6 +224,28 @@ class GetVaccinationFileResponseDto {
     required this.additionalVaccinations,
   });
 
+  GetVaccinationFileResponseDto copyWith({
+    String? childId,
+    String? childName,
+    String? childImageUrl,
+    int? ageMonths,
+    int? ageDays,
+    String? ageFormatted,
+    MainVaccinationSectionDto? mainVaccinations,
+    AdditionalVaccinationSectionDto? additionalVaccinations,
+  }) {
+    return GetVaccinationFileResponseDto(
+      childId: childId ?? this.childId,
+      childName: childName ?? this.childName,
+      childImageUrl: childImageUrl ?? this.childImageUrl,
+      ageMonths: ageMonths ?? this.ageMonths,
+      ageDays: ageDays ?? this.ageDays,
+      ageFormatted: ageFormatted ?? this.ageFormatted,
+      mainVaccinations: mainVaccinations ?? this.mainVaccinations,
+      additionalVaccinations: additionalVaccinations ?? this.additionalVaccinations,
+    );
+  }
+
   factory GetVaccinationFileResponseDto.fromJson(Map<String, dynamic> json) {
     return GetVaccinationFileResponseDto(
       childId: json['childId'] as String,
@@ -169,5 +259,25 @@ class GetVaccinationFileResponseDto {
       additionalVaccinations: AdditionalVaccinationSectionDto.fromJson(
           json['additionalVaccinations'] as Map<String, dynamic>),
     );
+  }
+}
+
+class ToggleVaccinationRequestDto {
+  final String childId;
+  final int milestoneId;
+  final bool isTaken;
+
+  const ToggleVaccinationRequestDto({
+    required this.childId,
+    required this.milestoneId,
+    required this.isTaken,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'childId': childId,
+      'milestoneId': milestoneId,
+      'isTaken': isTaken,
+    };
   }
 }

@@ -1430,6 +1430,59 @@ class AuthService {
     }
   }
 
+  /// تغيير حالة التطعيم (تم / لم يتم)
+  /// POST /api/Vaccination/file/toggle
+  /// Requires parent JWT token.
+  Future<(bool success, String message)> toggleVaccination({
+    required String childId,
+    required int milestoneId,
+    required bool isTaken,
+  }) async {
+    final String apiUrl = '$_apiBaseUrl/Vaccination/file/toggle';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.');
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'childId': childId,
+          'milestoneId': milestoneId,
+          'isTaken': isTaken,
+        }),
+      );
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        return (
+          true,
+          (responseBody['message'] ?? "تم تحديث حالة التطعيم بنجاح").toString()
+        );
+      } else {
+        String errorMsg = "فشل تحديث حالة التطعيم";
+        if (responseBody['errors'] != null &&
+            (responseBody['errors'] as List).isNotEmpty) {
+          errorMsg = (responseBody['errors'] as List).first.toString();
+        } else if (responseBody['message'] != null) {
+          errorMsg = responseBody['message'].toString();
+        }
+        return (false, errorMsg);
+      }
+    } catch (e) {
+      print('Connection Error in toggleVaccination: $e');
+      return (false, 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
+    }
+  }
+
   /// جلب بيانات استبيان التطعيمات للطفل
   /// GET /api/Vaccination/survey/{childId}
   /// Requires parent JWT token

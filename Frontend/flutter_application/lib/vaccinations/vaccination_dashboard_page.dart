@@ -58,6 +58,9 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
   // ── API data ─────────────────────────────────
   GetVaccinationFileResponseDto? _data;
 
+  // ── Toggling State ───────────────────────────
+  final Set<int> _togglingMilestones = {};
+
   // Prevents route args from overwriting a manually-selected child
   // on subsequent didChangeDependencies calls (e.g. after provider rebuilds).
   bool _argsLoaded = false;
@@ -143,6 +146,88 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
         _errorMessage = errorMsg ?? 'حدث خطأ في تحميل البيانات';
       });
     }
+  }
+
+  // ─────────────────────────────────────────────
+  // Optimistic Toggle Logic
+  // ─────────────────────────────────────────────
+  Future<void> _onToggleVaccination(VaccinationCardDto item, bool newValue) async {
+    if (_togglingMilestones.contains(item.milestoneId)) return;
+
+    setState(() {
+      _togglingMilestones.add(item.milestoneId);
+      _updateVaccinationInTree(item.milestoneId, newValue);
+    });
+
+    final (success, message) = await AuthService().toggleVaccination(
+      childId: _childId!,
+      milestoneId: item.milestoneId,
+      isTaken: newValue,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _togglingMilestones.remove(item.milestoneId);
+    });
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message, style: const TextStyle(fontFamily: _kFont)),
+          backgroundColor: const Color(0xFF00B050),
+        ),
+      );
+      // Background reload to update filters/chips properly
+      _loadDataBackground();
+    } else {
+      // Rollback
+      setState(() {
+        _updateVaccinationInTree(item.milestoneId, !newValue);
+      });
+      // Show error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message, style: const TextStyle(fontFamily: _kFont)),
+          backgroundColor: const Color(0xFFFF0B0B),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  void _updateVaccinationInTree(int milestoneId, bool isTaken) {
+    if (_data == null) return;
+
+    List<VaccinationCardDto> updateList(List<VaccinationCardDto> list) {
+      return list.map((v) {
+        if (v.milestoneId == milestoneId) {
+          return v.copyWith(isTaken: isTaken);
+        }
+        return v;
+      }).toList();
+    }
+
+    _data = _data!.copyWith(
+      mainVaccinations: _data!.mainVaccinations.copyWith(
+        vaccinations: updateList(_data!.mainVaccinations.vaccinations),
+      ),
+      additionalVaccinations: _data!.additionalVaccinations.copyWith(
+        vaccinations: updateList(_data!.additionalVaccinations.vaccinations),
+      ),
+    );
+  }
+
+  Future<void> _loadDataBackground() async {
+    if (_childId == null) return;
+    final (rawData, statusCode, _) = await AuthService().getVaccinationFile(_childId!);
+    if (!mounted || statusCode != 200 || rawData == null) return;
+    try {
+      final dto = GetVaccinationFileResponseDto.fromJson(rawData);
+      setState(() {
+        _data = dto;
+      });
+    } catch (_) {}
   }
 
   // ─────────────────────────────────────────────
@@ -674,8 +759,8 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
         for (final item in sectionItems) {
           sections.add(_VaccinationCard(
             item: item,
-            onToggleChanged: (val) =>
-                setState(() {/* TODO: toggle API */}),
+            isToggling: _togglingMilestones.contains(item.milestoneId),
+            onToggleChanged: (val) => _onToggleVaccination(item, val),
           ));
           sections.add(const SizedBox(height: 12));
         }
@@ -784,10 +869,12 @@ class _EmptySection extends StatelessWidget {
 class _VaccinationCard extends StatelessWidget {
   final VaccinationCardDto item;
   final ValueChanged<bool> onToggleChanged;
+  final bool isToggling;
 
   const _VaccinationCard({
     required this.item,
     required this.onToggleChanged,
+    this.isToggling = false,
   });
 
   bool get _isDone => item.labelEn == 'Done';
@@ -970,7 +1057,7 @@ class _VaccinationCard extends StatelessWidget {
                         value: item.isTaken,
                         activeColor: const Color(0xFF00B050),
                         trackColor: const Color(0xFFE2E8F0),
-                        onChanged: item.isDisabled ? null : onToggleChanged,
+                        onChanged: (item.isDisabled || isToggling) ? null : onToggleChanged,
                       ),
                     ),
                     const SizedBox(width: 8),
