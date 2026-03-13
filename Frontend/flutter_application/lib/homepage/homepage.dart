@@ -130,6 +130,35 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+
+                  // Vaccination Home Button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: OutlinedButton.icon(
+                      onPressed: provider.isLoggingOut
+                          ? null
+                          : () {
+                              Navigator.pushNamed(context, '/kids-vaccination-home');
+                            },
+                      icon: const Icon(Icons.vaccines_rounded, color: kPrimaryColor),
+                      label: const Text(
+                        'كراسة التطعيمات',
+                        style: TextStyle(
+                          fontFamily: kFontFamily,
+                          fontSize: 18,
+                          color: kPrimaryColor,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: kPrimaryColor),
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 20),
 
                   // Logout Button

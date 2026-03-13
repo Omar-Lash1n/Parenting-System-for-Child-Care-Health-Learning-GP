@@ -5,10 +5,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:Ajial/providers/family_provider.dart';
 import 'package:Ajial/family/models/child_model.dart';
 import 'package:Ajial/api/auth_service.dart';
 import 'package:Ajial/vaccinations/models/vaccination_file_models.dart';
+import 'package:Ajial/providers/nav_bar_provider.dart';
 
 // ─────────────────────────────────────────────
 // Design Tokens
@@ -280,6 +282,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.white,
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 1),
         body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -306,10 +309,9 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {},
-          backgroundColor: _kPrimary,
-          shape: const CircleBorder(),
-          child: const Icon(Icons.info_outline_rounded,
-              color: Colors.white, size: 26),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Image.asset('images/chat info.png', width: 56, height: 56),
         ),
       ),
     );
@@ -328,14 +330,16 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
           GestureDetector(
             onTap: () => Navigator.maybePop(context),
             child: Container(
-              width: 38,
-              height: 38,
-              decoration: const BoxDecoration(
-                  color: _kPrimaryLight, shape: BoxShape.circle),
-              child: const Directionality(
-                textDirection: TextDirection.ltr,
-                child: Icon(Icons.arrow_forward_rounded,
-                    color: _kPrimary, size: 20),
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                  color: const Color(0xFFFBE8EC),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFF2D5DC), width: 1.5),
+              ),
+              child: Center(
+                child: Image.asset('images/left arrow.png',
+                    width: 20, height: 20, color: _kPrimary),
               ),
             ),
           ),
@@ -905,11 +909,11 @@ class _VaccinationCard extends StatelessWidget {
             // ── Middle Row: Dates ──────────────────────────────
             if (!_isDone) ...[
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   _buildInfoItem(
-                      Icons.vaccines_rounded, 'الموعد', item.dueDateFormatted),
-                  const SizedBox(width: 16),
+                      'images/syringe.png', 'الموعد', item.dueDateFormatted),
+                  const SizedBox(width: 48),
                   _buildInfoItem(Icons.notifications_active_outlined, 'التذكير',
                       'غير محدد'),
                 ],
@@ -942,14 +946,14 @@ class _VaccinationCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          Icon(_actionIcon, color: Colors.white, size: 16),
+                          const SizedBox(width: 4),
                           Text(_actionText,
                               style: const TextStyle(
                                   fontFamily: _kFont,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white)),
-                          const SizedBox(width: 4),
-                          Icon(_actionIcon, color: Colors.white, size: 16),
                         ],
                       ),
                     ),
@@ -960,24 +964,22 @@ class _VaccinationCard extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Transform.scale(
+                      scale: 1.1,
+                      child: CupertinoSwitch(
+                        value: item.isTaken,
+                        activeColor: const Color(0xFF00B050),
+                        trackColor: const Color(0xFFE2E8F0),
+                        onChanged: item.isDisabled ? null : onToggleChanged,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     const Text('تم؟',
                         style: TextStyle(
                             fontFamily: _kFont,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Colors.black)),
-                    const SizedBox(width: 6),
-                    Transform.scale(
-                      scale: 0.85,
-                      child: Switch(
-                        value: item.isTaken,
-                        activeColor: const Color(0xFF00B050),
-                        inactiveThumbColor: Colors.white,
-                        inactiveTrackColor: const Color(0xFFD1D5DB),
-                        onChanged: item.isDisabled ? null : onToggleChanged,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
                   ],
                 ),
 
@@ -1044,7 +1046,7 @@ class _VaccinationCard extends StatelessWidget {
             color: _badgeTextColor));
   }
 
-  Widget _buildInfoItem(IconData icon, String title, String value) {
+  Widget _buildInfoItem(dynamic iconOrImage, String title, String value) {
     return Row(
       children: [
         Container(
@@ -1054,7 +1056,9 @@ class _VaccinationCard extends StatelessWidget {
             color: _badgeBgColor,
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: _badgeTextColor, size: 18),
+          child: iconOrImage is String
+              ? Center(child: Image.asset(iconOrImage, width: 18, height: 18, color: _badgeTextColor))
+              : Icon(iconOrImage as IconData, color: _badgeTextColor, size: 18),
         ),
         const SizedBox(width: 10),
         Column(
