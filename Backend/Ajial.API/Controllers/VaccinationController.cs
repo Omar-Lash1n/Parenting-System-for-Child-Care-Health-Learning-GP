@@ -477,4 +477,84 @@ public class VaccinationController : ControllerBase
             ));
         }
     }
+
+    // ────────────────────────────────────────────
+    // 7. Toggle Vaccination
+    // ────────────────────────────────────────────
+
+    /// <summary>
+    /// تبديل حالة تطعيم واحد - Toggle a vaccination's taken status
+    /// </summary>
+    /// <remarks>
+    /// Toggles a single vaccination's IsTaken status from the vaccination file page.
+    ///
+    /// **Main vaccinations — Prerequisite chain rules:**
+    /// - Cannot mark a vaccination as taken unless its prerequisite is already taken
+    ///   (e.g., cannot take تطعيم 6 شهور before تطعيم 4 شهور)
+    /// - Cannot unmark a vaccination if a later vaccination depends on it
+    ///   (e.g., cannot remove تطعيم 4 شهور if تطعيم 6 شهور is taken)
+    ///
+    /// **Additional vaccinations — Age-gated only:**
+    /// - Can toggle freely if child's age ≥ milestone age
+    /// - Disabled if milestone age &gt; child's age
+    ///
+    /// Requires authentication — the child must belong to the logged-in parent.
+    /// </remarks>
+    /// <param name="request">بيانات التبديل - Toggle request data</param>
+    [HttpPost("file/toggle")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ToggleVaccinationResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ToggleVaccinationResponseDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<ToggleVaccinationResponseDto>), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiResponse<ToggleVaccinationResponseDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<ToggleVaccinationResponseDto>), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ToggleVaccination([FromBody] ToggleVaccinationRequestDto request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                _logger.LogWarning("Unauthorized vaccination toggle attempt - invalid user ID claim");
+                return Unauthorized(ApiResponse<ToggleVaccinationResponseDto>.FailureResponse(
+                    "غير مصرح",
+                    new List<string> { "يجب تسجيل الدخول لتعديل التطعيمات" }
+                ));
+            }
+
+            _logger.LogInformation(
+                "Vaccination toggle by parent {UserId} for child {ChildId}. Milestone: {MilestoneId}, IsTaken: {IsTaken}",
+                userId, request.ChildId, request.MilestoneId, request.IsTaken);
+
+            var result = await _vaccinationService.ToggleVaccinationAsync(request, userId);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning(
+                    "Failed to toggle vaccination for child {ChildId}, milestone {MilestoneId}. Errors: {Errors}",
+                    request.ChildId, request.MilestoneId, string.Join(", ", result.Errors));
+
+                if (result.Errors.Any(e => e.Contains("غير موجود")))
+                    return NotFound(result);
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation(
+                "Vaccination toggled for child {ChildId}. Milestone: {MilestoneId} → IsTaken: {IsTaken}",
+                request.ChildId, request.MilestoneId, result.Data?.IsTaken);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in ToggleVaccination endpoint for child {ChildId}, milestone {MilestoneId}",
+                request.ChildId, request.MilestoneId);
+            return StatusCode(500, ApiResponse<ToggleVaccinationResponseDto>.FailureResponse(
+                "حدث خطأ في الخادم",
+                new List<string> { "حدث خطأ غير متوقع أثناء تعديل حالة التطعيم" }
+            ));
+        }
+    }
 }

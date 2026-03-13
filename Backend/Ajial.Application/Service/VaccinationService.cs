@@ -866,4 +866,180 @@ public class VaccinationService : IVaccinationService
 
         return $"{date.Day} {monthName} {date.Year}";
     }
+
+    // ────────────────────────────────────────────
+    // 7. Toggle Vaccination
+    // ────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<ApiResponse<ToggleVaccinationResponseDto>> ToggleVaccinationAsync(
+        ToggleVaccinationRequestDto request, Guid parentUserId)
+    {
+        try
+        {
+            var (parent, child, error) = await ValidateParentChildAsync<ToggleVaccinationResponseDto>(request.ChildId, parentUserId);
+            if (error != null) return error;
+
+            // Guard: must complete main survey first
+            if (!child!.HasCompletedVaccinationSurvey)
+            {
+                return ApiResponse<ToggleVaccinationResponseDto>.FailureResponse(
+                    "يجب إكمال استبيان التطعيمات أولاً",
+                    new List<string> { "لا يمكن تعديل التطعيمات قبل إكمال الاستبيان الأساسي" }
+                );
+            }
+
+            // Load target milestone
+            var targetMilestone = await _unitOfWork.VaccinationMilestones.GetByIdAsync(request.MilestoneId);
+            if (targetMilestone == null || !targetMilestone.IsActive)
+            {
+                return ApiResponse<ToggleVaccinationResponseDto>.FailureResponse(
+                    "تطعيم غير موجود",
+                    new List<string> { $"التطعيم رقم {request.MilestoneId} غير موجود" }
+                );
+            }
+
+            // Calculate age
+            var (ageMonths, _) = CalculateAgeInMonthsAndDays(child.BirthDate);
+            int ageYears = ageMonths / 12;
+
+            // ── Category-specific validation ──
+            if (targetMilestone.Category == "Main")
+            {
+                // Age validation: cannot toggle a future (disabled) milestone
+                if (ageMonths < 18 && targetMilestone.AgeInMonths > ageMonths)
+                {
+                    return ApiResponse<ToggleVaccinationResponseDto>.FailureResponse(
+                        "لا يمكن تعديل تطعيم مستقبلي",
+                        new List<string> { $"لا يمكن تعديل {targetMilestone.NameAr} لأن عمر الطفل لم يصل بعد" }
+                    );
+                }
+
+                // Load all main milestones for prerequisite chain
+                var mainMilestones = (await _unitOfWork.VaccinationMilestones.FindAsync(
+                    m => m.Category == "Main" && m.IsActive
+                )).OrderBy(m => m.SortOrder).ToList();
+
+                // Load all existing records for this child's main milestones
+                var mainMilestoneIds = mainMilestones.Select(m => m.Id).ToHashSet();
+                var existingRecords = (await _unitOfWork.ChildVaccinations.FindAsync(
+                    cv => cv.ChildId == request.ChildId && mainMilestoneIds.Contains(cv.VaccinationMilestoneId)
+                )).ToDictionary(cv => cv.VaccinationMilestoneId);
+
+                if (request.IsTaken)
+                {
+                    // ── Rule 1: Cannot mark as taken if prerequisite is not taken ──
+                    var prerequisite = mainMilestones
+                        .Where(m => m.SortOrder == targetMilestone.SortOrder - 1)
+                        .FirstOrDefault();
+
+                    if (prerequisite != null)
+                    {
+                        bool prerequisiteTaken = existingRecords.TryGetValue(prerequisite.Id, out var prereqRecord)
+                            && prereqRecord.IsTaken;
+
+                        if (!prerequisiteTaken)
+                        {
+                            return ApiResponse<ToggleVaccinationResponseDto>.FailureResponse(
+                                "متطلب مسبق غير مكتمل",
+                                new List<string> { $"لا يمكن أخذ ({targetMilestone.NameAr}) قبل أخذ ({prerequisite.NameAr})" }
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    // ── Rule 2: Cannot unmark if a dependent vaccination is taken ──
+                    var dependent = mainMilestones
+                        .Where(m => m.SortOrder == targetMilestone.SortOrder + 1)
+                        .FirstOrDefault();
+
+                    if (dependent != null)
+                    {
+                        bool dependentTaken = existingRecords.TryGetValue(dependent.Id, out var depRecord)
+                            && depRecord.IsTaken;
+
+                        if (dependentTaken)
+                        {
+                            return ApiResponse<ToggleVaccinationResponseDto>.FailureResponse(
+                                "لا يمكن إزالة هذا التطعيم",
+                                new List<string> { $"لا يمكن إزالة {targetMilestone.NameAr} لأن هناك تطعيم أحدث يعتمد عليه ({dependent.NameAr})." }
+                            );
+                        }
+                    }
+                }
+            }
+            else if (targetMilestone.Category == "Additional")
+            {
+                // Age gate: child must be >= 4 years
+                if (ageYears < 4)
+                {
+                    return ApiResponse<ToggleVaccinationResponseDto>.FailureResponse(
+                        "التطعيمات الإضافية غير متاحة",
+                        new List<string> { "التطعيمات الإضافية تظهر فقط للأطفال الذين بلغوا أربع سنوات فأكثر" }
+                    );
+                }
+
+                // Cannot toggle a disabled (future) additional milestone
+                int milestoneAgeYears = targetMilestone.AgeInMonths / 12;
+                if (milestoneAgeYears > ageYears)
+                {
+                    return ApiResponse<ToggleVaccinationResponseDto>.FailureResponse(
+                        "لا يمكن تعديل تطعيم مستقبلي",
+                        new List<string> { $"لا يمكن تعديل {targetMilestone.NameAr} لأن عمر الطفل لم يصل بعد" }
+                    );
+                }
+            }
+
+            // ── Upsert the record ──
+            var now = DateTime.UtcNow;
+            var existingRecord = await _unitOfWork.ChildVaccinations.GetFirstOrDefaultAsync(
+                cv => cv.ChildId == request.ChildId && cv.VaccinationMilestoneId == request.MilestoneId
+            );
+
+            if (existingRecord != null)
+            {
+                existingRecord.IsTaken = request.IsTaken;
+                existingRecord.UpdatedAt = now;
+                await _unitOfWork.ChildVaccinations.UpdateAsync(existingRecord);
+            }
+            else
+            {
+                var newRecord = new ChildVaccination
+                {
+                    Id = Guid.NewGuid(),
+                    ChildId = request.ChildId,
+                    VaccinationMilestoneId = request.MilestoneId,
+                    IsTaken = request.IsTaken,
+                    RecordedAt = now,
+                    UpdatedAt = now
+                };
+                await _unitOfWork.ChildVaccinations.AddAsync(newRecord);
+            }
+
+            await _unitOfWork.SaveAsync();
+
+            var actionText = request.IsTaken ? "تم تسجيل" : "تم إلغاء تسجيل";
+            var response = new ToggleVaccinationResponseDto
+            {
+                ChildId = request.ChildId,
+                MilestoneId = request.MilestoneId,
+                IsTaken = request.IsTaken,
+                MilestoneNameAr = targetMilestone.NameAr,
+                Message = $"{actionText} {targetMilestone.NameAr} بنجاح"
+            };
+
+            return ApiResponse<ToggleVaccinationResponseDto>.SuccessResponse(
+                response,
+                $"{actionText} {targetMilestone.NameAr}"
+            );
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ToggleVaccinationResponseDto>.FailureResponse(
+                "حدث خطأ أثناء تعديل حالة التطعيم",
+                new List<string> { ex.Message }
+            );
+        }
+    }
 }

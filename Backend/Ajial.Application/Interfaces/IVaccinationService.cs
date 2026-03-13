@@ -43,4 +43,11 @@ public interface IVaccinationService
     /// </summary>
     Task<ApiResponse<GetVaccinationFileResponseDto>> GetVaccinationFileAsync(
         Guid childId, Guid parentUserId);
+
+    /// <summary>
+    /// تبديل حالة تطعيم واحد - Toggle a single vaccination's taken status
+    /// مع التحقق من سلسلة المتطلبات المسبقة للتطعيمات الأساسية
+    /// </summary>
+    Task<ApiResponse<ToggleVaccinationResponseDto>> ToggleVaccinationAsync(
+        ToggleVaccinationRequestDto request, Guid parentUserId);
 }
