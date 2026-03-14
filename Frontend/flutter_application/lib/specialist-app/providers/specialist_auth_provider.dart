@@ -105,7 +105,12 @@ class SpecialistAuthProvider extends ChangeNotifier {
   String? get personalPhotoName => personalPhotoFile?.name;
 
   Future<void> pickIdFrontImage() async {
-    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 70,
+    );
     if (picked != null) {
       idFrontImageFile = picked;
       notifyListeners();
@@ -113,7 +118,12 @@ class SpecialistAuthProvider extends ChangeNotifier {
   }
 
   Future<void> pickIdBackImage() async {
-    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 70,
+    );
     if (picked != null) {
       idBackImageFile = picked;
       notifyListeners();
@@ -121,7 +131,12 @@ class SpecialistAuthProvider extends ChangeNotifier {
   }
 
   Future<void> pickPersonalPhoto() async {
-    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 70,
+    );
     if (picked != null) {
       personalPhotoFile = picked;
       notifyListeners();
@@ -156,7 +171,12 @@ class SpecialistAuthProvider extends ChangeNotifier {
   }
 
   Future<void> pickCertificateImage() async {
-    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 70,
+    );
     if (picked != null) {
       certificateImageFile = picked;
       notifyListeners();
@@ -164,7 +184,12 @@ class SpecialistAuthProvider extends ChangeNotifier {
   }
 
   Future<void> pickLicenseImage() async {
-    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 70,
+    );
     if (picked != null) {
       licenseImageFile = picked;
       notifyListeners();
@@ -172,7 +197,12 @@ class SpecialistAuthProvider extends ChangeNotifier {
   }
 
   Future<void> pickSyndicateCard() async {
-    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 70,
+    );
     if (picked != null) {
       syndicateCardFile = picked;
       notifyListeners();

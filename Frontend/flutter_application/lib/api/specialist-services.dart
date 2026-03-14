@@ -70,7 +70,7 @@ class SpecialistService {
     try {
       print("📤 Sending Specialist Registration...");
       final streamedResponse =
-          await request.send().timeout(const Duration(seconds: 30));
+          await request.send().timeout(const Duration(seconds: 120));
       final response = await http.Response.fromStream(streamedResponse);
 
       print("📥 Response Code: ${response.statusCode}");
