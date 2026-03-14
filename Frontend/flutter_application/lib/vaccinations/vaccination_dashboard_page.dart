@@ -1051,6 +1051,13 @@ class _VaccinationCard extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const Text('تم؟',
+                        style: TextStyle(
+                            fontFamily: _kFont,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black)),
+                    const SizedBox(width: 8),
                     Transform.scale(
                       scale: 1.1,
                       child: CupertinoSwitch(
@@ -1060,13 +1067,6 @@ class _VaccinationCard extends StatelessWidget {
                         onChanged: (item.isDisabled || isToggling) ? null : onToggleChanged,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Text('تم؟',
-                        style: TextStyle(
-                            fontFamily: _kFont,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black)),
                   ],
                 ),
 
