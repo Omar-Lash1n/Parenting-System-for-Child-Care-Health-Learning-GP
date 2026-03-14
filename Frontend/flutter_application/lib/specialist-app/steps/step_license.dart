@@ -21,12 +21,11 @@ class StepLicense extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 16),
-              // Step Indicator — scrolls with content
               Center(
                 child: StepIndicator(currentStep: prov.currentStep),
               ),
               const SizedBox(height: 16),
-              // Logo — bigger + black tint
+              // Logo
               ColorFiltered(
                 colorFilter: const ColorFilter.mode(
                   Colors.black,
@@ -73,8 +72,8 @@ class StepLicense extends StatelessWidget {
               buildSpecLabel('صورة شهادة التخصص*'),
               const SizedBox(height: 8),
               _buildImagePicker(
-                fileName: prov.certificateImagePath,
-                onTap: () => prov.setCertificateImage('certificate.png'),
+                fileName: prov.certificateImageName,
+                onTap: () => prov.pickCertificateImage(),
               ),
               const SizedBox(height: 16),
 
@@ -91,8 +90,8 @@ class StepLicense extends StatelessWidget {
               buildSpecLabel('صورة الترخيص المهنى*'),
               const SizedBox(height: 8),
               _buildImagePicker(
-                fileName: prov.licenseImagePath,
-                onTap: () => prov.setLicenseImage('license.png'),
+                fileName: prov.licenseImageName,
+                onTap: () => prov.pickLicenseImage(),
               ),
               const SizedBox(height: 16),
 
@@ -100,8 +99,8 @@ class StepLicense extends StatelessWidget {
               buildSpecLabel('صورة كارنيه النقابة*'),
               const SizedBox(height: 8),
               _buildImagePicker(
-                fileName: prov.syndicateFrontImagePath,
-                onTap: () => prov.setSyndicateFrontImage('syndicate_card.png'),
+                fileName: prov.syndicateCardName,
+                onTap: () => prov.pickSyndicateCard(),
               ),
               const SizedBox(height: 120),
             ],
@@ -181,7 +180,8 @@ class StepLicense extends StatelessWidget {
             color: Colors.black.withValues(alpha: 0.5),
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.only(right: 16, left: 10, top: 14, bottom: 14),
+          contentPadding:
+              const EdgeInsets.only(right: 16, left: 10, top: 14, bottom: 14),
         ),
       ),
     );
@@ -201,7 +201,6 @@ class StepLicense extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Text hint (RIGHT in RTL — first in Row)
           Expanded(
             child: Text(
               fileName ?? 'اضغط تحميل الصورة',
@@ -213,10 +212,10 @@ class StepLicense extends StatelessWidget {
                     : Colors.black.withValues(alpha: 0.5),
               ),
               textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 8),
-          // Upload button (LEFT in RTL — last in Row)
           GestureDetector(
             onTap: onTap,
             child: Container(

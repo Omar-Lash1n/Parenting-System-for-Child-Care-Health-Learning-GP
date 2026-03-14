@@ -20,12 +20,11 @@ class StepIdentity extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 16),
-              // Step Indicator — scrolls with content
               Center(
                 child: StepIndicator(currentStep: prov.currentStep),
               ),
               const SizedBox(height: 16),
-              // Logo — bigger + black tint
+              // Logo
               ColorFiltered(
                 colorFilter: const ColorFilter.mode(
                   Colors.black,
@@ -66,8 +65,8 @@ class StepIdentity extends StatelessWidget {
               buildSpecLabel('صورة بطاقة (الوجه الامامى)*'),
               const SizedBox(height: 8),
               _buildImagePicker(
-                fileName: prov.idFrontImagePath,
-                onTap: () => prov.setIdFrontImage('front_id.png'),
+                fileName: prov.idFrontImageName,
+                onTap: () => prov.pickIdFrontImage(),
               ),
               const SizedBox(height: 16),
 
@@ -75,8 +74,8 @@ class StepIdentity extends StatelessWidget {
               buildSpecLabel('صورة بطاقة (الوجه الخلفي)*'),
               const SizedBox(height: 8),
               _buildImagePicker(
-                fileName: prov.idBackImagePath,
-                onTap: () => prov.setIdBackImage('back_id.png'),
+                fileName: prov.idBackImageName,
+                onTap: () => prov.pickIdBackImage(),
               ),
               const SizedBox(height: 16),
 
@@ -84,9 +83,9 @@ class StepIdentity extends StatelessWidget {
               buildSpecLabel('صورة شخصية*'),
               const SizedBox(height: 8),
               _buildImagePicker(
-                fileName: prov.personalPhotoPath,
+                fileName: prov.personalPhotoName,
                 placeholder: '.png / .jpg',
-                onTap: () => prov.setPersonalPhoto('personal_photo.png'),
+                onTap: () => prov.pickPersonalPhoto(),
               ),
               const SizedBox(height: 120),
             ],
@@ -111,7 +110,6 @@ class StepIdentity extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Text hint (RIGHT in RTL visual — first in Row)
           Expanded(
             child: Text(
               fileName ?? placeholder,
@@ -123,10 +121,10 @@ class StepIdentity extends StatelessWidget {
                     : Colors.black.withValues(alpha: 0.5),
               ),
               textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 8),
-          // Upload button (LEFT in RTL visual — last in Row)
           GestureDetector(
             onTap: onTap,
             child: Container(

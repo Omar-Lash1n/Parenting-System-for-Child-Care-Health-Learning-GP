@@ -55,12 +55,50 @@ class _RegistrationBody extends StatelessWidget {
                       controller: prov.pageController,
                       physics: const NeverScrollableScrollPhysics(),
                       children: const [
-                        StepPersonalInfo(),   // Step 0: Personal Info
-                        StepIdentity(),       // Step 1: Identity + Personal Photo
-                        StepLicense(),        // Step 2: License + Syndicate
+                        StepPersonalInfo(),
+                        StepIdentity(),
+                        StepLicense(),
                       ],
                     ),
                   ),
+
+                  // Error message
+                  if (prov.errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFDECEE),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: const Color(0xFFBF092F).withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                prov.errorMessage!,
+                                style: const TextStyle(
+                                  fontFamily: _kFontFamily,
+                                  fontSize: 13,
+                                  color: Color(0xFFBF092F),
+                                ),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => prov.clearError(),
+                              child: const Icon(Icons.close,
+                                  size: 18, color: Color(0xFFBF092F)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
                   // Bottom buttons
                   _buildBottomButtons(context, prov),
@@ -73,12 +111,13 @@ class _RegistrationBody extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomButtons(BuildContext context, SpecialistAuthProvider prov) {
+  Widget _buildBottomButtons(
+      BuildContext context, SpecialistAuthProvider prov) {
     final isFirstStep = prov.currentStep == 0;
-    final isLastFormStep = prov.currentStep == 2; // Step 2 is last (out of 0,1,2)
+    final isLastFormStep = prov.currentStep == 2;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -182,7 +221,7 @@ class _RegistrationBody extends StatelessWidget {
   }
 }
 
-/// Standalone Success screen — completely separate from the PageView
+/// Standalone Success screen
 class SpecialistSuccessScreen extends StatelessWidget {
   const SpecialistSuccessScreen({super.key});
 

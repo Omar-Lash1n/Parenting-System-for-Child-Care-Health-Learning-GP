@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'specialist-registration.dart';
 import '../providers/specialist_auth_provider.dart';
 import '../steps/step_personal_info.dart'; // for buildSpecLabel
+import '../specialist_home.dart';
 
 const Color _kGreen = Color(0xFF01A449);
 const String _kFontFamily = 'IBM Plex Sans Arabic';
@@ -40,7 +41,7 @@ class _SpecialistLoginBody extends StatelessWidget {
                       child: Column(
                         children: [
                           const SizedBox(height: 24),
-                          // Logo — bigger + black tint
+                          // Logo
                           ColorFiltered(
                             colorFilter: const ColorFilter.mode(
                               Colors.black,
@@ -78,7 +79,7 @@ class _SpecialistLoginBody extends StatelessWidget {
                           ),
                           const SizedBox(height: 24),
 
-                          // Username label — red asterisk
+                          // Username
                           buildSpecLabel('اسم المستخدم*'),
                           const SizedBox(height: 8),
                           _buildTextField(
@@ -87,7 +88,7 @@ class _SpecialistLoginBody extends StatelessWidget {
                           ),
                           const SizedBox(height: 16),
 
-                          // Password label — red asterisk
+                          // Password
                           buildSpecLabel('كلمة المرور*'),
                           const SizedBox(height: 8),
                           _buildPasswordField(
@@ -101,6 +102,46 @@ class _SpecialistLoginBody extends StatelessWidget {
                     ),
                   ),
 
+                  // Error message
+                  if (prov.errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFDECEE),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: const Color(0xFFBF092F)
+                                  .withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                prov.errorMessage!,
+                                style: const TextStyle(
+                                  fontFamily: _kFontFamily,
+                                  fontSize: 13,
+                                  color: Color(0xFFBF092F),
+                                ),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => prov.clearError(),
+                              child: const Icon(Icons.close,
+                                  size: 18, color: Color(0xFFBF092F)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
                   // Bottom section
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -111,17 +152,21 @@ class _SpecialistLoginBody extends StatelessWidget {
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: () {
-                              // TODO: API login
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'تسجيل الدخول (قيد التطوير)',
-                                    style: TextStyle(fontFamily: _kFontFamily),
-                                  ),
-                                ),
-                              );
-                            },
+                            onPressed: prov.isLoggingIn
+                                ? null
+                                : () async {
+                                    final result = await prov.login();
+                                    if (result != null && result.success) {
+                                      if (!context.mounted) return;
+                                      // Navigate to home (static — always go regardless of status)
+                                      Navigator.of(context).pushReplacement(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const SpecialistHomePage(),
+                                        ),
+                                      );
+                                    }
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _kGreen,
                               shape: RoundedRectangleBorder(
@@ -129,15 +174,24 @@ class _SpecialistLoginBody extends StatelessWidget {
                               ),
                               elevation: 0,
                             ),
-                            child: const Text(
-                              'تسجيل الدخول',
-                              style: TextStyle(
-                                fontFamily: _kFontFamily,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white,
-                              ),
-                            ),
+                            child: prov.isLoggingIn
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    'تسجيل الدخول',
+                                    style: TextStyle(
+                                      fontFamily: _kFontFamily,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -207,7 +261,8 @@ class _SpecialistLoginBody extends StatelessWidget {
             color: Colors.black.withValues(alpha: 0.5),
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.only(right: 16, left: 10, top: 14, bottom: 14),
+          contentPadding:
+              const EdgeInsets.only(right: 16, left: 10, top: 14, bottom: 14),
         ),
       ),
     );
@@ -228,7 +283,6 @@ class _SpecialistLoginBody extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Password field (RIGHT side in RTL = first child)
           Expanded(
             child: TextField(
               textAlign: TextAlign.right,
@@ -244,11 +298,11 @@ class _SpecialistLoginBody extends StatelessWidget {
                   color: Colors.black.withValues(alpha: 0.5),
                 ),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.only(right: 16, left: 10, top: 14, bottom: 14),
+                contentPadding: const EdgeInsets.only(
+                    right: 16, left: 10, top: 14, bottom: 14),
               ),
             ),
           ),
-          // Eye icon (LEFT side in RTL = last child)
           Padding(
             padding: const EdgeInsets.only(left: 16),
             child: GestureDetector(
