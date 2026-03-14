@@ -325,6 +325,13 @@ class SpecialistAuthProvider extends ChangeNotifier {
     notifyListeners();
     return result;
   }
+  // ─── Clear login state (for non-approved users) ─────────
+  void clearLoginState() {
+    isLoggingIn = false;
+    // Remove any stored tokens since user isn't approved
+    _service.logoutSpecialist();
+    notifyListeners();
+  }
 
   // ─── Reset ─────────────────────────────────────────────────
   void resetAll() {

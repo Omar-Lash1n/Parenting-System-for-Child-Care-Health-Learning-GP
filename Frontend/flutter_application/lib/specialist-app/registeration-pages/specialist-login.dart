@@ -158,13 +158,20 @@ class _SpecialistLoginBody extends StatelessWidget {
                                     final result = await prov.login();
                                     if (result != null && result.success) {
                                       if (!context.mounted) return;
-                                      // Navigate to home (static — always go regardless of status)
-                                      Navigator.of(context).pushReplacement(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const SpecialistHomePage(),
-                                        ),
-                                      );
+                                      // Only allow Approved specialists
+                                      if (result.status == 'Approved') {
+                                        Navigator.of(context).pushReplacement(
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const SpecialistHomePage(),
+                                          ),
+                                        );
+                                      } else {
+                                        // Pending / Rejected / unknown
+                                        prov.errorMessage =
+                                            'هذا الحساب غير موجود او لم يتم قبوله بعد';
+                                        prov.clearLoginState();
+                                      }
                                     }
                                   },
                             style: ElevatedButton.styleFrom(
