@@ -7,7 +7,7 @@ import 'step_personal_info.dart'; // for buildSpecLabel
 const Color _kGreen = Color(0xFF01A449);
 const String _kFontFamily = 'IBM Plex Sans Arabic';
 
-/// Step 2: Identity Proof — Front & Back ID image pickers
+/// Step 2: Identity Proof — Front & Back ID image pickers + Personal Photo
 class StepIdentity extends StatelessWidget {
   const StepIdentity({super.key});
 
@@ -67,9 +67,7 @@ class StepIdentity extends StatelessWidget {
               const SizedBox(height: 8),
               _buildImagePicker(
                 fileName: prov.idFrontImagePath,
-                onTap: () {
-                  prov.setIdFrontImage('front_id.png');
-                },
+                onTap: () => prov.setIdFrontImage('front_id.png'),
               ),
               const SizedBox(height: 16),
 
@@ -78,9 +76,17 @@ class StepIdentity extends StatelessWidget {
               const SizedBox(height: 8),
               _buildImagePicker(
                 fileName: prov.idBackImagePath,
-                onTap: () {
-                  prov.setIdBackImage('back_id.png');
-                },
+                onTap: () => prov.setIdBackImage('back_id.png'),
+              ),
+              const SizedBox(height: 16),
+
+              // Personal Photo
+              buildSpecLabel('صورة شخصية*'),
+              const SizedBox(height: 8),
+              _buildImagePicker(
+                fileName: prov.personalPhotoPath,
+                placeholder: '.png / .jpg',
+                onTap: () => prov.setPersonalPhoto('personal_photo.png'),
               ),
               const SizedBox(height: 120),
             ],
@@ -92,6 +98,7 @@ class StepIdentity extends StatelessWidget {
 
   static Widget _buildImagePicker({
     String? fileName,
+    String placeholder = 'اضغط تحميل الصورة',
     required VoidCallback onTap,
   }) {
     return Container(
@@ -107,7 +114,7 @@ class StepIdentity extends StatelessWidget {
           // Text hint (RIGHT in RTL visual — first in Row)
           Expanded(
             child: Text(
-              fileName ?? 'اضغط تحميل الصورة',
+              fileName ?? placeholder,
               style: TextStyle(
                 fontFamily: _kFontFamily,
                 fontSize: 14,

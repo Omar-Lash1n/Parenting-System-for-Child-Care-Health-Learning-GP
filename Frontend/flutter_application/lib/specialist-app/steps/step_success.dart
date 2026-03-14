@@ -45,7 +45,7 @@ class StepSuccess extends StatelessWidget {
               width: 233,
               height: 233,
               child: Transform.rotate(
-                angle: -65 * 3.14159265 / 180, // 65° clockwise
+                angle: -222 * 3.14159265 / 180, // 65° clockwise
                 child: const Icon(Icons.send_rounded, color: _kGreen, size: 180),
               ),
             ),

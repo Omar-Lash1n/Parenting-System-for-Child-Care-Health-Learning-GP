@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 const Color _kGreen = Color(0xFF01A449);
 const String _kFontFamily = 'IBM Plex Sans Arabic';
 
-/// Reusable 4-step indicator widget for the specialist registration flow.
+/// Reusable 3-step indicator widget for the specialist registration flow.
 /// Active/completed steps show green fill; pending steps show dashed borders.
 /// Lines between completed steps are solid green; others are dashed black.
 class StepIndicator extends StatelessWidget {
-  /// 0-indexed current step (0 = step 1 active, 3 = step 4 active, 4 = success).
+  /// 0-indexed current step (0 = step 1, 1 = step 2, 2 = step 3).
   final int currentStep;
 
   const StepIndicator({super.key, required this.currentStep});
@@ -15,19 +15,16 @@ class StepIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 278,
+      width: 200,
       height: 32,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Step 1 (rightmost in RTL)
           _buildCircle(0),
           _buildLine(0),
           _buildCircle(1),
           _buildLine(1),
           _buildCircle(2),
-          _buildLine(2),
-          _buildCircle(3),
         ],
       ),
     );
@@ -99,8 +96,6 @@ class StepIndicator extends StatelessWidget {
   }
 
   Widget _buildLine(int afterStepIndex) {
-    // Line between step [afterStepIndex] and [afterStepIndex+1]
-    // Solid green if step afterStepIndex is completed, otherwise dashed black
     final isCompleted = currentStep > afterStepIndex;
 
     if (isCompleted) {

@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/specialist_auth_provider.dart';
-import '../widgets/step_indicator.dart';
 import '../steps/step_personal_info.dart';
 import '../steps/step_identity.dart';
 import '../steps/step_license.dart';
-import '../steps/step_syndicate.dart';
 import '../steps/step_success.dart';
 
 const Color _kGreen = Color(0xFF01A449);
 const String _kFontFamily = 'IBM Plex Sans Arabic';
 
-/// Specialist Registration Screen — hosts the 4-step indicator + PageView
+/// Specialist Registration Screen — hosts the 3-step PageView
 /// Success page is a separate screen navigated to after submission.
 class SpecialistRegistrationScreen extends StatelessWidget {
   const SpecialistRegistrationScreen({super.key});
@@ -39,7 +37,6 @@ class _RegistrationBody extends StatelessWidget {
             builder: (context, prov, _) {
               // When submission completes → navigate to success screen
               if (prov.submissionComplete) {
-                // Reset the flag and navigate after this frame
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   prov.submissionComplete = false;
                   Navigator.of(context).pushReplacement(
@@ -52,16 +49,15 @@ class _RegistrationBody extends StatelessWidget {
 
               return Column(
                 children: [
-                  // PageView — only 4 form steps
+                  // PageView — 3 form steps
                   Expanded(
                     child: PageView(
                       controller: prov.pageController,
                       physics: const NeverScrollableScrollPhysics(),
                       children: const [
-                        StepPersonalInfo(),
-                        StepIdentity(),
-                        StepLicense(),
-                        StepSyndicate(),
+                        StepPersonalInfo(),   // Step 0: Personal Info
+                        StepIdentity(),       // Step 1: Identity + Personal Photo
+                        StepLicense(),        // Step 2: License + Syndicate
                       ],
                     ),
                   ),
@@ -79,7 +75,7 @@ class _RegistrationBody extends StatelessWidget {
 
   Widget _buildBottomButtons(BuildContext context, SpecialistAuthProvider prov) {
     final isFirstStep = prov.currentStep == 0;
-    final isLastFormStep = prov.currentStep == 3;
+    final isLastFormStep = prov.currentStep == 2; // Step 2 is last (out of 0,1,2)
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -129,7 +125,7 @@ class _RegistrationBody extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Secondary button: Back (shown on steps 2,3,4)
+          // Secondary button: Back
           if (!isFirstStep)
             SizedBox(
               width: double.infinity,
@@ -158,7 +154,6 @@ class _RegistrationBody extends StatelessWidget {
           // Navigate to login link
           GestureDetector(
             onTap: () {
-              // Pop back to Login screen
               Navigator.of(context).pop();
             },
             child: RichText(

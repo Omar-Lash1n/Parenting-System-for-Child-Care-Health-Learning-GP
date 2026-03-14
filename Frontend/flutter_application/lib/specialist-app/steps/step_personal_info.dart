@@ -206,7 +206,7 @@ class StepPersonalInfo extends StatelessWidget {
           ),
           // Left side in RTL: Egypt flag + dropdown arrow (last child)
           Padding(
-            padding: const EdgeInsets.only(left: 10),
+            padding: const EdgeInsets.only(left: 16),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -259,7 +259,7 @@ class StepPersonalInfo extends StatelessWidget {
           ),
           // Eye icon (LEFT side in RTL = last child)
           Padding(
-            padding: const EdgeInsets.only(left: 10),
+            padding: const EdgeInsets.only(left: 16),
             child: GestureDetector(
               onTap: onToggle,
               child: Opacity(

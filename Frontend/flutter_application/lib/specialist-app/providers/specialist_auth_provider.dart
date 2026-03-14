@@ -7,7 +7,7 @@ class SpecialistAuthProvider extends ChangeNotifier {
   final PageController pageController = PageController();
   int _currentStep = 0;
   int get currentStep => _currentStep;
-  static const int totalSteps = 4; // 4 form steps only (success is a separate screen)
+  static const int totalSteps = 3; // 3 form steps (success is a separate screen)
 
   void nextStep() {
     if (_currentStep < totalSteps - 1) {

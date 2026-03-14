@@ -7,7 +7,8 @@ import 'step_personal_info.dart'; // for buildSpecLabel
 const Color _kGreen = Color(0xFF01A449);
 const String _kFontFamily = 'IBM Plex Sans Arabic';
 
-/// Step 3: Profession License — Specialty dropdown, certificate, license number, license image
+/// Step 3: Profession License + Syndicate — Combined step
+/// Contains: Specialty, Certificate, License Number, License Image, Syndicate Card
 class StepLicense extends StatelessWidget {
   const StepLicense({super.key});
 
@@ -40,7 +41,7 @@ class StepLicense extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               const Text(
-                'ترخيص مزاولة المهنة',
+                'بيانات مزاولة المهنة',
                 style: TextStyle(
                   fontFamily: _kFontFamily,
                   fontSize: 20,
@@ -92,6 +93,15 @@ class StepLicense extends StatelessWidget {
               _buildImagePicker(
                 fileName: prov.licenseImagePath,
                 onTap: () => prov.setLicenseImage('license.png'),
+              ),
+              const SizedBox(height: 16),
+
+              // Syndicate Card
+              buildSpecLabel('صورة كارنيه النقابة*'),
+              const SizedBox(height: 8),
+              _buildImagePicker(
+                fileName: prov.syndicateFrontImagePath,
+                onTap: () => prov.setSyndicateFrontImage('syndicate_card.png'),
               ),
               const SizedBox(height: 120),
             ],
@@ -171,7 +181,7 @@ class StepLicense extends StatelessWidget {
             color: Colors.black.withValues(alpha: 0.5),
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.only(right: 8, left: 10, top: 14, bottom: 14),
+          contentPadding: const EdgeInsets.only(right: 16, left: 10, top: 14, bottom: 14),
         ),
       ),
     );
