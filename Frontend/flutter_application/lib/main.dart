@@ -7,6 +7,7 @@ import 'package:Ajial/splash_screen.dart';
 import 'package:Ajial/profile/parent_profile.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
@@ -46,6 +47,7 @@ import 'package:Ajial/vaccinations/kids_vaccination_home_page.dart';
 import 'package:Ajial/vaccinations/vaccination_dashboard_page.dart';
 import 'package:Ajial/family/family_page.dart';
 
+// Background handler is only supported on mobile (Android/iOS), not on web.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -54,42 +56,52 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  // Request notification permission (iOS / Android 13+)
-  await FirebaseMessaging.instance.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-  // Register the device token with our backend
-  unawaited(VaccinationReminderService.registerDeviceToken());
 
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  // Firebase is only configured for Android in this project.
+  // Attempting to initialize on web throws an UnsupportedError.
+  if (!kIsWeb) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    print('Got a message whilst in the foreground!');
-    if (message.notification != null) {
-      print('Notification Title: ${message.notification?.title}');
-      print('Notification Body: ${message.notification?.body}');
-      
-      // Show an in-app popup (Snackbar) for foreground notifications
-      final context = navigatorKey.currentContext;
-      if (context != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${message.notification?.title}\n${message.notification?.body}',
-              style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
+    // ----- Mobile Only (Android / iOS) -----
+    // Request notification permission (Android 13+ / iOS)
+    await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    // Register the device FCM token with our backend
+    unawaited(VaccinationReminderService.registerDeviceToken());
+
+    // Handle notifications when the app is in the background/terminated
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // Handle notifications when the app is open (foreground)
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Got a message whilst in the foreground!');
+      if (message.notification != null) {
+        print('Notification Title: ${message.notification?.title}');
+        print('Notification Body: ${message.notification?.body}');
+
+        // Show an in-app Snackbar for foreground notifications
+        final context = navigatorKey.currentContext;
+        if (context != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${message.notification?.title}\n${message.notification?.body}',
+                style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
+              ),
+              duration: const Duration(seconds: 4),
+              behavior: SnackBarBehavior.floating,
             ),
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+          );
+        }
       }
-    }
-  });
+    });
+  }
+
   runApp(
     MultiProvider(
       providers: [
