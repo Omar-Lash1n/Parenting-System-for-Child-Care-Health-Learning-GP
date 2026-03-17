@@ -20,6 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<VaccinationMilestone> VaccinationMilestones { get; set; } = null!;
     public DbSet<ChildVaccination> ChildVaccinations { get; set; } = null!;
     public DbSet<Specialist> Specialists { get; set; } = null!;
+    public DbSet<VaccinationAppointment> VaccinationAppointments { get; set; } = null!;  // ✅ Vaccination Reminders
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -34,6 +35,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Username).IsRequired().HasMaxLength(50);
             entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
             entity.Property(e => e.PasswordHash).IsRequired();
+
+            // FCM Device Token (nullable — not all users have a mobile device token registered)
+            entity.Property(e => e.DeviceToken).HasMaxLength(500);
         });
         // ✅ NEW: Configure PasswordResetToken
 
@@ -285,6 +289,47 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.UserId).IsUnique();
             entity.HasIndex(e => e.PracticeLicenseNumber).IsUnique();
+        });
+
+        // ✅ VaccinationAppointment Configuration
+        modelBuilder.Entity<VaccinationAppointment>(entity =>
+        {
+            entity.HasKey(va => va.Id);
+
+            entity.Property(va => va.HealthUnit)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(va => va.AppointmentDateTime)
+                .IsRequired();
+
+            entity.Property(va => va.CreatedAt)
+                .IsRequired();
+
+            entity.Property(va => va.UpdatedAt)
+                .IsRequired();
+
+            // Relationship with Child
+            entity.HasOne(va => va.Child)
+                .WithMany()
+                .HasForeignKey(va => va.ChildId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Relationship with VaccinationMilestone
+            entity.HasOne(va => va.VaccinationMilestone)
+                .WithMany()
+                .HasForeignKey(va => va.VaccinationMilestoneId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ONE record per child per milestone (enforces upsert semantics)
+            entity.HasIndex(va => new { va.ChildId, va.VaccinationMilestoneId })
+                .IsUnique();
+
+            // Performance indexes for the background worker queries
+            entity.HasIndex(va => va.AppointmentDateTime);
+            entity.HasIndex(va => va.IsProcessedOneDayBefore);
+            entity.HasIndex(va => va.IsProcessedThreeHoursBefore);
+            entity.HasIndex(va => va.IsProcessedCustom);
         });
 
         // Seed data

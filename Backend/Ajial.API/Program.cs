@@ -13,6 +13,9 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add Azure App Services Logging Provider
+builder.Logging.AddAzureWebAppDiagnostics();
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -85,6 +88,9 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISpecialistService, SpecialistService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IVaccinationReminderService, VaccinationReminderService>(); // ✅ Vaccination Reminder Page
+builder.Services.AddScoped<IFcmService, FcmService>();                                  // ✅ Firebase Cloud Messaging
+builder.Services.AddHostedService<VaccinationReminderBackgroundWorker>();               // ✅ Reminder Background Worker
 // ✅ Infrastructure Services
 builder.Services.AddScoped<IImageService, AzureBlobImageService>(); // ✅ NEW - Image Upload to Azure
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();

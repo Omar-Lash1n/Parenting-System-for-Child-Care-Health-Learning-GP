@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# ⚠️ Firebase service account — NEVER commit this file
+**/Keys/firebase-service-account.json
+
 # dotenv files
 .env
 

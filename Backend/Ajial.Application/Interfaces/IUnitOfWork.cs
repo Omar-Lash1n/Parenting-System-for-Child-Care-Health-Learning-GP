@@ -15,6 +15,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<VaccinationMilestone> VaccinationMilestones { get; }
     IRepository<ChildVaccination> ChildVaccinations { get; }
     IRepository<Specialist> Specialists { get; }
+    IRepository<VaccinationAppointment> VaccinationAppointments { get; }  // ✅ Vaccination Reminders
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

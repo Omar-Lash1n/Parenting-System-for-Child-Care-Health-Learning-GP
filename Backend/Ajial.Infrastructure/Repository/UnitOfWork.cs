@@ -21,6 +21,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<VaccinationMilestone> VaccinationMilestones { get; private set; }
     public IRepository<ChildVaccination> ChildVaccinations { get; private set; }
     public IRepository<Specialist> Specialists { get; private set; }
+    public IRepository<VaccinationAppointment> VaccinationAppointments { get; private set; }  // ✅ Vaccination Reminders
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -36,6 +37,7 @@ public class UnitOfWork : IUnitOfWork
         VaccinationMilestones = new Repository<VaccinationMilestone>(_context);
         ChildVaccinations = new Repository<ChildVaccination>(_context);
         Specialists = new Repository<Specialist>(_context);
+        VaccinationAppointments = new Repository<VaccinationAppointment>(_context);  // ✅ Vaccination Reminders
     }
 
     public async Task<int> SaveChangesAsync()

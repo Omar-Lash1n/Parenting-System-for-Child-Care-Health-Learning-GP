@@ -12,12 +12,20 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.Logging.AzureAppServices" Version="10.0.5" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\Ajial.Application\Ajial.Application.csproj" />
         <ProjectReference Include="..\Ajial.Infrastructure\Ajial.Infrastructure.csproj" />
+    </ItemGroup>
+
+    <!-- Configure the Keys folder to be copied to the published output -->
+    <ItemGroup>
+        <None Update="Keys\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
 </Project>

@@ -11,6 +11,7 @@ import 'package:Ajial/family/models/child_model.dart';
 import 'package:Ajial/api/auth_service.dart';
 import 'package:Ajial/vaccinations/models/vaccination_file_models.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
+import 'package:Ajial/vaccinations/vaccination_reminder_page.dart';
 
 // ─────────────────────────────────────────────
 // Design Tokens
@@ -761,6 +762,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
             item: item,
             isToggling: _togglingMilestones.contains(item.milestoneId),
             onToggleChanged: (val) => _onToggleVaccination(item, val),
+            childId: _childId!,
           ));
           sections.add(const SizedBox(height: 12));
         }
@@ -870,11 +872,13 @@ class _VaccinationCard extends StatelessWidget {
   final VaccinationCardDto item;
   final ValueChanged<bool> onToggleChanged;
   final bool isToggling;
+  final String childId;
 
   const _VaccinationCard({
     required this.item,
     required this.onToggleChanged,
     this.isToggling = false,
+    required this.childId,
   });
 
   bool get _isDone => item.labelEn == 'Done';
@@ -921,6 +925,29 @@ class _VaccinationCard extends StatelessWidget {
   IconData get _actionIcon {
     if (_isMissed) return Icons.sync_rounded;
     return Icons.alarm_rounded;
+  }
+
+  DateTime get _appointmentDate {
+    return DateTime.tryParse(item.dueDate) ?? DateTime.now();
+  }
+
+  void _openReminderPage(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => VaccinationReminderPage(
+          childId: childId,
+          milestoneId: item.milestoneId,
+          vaccinationTitle: item.nameAr,
+          vaccineSubtitle: item.vaccinesAr,
+          statusLabel: item.label,
+          reminderDate: _appointmentDate,
+          appointmentDate: _appointmentDate,
+          statusColor: _badgeTextColor,
+          statusBackgroundColor: _badgeBgColor,
+          accentColor: _borderColor,
+        ),
+      ),
+    );
   }
 
   @override
@@ -1022,7 +1049,7 @@ class _VaccinationCard extends StatelessWidget {
                 if (!_isDone) ...[
                   // Action Button
                   GestureDetector(
-                    onTap: () {}, // TODO: action
+                    onTap: () => _openReminderPage(context),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 8),

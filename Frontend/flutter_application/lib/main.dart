@@ -6,6 +6,11 @@ import 'package:Ajial/child-app/child-sign-in.dart';
 import 'package:Ajial/splash_screen.dart';
 import 'package:Ajial/profile/parent_profile.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
+import 'package:Ajial/vaccinations/vaccination_reminder_service.dart';
 
 // --- Provider Imports ---
 import 'package:provider/provider.dart';
@@ -41,8 +46,50 @@ import 'package:Ajial/vaccinations/kids_vaccination_home_page.dart';
 import 'package:Ajial/vaccinations/vaccination_dashboard_page.dart';
 import 'package:Ajial/family/family_page.dart';
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  print("Handling a background message: ${message.messageId}");
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  // Request notification permission (iOS / Android 13+)
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+  // Register the device token with our backend
+  unawaited(VaccinationReminderService.registerDeviceToken());
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    print('Got a message whilst in the foreground!');
+    if (message.notification != null) {
+      print('Notification Title: ${message.notification?.title}');
+      print('Notification Body: ${message.notification?.body}');
+      
+      // Show an in-app popup (Snackbar) for foreground notifications
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${message.notification?.title}\n${message.notification?.body}',
+              style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
+            ),
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  });
   runApp(
     MultiProvider(
       providers: [
@@ -70,12 +117,15 @@ void main() async {
   );
 }
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 class AjialApp extends StatelessWidget {
   const AjialApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       // تهيئة دعم اللغة العربية
       localizationsDelegates: const [

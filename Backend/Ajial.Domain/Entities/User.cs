@@ -1,4 +1,4 @@
-﻿namespace Ajial.Domain.Entities;
+namespace Ajial.Domain.Entities;
 
 public class User
 {
@@ -15,4 +15,7 @@ public class User
     // Email Verification
     public bool IsEmailVerified { get; set; } = false;
     public DateTime? EmailVerifiedAt { get; set; }
+
+    // FCM Device Token — updated each time the parent logs in from a mobile device
+    public string? DeviceToken { get; set; }
 }
