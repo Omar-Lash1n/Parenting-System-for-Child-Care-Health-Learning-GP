@@ -10,10 +10,11 @@ namespace Ajial.Infrastructure.Services;
 /// Background worker that runs every 60 seconds, checks the DB for due vaccination reminders,
 /// and sends FCM push notifications to the parent's registered device.
 ///
-/// Three trigger windows are checked:
+/// Four trigger windows are checked:
 ///   1. 1 day before appointment (IsProcessedOneDayBefore)
 ///   2. 3 hours before appointment (IsProcessedThreeHoursBefore)
 ///   3. Custom reminder time set by parent (IsProcessedCustom)
+///   4. At the exact appointment time (IsProcessedAtTime)
 /// </summary>
 public class VaccinationReminderBackgroundWorker : BackgroundService
 {
@@ -69,10 +70,11 @@ public class VaccinationReminderBackgroundWorker : BackgroundService
         _logger.LogInformation("🔍 [Reminder Worker] Cycle started at: {Now}", now);
         System.Diagnostics.Trace.TraceInformation($"[AZURE CONSOLE] 🔍 Run cycle at {now:HH:mm:ss}");
 
-        // 2. Query Logic: Fetch ALL push-enabled appointments that have UNPROCESSED flags
+        // 2. Query Logic: Fetch ALL push-enabled appointments that have ANY UNPROCESSED flags
         var pendingAppointments = await unitOfWork.VaccinationAppointments
             .FindAsync(va => va.IsPushEnabled && 
-                (!va.IsProcessedOneDayBefore || !va.IsProcessedThreeHoursBefore || !va.IsProcessedCustom));
+                (!va.IsProcessedOneDayBefore || !va.IsProcessedThreeHoursBefore || 
+                 !va.IsProcessedCustom || !va.IsProcessedAtTime));
 
         var appointmentList = pendingAppointments.ToList();
         _logger.LogInformation("🔍 Found {Count} pending push-enabled appointments.", appointmentList.Count);
@@ -189,6 +191,37 @@ public class VaccinationReminderBackgroundWorker : BackgroundService
                 }
             }
 
+            // ── At appointment time reminder ──────────────────────────────
+            // This ALWAYS fires when push is enabled, regardless of other toggles.
+            // Uses a one-sided window: fires only AT or AFTER the trigger time (never early).
+            if (!appointment.IsProcessedAtTime)
+            {
+                var triggerTime = appointment.AppointmentDateTime;
+                bool inWindow = IsAtOrAfterTime(now, triggerTime);
+                _logger.LogInformation("  [At Time] Trigger: {TriggerTime} | In Window? {InWindow}", triggerTime, inWindow);
+
+                if (inWindow)
+                {
+                    _logger.LogInformation("  📨 SENDING At-Time reminder to token {Token}", deviceToken);
+                    var success = await fcmService.SendPushAsync(
+                        deviceToken,
+                        title: "موعد التطعيم الآن! 💉",
+                        body: $"حان موعد تطعيم {childName} الآن - {appointment.HealthUnit}",
+                        data: new Dictionary<string, string>
+                        {
+                            { "type", "vaccination_reminder" },
+                            { "childId", appointment.ChildId.ToString() },
+                            { "milestoneId", appointment.VaccinationMilestoneId.ToString() }
+                        });
+
+                    if (success) _logger.LogInformation("  ✅ Successfully sent At-Time push.");
+                    else _logger.LogError("  ❌ Failed to send At-Time push to FCM.");
+
+                    appointment.IsProcessedAtTime = true;
+                    wasSaved = true;
+                }
+            }
+
             // Persist flag changes only if we actually sent something
             if (wasSaved)
             {
@@ -201,11 +234,22 @@ public class VaccinationReminderBackgroundWorker : BackgroundService
 
     /// <summary>
     /// Returns true if 'now' falls within [triggerTime - tolerance, triggerTime + tolerance].
-    /// This prevents missed notifications caused by the 60-second polling interval.
+    /// Used for 1-day and 3-hour reminders where approximate timing is acceptable.
     /// </summary>
     private static bool IsWithinWindow(DateTime now, DateTime triggerTime)
     {
         return now >= triggerTime - ToleranceWindow &&
+               now <= triggerTime + ToleranceWindow;
+    }
+
+    /// <summary>
+    /// Returns true if 'now' is AT or AFTER triggerTime, within a 2-minute grace window.
+    /// Used for the "at appointment time" trigger to prevent firing early.
+    /// Window: [triggerTime, triggerTime + 2min]
+    /// </summary>
+    private static bool IsAtOrAfterTime(DateTime now, DateTime triggerTime)
+    {
+        return now >= triggerTime &&
                now <= triggerTime + ToleranceWindow;
     }
 }

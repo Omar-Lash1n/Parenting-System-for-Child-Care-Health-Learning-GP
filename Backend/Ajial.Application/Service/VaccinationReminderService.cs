@@ -159,6 +159,7 @@ public class VaccinationReminderService : IVaccinationReminderService
                     IsProcessedOneDayBefore = false,
                     IsProcessedThreeHoursBefore = false,
                     IsProcessedCustom = false,
+                    IsProcessedAtTime = false,
                     CreatedAt = now,
                     UpdatedAt = now
                 };
@@ -189,6 +190,7 @@ public class VaccinationReminderService : IVaccinationReminderService
                 existing.IsProcessedOneDayBefore = false;
                 existing.IsProcessedThreeHoursBefore = false;
                 existing.IsProcessedCustom = false;
+                existing.IsProcessedAtTime = false;
                 existing.UpdatedAt = now;
 
                 await _unitOfWork.VaccinationAppointments.UpdateAsync(existing);

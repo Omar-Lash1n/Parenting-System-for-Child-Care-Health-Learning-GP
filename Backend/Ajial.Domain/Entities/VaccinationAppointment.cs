@@ -52,6 +52,9 @@ public class VaccinationAppointment
     /// <summary>Has the custom-time push already been sent?</summary>
     public bool IsProcessedCustom { get; set; } = false;
 
+    /// <summary>Has the at-appointment-time push already been sent?</summary>
+    public bool IsProcessedAtTime { get; set; } = false;
+
     // ── Audit ─────────────────────────────────────────────────
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

@@ -330,6 +330,7 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(va => va.IsProcessedOneDayBefore);
             entity.HasIndex(va => va.IsProcessedThreeHoursBefore);
             entity.HasIndex(va => va.IsProcessedCustom);
+            entity.HasIndex(va => va.IsProcessedAtTime);
         });
 
         // Seed data

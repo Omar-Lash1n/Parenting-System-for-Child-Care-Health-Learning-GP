@@ -9,6 +9,12 @@
 # dotenv files
 .env
 
+# AI Agent Documentation (auto-generated)
+Agent/AI_AGENT_GUIDE_README.md
+Agent/PROJECT_OVERVIEW.md
+Agent/DOMAIN_ENTITIES.md
+Agent/API_ENDPOINTS.md
+
 # User-specific files
 *.rsuser
 *.suo
