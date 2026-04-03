@@ -6,12 +6,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:Ajial/providers/family_provider.dart';
 import 'package:Ajial/family/models/child_model.dart';
 import 'package:Ajial/api/auth_service.dart';
 import 'package:Ajial/vaccinations/models/vaccination_file_models.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
 import 'package:Ajial/vaccinations/vaccination_reminder_page.dart';
+import 'package:Ajial/vaccinations/vaccination_reminder_service.dart';
 
 // ─────────────────────────────────────────────
 // Design Tokens
@@ -868,7 +870,7 @@ class _EmptySection extends StatelessWidget {
 // ─────────────────────────────────────────────
 // Vaccination Card
 // ─────────────────────────────────────────────
-class _VaccinationCard extends StatelessWidget {
+class _VaccinationCard extends StatefulWidget {
   final VaccinationCardDto item;
   final ValueChanged<bool> onToggleChanged;
   final bool isToggling;
@@ -881,19 +883,49 @@ class _VaccinationCard extends StatelessWidget {
     required this.childId,
   });
 
+  @override
+  State<_VaccinationCard> createState() => _VaccinationCardState();
+}
+
+class _VaccinationCardState extends State<_VaccinationCard> {
+  String? _savedReminderDate; // null means not yet fetched or not set
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReminderDate();
+  }
+
+  Future<void> _fetchReminderDate() async {
+    final data = await VaccinationReminderService.getReminderSettings(
+        widget.childId, widget.item.milestoneId);
+    if (!mounted) return;
+    if (data != null && data['appointmentDate'] != null) {
+      final parsed = DateTime.tryParse(data['appointmentDate'].toString());
+      if (parsed != null) {
+        setState(() {
+          _savedReminderDate = DateFormat('d MMMM yyyy', 'ar').format(parsed);
+        });
+        return;
+      }
+    }
+    if (mounted) setState(() => _savedReminderDate = null);
+  }
+
+  VaccinationCardDto get item => widget.item;
   bool get _isDone => item.labelEn == 'Done';
   bool get _isMissed => item.labelEn == 'Missed';
   bool get _isCurrent => item.labelEn == 'Current';
 
   Color get _borderColor {
-    if (_isMissed) return const Color(0xFFFF0B0B); // Bright red
-    if (_isDone) return const Color(0xFF00B050); // Green
-    if (_isCurrent) return const Color(0xFFFF8A00); // Orange
-    return _kPrimary; // Dark red for Upcoming
+    if (_isMissed) return const Color(0xFFFF0B0B);
+    if (_isDone) return const Color(0xFF00B050);
+    if (_isCurrent) return const Color(0xFFFF8A00);
+    return _kPrimary;
   }
 
   Color get _bgColor {
-    if (_isMissed) return const Color(0xFFFFF7F7); // Very light red
+    if (_isMissed) return const Color(0xFFFFF7F7);
     return Colors.white;
   }
 
@@ -906,14 +938,14 @@ class _VaccinationCard extends StatelessWidget {
     if (_isMissed) return const Color(0xFFFFE5E5);
     if (_isDone) return const Color(0xFFE5F7ED);
     if (_isCurrent) return const Color(0xFFFFF3E0);
-    return const Color(0xFFFBE8EC); // Upcoming -> light primary
+    return const Color(0xFFFBE8EC);
   }
 
   Color get _badgeTextColor {
     if (_isMissed) return const Color(0xFFFF0B0B);
     if (_isDone) return const Color(0xFF00B050);
     if (_isCurrent) return const Color(0xFFFF8A00);
-    return _kPrimary; // Upcoming
+    return _kPrimary;
   }
 
   String get _actionText {
@@ -927,15 +959,14 @@ class _VaccinationCard extends StatelessWidget {
     return Icons.alarm_rounded;
   }
 
-  DateTime get _appointmentDate {
-    return DateTime.tryParse(item.dueDate) ?? DateTime.now();
-  }
+  DateTime get _appointmentDate =>
+      DateTime.tryParse(item.dueDate) ?? DateTime.now();
 
-  void _openReminderPage(BuildContext context) {
-    Navigator.of(context).push(
+  Future<void> _openReminderPage() async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => VaccinationReminderPage(
-          childId: childId,
+          childId: widget.childId,
           milestoneId: item.milestoneId,
           vaccinationTitle: item.nameAr,
           vaccineSubtitle: item.vaccinesAr,
@@ -948,6 +979,8 @@ class _VaccinationCard extends StatelessWidget {
         ),
       ),
     );
+    // Refresh the reminder date shown on the card
+    if (mounted) _fetchReminderDate();
   }
 
   @override
@@ -1029,7 +1062,7 @@ class _VaccinationCard extends StatelessWidget {
                       'images/syringe.png', 'الموعد', item.dueDateFormatted),
                   const SizedBox(width: 48),
                   _buildInfoItem(Icons.notifications_active_outlined, 'التذكير',
-                      'غير محدد'),
+                      _savedReminderDate ?? 'غير محدد'),
                 ],
               ),
               const Padding(
@@ -1049,7 +1082,7 @@ class _VaccinationCard extends StatelessWidget {
                 if (!_isDone) ...[
                   // Action Button
                   GestureDetector(
-                    onTap: () => _openReminderPage(context),
+                    onTap: _openReminderPage,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 8),
@@ -1091,7 +1124,7 @@ class _VaccinationCard extends StatelessWidget {
                         value: item.isTaken,
                         activeColor: const Color(0xFF00B050),
                         trackColor: const Color(0xFFE2E8F0),
-                        onChanged: (item.isDisabled || isToggling) ? null : onToggleChanged,
+                        onChanged: (item.isDisabled || widget.isToggling) ? null : widget.onToggleChanged,
                       ),
                     ),
                   ],

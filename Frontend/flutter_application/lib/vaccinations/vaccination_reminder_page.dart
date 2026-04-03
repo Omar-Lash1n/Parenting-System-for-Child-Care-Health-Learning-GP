@@ -62,7 +62,10 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
   @override
   void initState() {
     super.initState();
-    selectedDate = widget.appointmentDate;
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    final apptOnly = DateTime(widget.appointmentDate.year, widget.appointmentDate.month, widget.appointmentDate.day);
+    selectedDate = apptOnly.isBefore(todayOnly) ? todayOnly : apptOnly;
     hospitalName = 'الوحدة الصحية بسوهاج';
     appointmentTime = const TimeOfDay(hour: 10, minute: 0);
     customReminderTime = const TimeOfDay(hour: 10, minute: 0);
@@ -220,15 +223,42 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
     }
   }
 
-  List<DateTime> _buildVisibleDates() {
-    return List<DateTime>.generate(
-      7,
-      (index) => DateTime(
-        selectedDate.year,
-        selectedDate.month,
-        selectedDate.day - 3 + index,
-      ),
+
+  Future<void> _pickDateFromCalendar() async {
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate.isBefore(todayOnly) ? todayOnly : selectedDate,
+      firstDate: todayOnly,
+      lastDate: todayOnly.add(const Duration(days: 365 * 5)),
+      locale: const Locale('ar'),
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+      builder: (context, child) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: _kPrimaryColor,
+                onPrimary: Colors.white,
+                surface: Colors.white,
+                onSurface: _kTextPrimary,
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(foregroundColor: _kPrimaryColor),
+              ),
+            ),
+            child: child ?? const SizedBox.shrink(),
+          ),
+        );
+      },
     );
+    if (picked != null) {
+      setState(() {
+        selectedDate = picked;
+      });
+    }
   }
 
   String _monthYearLabel(DateTime date) {
@@ -239,7 +269,6 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
 
   @override
   Widget build(BuildContext context) {
-    final visibleDates = _buildVisibleDates();
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -271,7 +300,7 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         TextButton(
-                          onPressed: () {},
+                          onPressed: _pickDateFromCalendar,
                           style: TextButton.styleFrom(
                             padding: EdgeInsets.zero,
                             foregroundColor: _kPrimaryColor,
@@ -307,8 +336,7 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    CalendarStrip(
-                      dates: visibleDates,
+                    InfiniteCalendarStrip(
                       selectedDate: selectedDate,
                       onDateSelected: (date) {
                         setState(() {
@@ -473,27 +501,9 @@ class VaccinationSummaryCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusBackgroundColor,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    style: TextStyle(
-                      fontFamily: _kFontFamily,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: statusColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
@@ -518,11 +528,29 @@ class VaccinationSummaryCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusBackgroundColor,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    style: TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 _SummaryInfoItem(
                   icon: Icons.notifications_active_outlined,
@@ -564,7 +592,7 @@ class _SummaryInfoItem extends StatelessWidget {
     return Row(
       children: [
         Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
@@ -654,6 +682,151 @@ class CalendarStrip extends StatelessWidget {
                     blurRadius: isSelected ? 15 : 3,
                     offset:
                         isSelected ? const Offset(0, 10) : const Offset(0, 1),
+                    spreadRadius: isSelected ? -3 : 0,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _weekdayLabel(date),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 12,
+                      color: isSelected
+                          ? Colors.white.withValues(alpha: 0.8)
+                          : _kTextSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      fontFamily: _kFontFamily,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? Colors.white : _kTextPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.white : Colors.transparent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class InfiniteCalendarStrip extends StatefulWidget {
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onDateSelected;
+
+  const InfiniteCalendarStrip({
+    super.key,
+    required this.selectedDate,
+    required this.onDateSelected,
+  });
+
+  @override
+  State<InfiniteCalendarStrip> createState() => _InfiniteCalendarStripState();
+}
+
+class _InfiniteCalendarStripState extends State<InfiniteCalendarStrip> {
+  static const int _totalDays = 365 * 5; // 5 years ahead
+  final ScrollController _scrollController = ScrollController();
+  final double _itemWidth = 56;
+  final double _itemSpacing = 12;
+  late DateTime _today;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _today = DateTime(now.year, now.month, now.day);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+  }
+
+  @override
+  void didUpdateWidget(InfiniteCalendarStrip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedDate != widget.selectedDate) {
+      _scrollToSelected();
+    }
+  }
+
+  void _scrollToSelected() {
+    final diff = widget.selectedDate.difference(_today).inDays;
+    if (diff < 0 || diff >= _totalDays) return;
+    final offset = diff * (_itemWidth + _itemSpacing);
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        offset.clamp(0, _scrollController.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  bool _isSelected(DateTime date) {
+    return date.year == widget.selectedDate.year &&
+        date.month == widget.selectedDate.month &&
+        date.day == widget.selectedDate.day;
+  }
+
+  String _weekdayLabel(DateTime date) {
+    return DateFormat('EEEE', 'ar').format(date);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 104,
+      child: ListView.separated(
+        controller: _scrollController,
+        scrollDirection: Axis.horizontal,
+        itemCount: _totalDays,
+        separatorBuilder: (_, __) => SizedBox(width: _itemSpacing),
+        itemBuilder: (context, index) {
+          final date = _today.add(Duration(days: index));
+          final isSelected = _isSelected(date);
+
+          return GestureDetector(
+            onTap: () => widget.onDateSelected(date),
+            child: Container(
+              width: _itemWidth,
+              height: 80,
+              decoration: BoxDecoration(
+                color: isSelected ? _kPrimaryColor : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? _kPrimaryColor : const Color(0xFFF1F5F9),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isSelected
+                        ? _kPrimaryColor.withValues(alpha: 0.2)
+                        : Colors.black.withValues(alpha: 0.1),
+                    blurRadius: isSelected ? 15 : 3,
+                    offset: isSelected ? const Offset(0, 10) : const Offset(0, 1),
                     spreadRadius: isSelected ? -3 : 0,
                   ),
                 ],
@@ -962,6 +1135,19 @@ class ToggleRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        Expanded(
+          child: Text(
+            label,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontFamily: _kFontFamily,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.black,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
         Transform.scale(
           scale: 0.86,
           child: Switch(
@@ -973,19 +1159,6 @@ class ToggleRow extends StatelessWidget {
             inactiveTrackColor: _kDisabled,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontFamily: _kFontFamily,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.black,
-            ),
           ),
         ),
       ],
@@ -1016,18 +1189,8 @@ class _SectionCard extends StatelessWidget {
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: _kFontFamily,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(width: 8),
               Container(
                 width: 40,
                 height: 40,
@@ -1036,6 +1199,16 @@ class _SectionCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(50),
                 ),
                 child: Icon(icon, color: _kPrimaryColor, size: 20),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                ),
               ),
             ],
           ),
