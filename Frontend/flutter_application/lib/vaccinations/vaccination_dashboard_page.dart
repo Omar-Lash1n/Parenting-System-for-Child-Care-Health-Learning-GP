@@ -26,8 +26,6 @@ const Color _kGreen = Color(0xFF22C55E);
 
 const String _kFont = 'IBM Plex Sans Arabic';
 
-
-
 // ─────────────────────────────────────────────
 // Page load state
 // ─────────────────────────────────────────────
@@ -154,7 +152,8 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
   // ─────────────────────────────────────────────
   // Optimistic Toggle Logic
   // ─────────────────────────────────────────────
-  Future<void> _onToggleVaccination(VaccinationCardDto item, bool newValue) async {
+  Future<void> _onToggleVaccination(
+      VaccinationCardDto item, bool newValue) async {
     if (_togglingMilestones.contains(item.milestoneId)) return;
 
     setState(() {
@@ -223,7 +222,8 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
 
   Future<void> _loadDataBackground() async {
     if (_childId == null) return;
-    final (rawData, statusCode, _) = await AuthService().getVaccinationFile(_childId!);
+    final (rawData, statusCode, _) =
+        await AuthService().getVaccinationFile(_childId!);
     if (!mounted || statusCode != 200 || rawData == null) return;
     try {
       final dto = GetVaccinationFileResponseDto.fromJson(rawData);
@@ -421,9 +421,9 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                  color: const Color(0xFFFBE8EC),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFF2D5DC), width: 1.5),
+                color: const Color(0xFFFBE8EC),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFF2D5DC), width: 1.5),
               ),
               child: Center(
                 child: Image.asset('images/left arrow.png',
@@ -449,9 +449,8 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
           // Child selector dropdown
           Consumer<FamilyProvider>(builder: (ctx, fp, _) {
             return GestureDetector(
-              onTap: fp.hasChildren
-                  ? () => _showChildSwitcher(fp.children)
-                  : null,
+              onTap:
+                  fp.hasChildren ? () => _showChildSwitcher(fp.children) : null,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -461,18 +460,18 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
                     decoration: const BoxDecoration(
                         color: Color(0xFFF0F0F0), shape: BoxShape.circle),
                     child: ClipOval(
-                      child: _childPhotoUrl != null &&
-                              _childPhotoUrl!.isNotEmpty
-                          ? Image.network(_childPhotoUrl!,
-                              fit: BoxFit.cover,
-                              width: 32,
-                              height: 32,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.person_rounded,
-                                  size: 18,
-                                  color: Color(0xFFBDBDBD)))
-                          : const Icon(Icons.person_rounded,
-                              size: 18, color: Color(0xFFBDBDBD)),
+                      child:
+                          _childPhotoUrl != null && _childPhotoUrl!.isNotEmpty
+                              ? Image.network(_childPhotoUrl!,
+                                  fit: BoxFit.cover,
+                                  width: 32,
+                                  height: 32,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                      Icons.person_rounded,
+                                      size: 18,
+                                      color: Color(0xFFBDBDBD)))
+                              : const Icon(Icons.person_rounded,
+                                  size: 18, color: Color(0xFFBDBDBD)),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -567,8 +566,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
     final int c2 = _isBasicTab ? (m?.missedCount ?? 0) : 0;
     final int c3 =
         _isBasicTab ? (m?.upcomingCount ?? 0) : (a?.upcomingCount ?? 0);
-    final int c4 =
-        _isBasicTab ? (m?.doneCount ?? 0) : (a?.doneCount ?? 0);
+    final int c4 = _isBasicTab ? (m?.doneCount ?? 0) : (a?.doneCount ?? 0);
 
     final chips = <(String label, int count)>[
       ('الكل', c0),
@@ -598,8 +596,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
             onTap: () => setState(() => _selectedFilterLabel = chip.$1),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected ? _kPrimaryLight : Colors.white,
                 borderRadius: BorderRadius.circular(50),
@@ -623,12 +620,10 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
                   ),
                   const SizedBox(width: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 1),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? _kPrimary
-                          : const Color(0xFFE2E8F0),
+                      color: isSelected ? _kPrimary : const Color(0xFFE2E8F0),
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: Text(
@@ -693,8 +688,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
     switch (_state) {
       case _LoadState.idle:
       case _LoadState.loading:
-        return const Center(
-            child: CircularProgressIndicator(color: _kPrimary));
+        return const Center(child: CircularProgressIndicator(color: _kPrimary));
 
       case _LoadState.error:
         return Center(
@@ -754,8 +748,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
 
     void addSection(
         String title, List<VaccinationCardDto> sectionItems, String emptyMsg) {
-      sections.add(_SectionHeader(
-          title: title, count: sectionItems.length));
+      sections.add(_SectionHeader(title: title, count: sectionItems.length));
       if (sectionItems.isEmpty) {
         sections.add(_EmptySection(message: emptyMsg));
       } else {
@@ -765,6 +758,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
             isToggling: _togglingMilestones.contains(item.milestoneId),
             onToggleChanged: (val) => _onToggleVaccination(item, val),
             childId: _childId!,
+            childName: _childName,
           ));
           sections.add(const SizedBox(height: 12));
         }
@@ -777,8 +771,8 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
 
     if (_isBasicTab) {
       if (showAll || activeLabel == 'الحال')
-        addSection('جرعات حالية', current,
-            'يبدو انه لا يوجد تطعيم في الوقت الحال');
+        addSection(
+            'جرعات حالية', current, 'يبدو انه لا يوجد تطعيم في الوقت الحال');
       if (showAll || activeLabel == 'الفائت')
         addSection('جرعات فائتة', missed,
             'رائع! يبدو انه لا يوجد تطعيم فائت في الوقت الحال');
@@ -794,8 +788,7 @@ class _VaccinationDashboardPageState extends State<VaccinationDashboardPage> {
         addSection('جرعات قادمة', upcoming,
             'رائع! تم اتمام جميع التطعيمات الإضافية القادمة');
       if (showAll || activeLabel == 'تم')
-        addSection('جرعات تمت', done,
-            'لا توجد تطعيمات إضافية مكتملة بعد');
+        addSection('جرعات تمت', done, 'لا توجد تطعيمات إضافية مكتملة بعد');
     }
 
     return ListView(
@@ -875,12 +868,14 @@ class _VaccinationCard extends StatefulWidget {
   final ValueChanged<bool> onToggleChanged;
   final bool isToggling;
   final String childId;
+  final String childName;
 
   const _VaccinationCard({
     required this.item,
     required this.onToggleChanged,
     this.isToggling = false,
     required this.childId,
+    this.childName = 'طفلك',
   });
 
   @override
@@ -976,6 +971,7 @@ class _VaccinationCardState extends State<_VaccinationCard> {
           statusColor: _badgeTextColor,
           statusBackgroundColor: _badgeBgColor,
           accentColor: _borderColor,
+          childName: widget.childName,
         ),
       ),
     );
@@ -1124,7 +1120,9 @@ class _VaccinationCardState extends State<_VaccinationCard> {
                         value: item.isTaken,
                         activeColor: const Color(0xFF00B050),
                         trackColor: const Color(0xFFE2E8F0),
-                        onChanged: (item.isDisabled || widget.isToggling) ? null : widget.onToggleChanged,
+                        onChanged: (item.isDisabled || widget.isToggling)
+                            ? null
+                            : widget.onToggleChanged,
                       ),
                     ),
                   ],
@@ -1177,8 +1175,7 @@ class _VaccinationCardState extends State<_VaccinationCard> {
       );
     }
     if (_isDone) {
-      return Text(
-          item.completedDateFormatted ?? item.dueDateFormatted,
+      return Text(item.completedDateFormatted ?? item.dueDateFormatted,
           style: TextStyle(
               fontFamily: _kFont,
               fontSize: 11,
@@ -1204,7 +1201,9 @@ class _VaccinationCardState extends State<_VaccinationCard> {
             shape: BoxShape.circle,
           ),
           child: iconOrImage is String
-              ? Center(child: Image.asset(iconOrImage, width: 18, height: 18, color: _badgeTextColor))
+              ? Center(
+                  child: Image.asset(iconOrImage,
+                      width: 18, height: 18, color: _badgeTextColor))
               : Icon(iconOrImage as IconData, color: _badgeTextColor, size: 18),
         ),
         const SizedBox(width: 10),
@@ -1317,8 +1316,7 @@ class _ChildSwitcherSheetState extends State<_ChildSwitcherSheet> {
                   final child = widget.children[i];
                   final isSelected = _selectedId == child.childId;
                   return GestureDetector(
-                    onTap: () =>
-                        setState(() => _selectedId = child.childId),
+                    onTap: () => setState(() => _selectedId = child.childId),
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -1341,9 +1339,8 @@ class _ChildSwitcherSheetState extends State<_ChildSwitcherSheet> {
                                       ? _kPrimary
                                       : const Color(0xFFCBD5E1),
                                   width: 2),
-                              color: isSelected
-                                  ? _kPrimary
-                                  : Colors.transparent,
+                              color:
+                                  isSelected ? _kPrimary : Colors.transparent,
                             ),
                             child: isSelected
                                 ? const Icon(Icons.circle,
@@ -1365,13 +1362,12 @@ class _ChildSwitcherSheetState extends State<_ChildSwitcherSheet> {
                                       fit: BoxFit.cover,
                                       width: 48,
                                       height: 48,
-                                      errorBuilder: (_, __, ___) =>
-                                          const Icon(Icons.person_rounded,
-                                              size: 24,
-                                              color: Color(0xFFBDBDBD)))
+                                      errorBuilder: (_, __, ___) => const Icon(
+                                          Icons.person_rounded,
+                                          size: 24,
+                                          color: Color(0xFFBDBDBD)))
                                   : const Icon(Icons.person_rounded,
-                                      size: 24,
-                                      color: Color(0xFFBDBDBD)),
+                                      size: 24, color: Color(0xFFBDBDBD)),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -1388,10 +1384,8 @@ class _ChildSwitcherSheetState extends State<_ChildSwitcherSheet> {
                                 const SizedBox(height: 2),
                                 Row(
                                   children: [
-                                    const Icon(
-                                        Icons.calendar_today_rounded,
-                                        size: 12,
-                                        color: _kGrey),
+                                    const Icon(Icons.calendar_today_rounded,
+                                        size: 12, color: _kGrey),
                                     const SizedBox(width: 4),
                                     Text(child.ageText,
                                         style: const TextStyle(

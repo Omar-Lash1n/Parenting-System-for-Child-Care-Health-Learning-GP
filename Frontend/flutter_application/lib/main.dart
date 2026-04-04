@@ -12,6 +12,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:Ajial/vaccinations/vaccination_reminder_service.dart';
+import 'package:Ajial/vaccinations/local_notification_service.dart';
+import 'package:Ajial/vaccinations/vaccination_alarm_screen.dart';
+import 'package:alarm/alarm.dart';
 
 // --- Provider Imports ---
 import 'package:provider/provider.dart';
@@ -54,6 +57,59 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("Handling a background message: ${message.messageId}");
 }
 
+/// Handles alarm ringing - navigates to the vaccination alarm screen.
+/// Called by the alarm package when an alarm triggers (works even from background/killed state).
+void _handleAlarmRinging(AlarmSettings alarmSettings) {
+  debugPrint('🔔 Alarm ringing! ID: ${alarmSettings.id}');
+  
+  // Parse the notification body to extract child info
+  // We use the notification settings to carry the payload info
+  final title = alarmSettings.notificationSettings.title;
+  final body = alarmSettings.notificationSettings.body;
+  
+  // Navigate to the alarm screen
+  navigatorKey.currentState?.push(
+    MaterialPageRoute(
+      builder: (context) => VaccinationAlarmScreen(
+        childId: '', // Will be populated from alarm context
+        milestoneId: 0,
+        childName: _extractChildNameFromBody(body),
+        healthUnit: _extractHealthUnitFromBody(body),
+        vaccinationTitle: title,
+        appointmentTime: alarmSettings.dateTime,
+        alarmId: alarmSettings.id,
+        onVaccinationCompleted: () {
+          debugPrint('Vaccination marked as completed');
+        },
+        onSetAnotherTime: () {
+          debugPrint('Set another time requested');
+        },
+      ),
+    ),
+  );
+}
+
+/// Extracts child name from alarm notification body.
+/// Body format examples:
+/// - "حان موعد تطعيم أحمد الآن - الوحدة الصحية"
+/// - "موعد تطعيم أحمد غداً في 10:00 ص - الوحدة الصحية"
+String _extractChildNameFromBody(String body) {
+  // Try to extract name between "تطعيم " and the next space/word
+  final regex = RegExp(r'تطعيم (.+?)(?:\s+الآن|\s+غداً|\s+بعد|\s+في)');
+  final match = regex.firstMatch(body);
+  return match?.group(1) ?? 'طفلك';
+}
+
+/// Extracts health unit from alarm notification body.
+/// Body format: "... - الوحدة الصحية"
+String _extractHealthUnitFromBody(String body) {
+  final dashIndex = body.lastIndexOf(' - ');
+  if (dashIndex != -1 && dashIndex + 3 < body.length) {
+    return body.substring(dashIndex + 3);
+  }
+  return '';
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -65,6 +121,12 @@ void main() async {
     );
 
     // ----- Mobile Only (Android / iOS) -----
+    // Initialize local notification/alarm service for vaccination alarms
+    // Uses the alarm package for real alarm behavior (sound, full-screen intent)
+    await LocalNotificationService().initialize(
+      onRing: _handleAlarmRinging,
+    );
+
     // Request notification permission (Android 13+ / iOS)
     await FirebaseMessaging.instance.requestPermission(
       alert: true,
@@ -154,8 +216,7 @@ class AjialApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
 
-      initialRoute:
-          '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
+      initialRoute: '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
       routes: {
         '/splash': (context) => SplashScreen(),
         '/login': (context) => const LoginScreen(),

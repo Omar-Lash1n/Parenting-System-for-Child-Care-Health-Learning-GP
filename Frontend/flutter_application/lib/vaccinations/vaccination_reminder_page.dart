@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'vaccination_reminder_service.dart';
+import 'local_notification_service.dart';
 
 const Color _kPrimaryColor = Color(0xFFBF092F);
 const Color _kPrimaryLight = Color(0x0DBF092F);
@@ -23,6 +24,7 @@ class VaccinationReminderPage extends StatefulWidget {
   final Color? accentColor;
   final String childId;
   final int milestoneId;
+  final String childName;
 
   const VaccinationReminderPage({
     super.key,
@@ -36,6 +38,7 @@ class VaccinationReminderPage extends StatefulWidget {
     this.accentColor,
     required this.childId,
     required this.milestoneId,
+    this.childName = 'طفلك',
   });
 
   @override
@@ -64,7 +67,8 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
     super.initState();
     final today = DateTime.now();
     final todayOnly = DateTime(today.year, today.month, today.day);
-    final apptOnly = DateTime(widget.appointmentDate.year, widget.appointmentDate.month, widget.appointmentDate.day);
+    final apptOnly = DateTime(widget.appointmentDate.year,
+        widget.appointmentDate.month, widget.appointmentDate.day);
     selectedDate = apptOnly.isBefore(todayOnly) ? todayOnly : apptOnly;
     hospitalName = 'الوحدة الصحية بسوهاج';
     appointmentTime = const TimeOfDay(hour: 10, minute: 0);
@@ -99,8 +103,10 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
         }
 
         reminderDayBefore = data['notifyOneDayBefore'] ?? reminderDayBefore;
-        reminder3HoursBefore = data['notifyThreeHoursBefore'] ?? reminder3HoursBefore;
-        customReminderEnabled = data['customReminderEnabled'] ?? customReminderEnabled;
+        reminder3HoursBefore =
+            data['notifyThreeHoursBefore'] ?? reminder3HoursBefore;
+        customReminderEnabled =
+            data['customReminderEnabled'] ?? customReminderEnabled;
         alarmEnabled = data['isAlarmEnabled'] ?? alarmEnabled;
         notificationEnabled = data['isPushEnabled'] ?? notificationEnabled;
 
@@ -133,8 +139,12 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
 
     String? customDateTimeStr;
     if (customReminderEnabled && customReminderTime != null) {
-      final customDt = DateTime(selectedDate.year, selectedDate.month,
-          selectedDate.day, customReminderTime!.hour, customReminderTime!.minute);
+      final customDt = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          customReminderTime!.hour,
+          customReminderTime!.minute);
       customDateTimeStr = customDt.toUtc().toIso8601String();
     }
 
@@ -163,9 +173,99 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
+
+      // Handle local alarm scheduling based on toggle state
       if (success) {
+        await _handleLocalAlarmScheduling();
         Navigator.pop(context);
       }
+    }
+  }
+
+  /// Schedules or cancels local alarms based on the alarm toggle state.
+  Future<void> _handleLocalAlarmScheduling() async {
+    final notificationService = LocalNotificationService();
+
+    // Check permissions first
+    final permissions = await notificationService.checkPermissions();
+    debugPrint('📋 Permission check before scheduling:');
+    debugPrint(
+        '   Notifications enabled: ${permissions['notificationsEnabled']}');
+    debugPrint('   Exact alarms allowed: ${permissions['exactAlarmsAllowed']}');
+
+    if (permissions['notificationsEnabled'] == false) {
+      debugPrint('⚠️ Cannot schedule alarms - notifications not enabled');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'يرجى تفعيل الإشعارات من إعدادات الجهاز لتلقي تنبيهات التطعيم',
+              style: TextStyle(fontFamily: _kFontFamily),
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (alarmEnabled) {
+      // Build the appointment DateTime
+      final apptDateTime = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        appointmentTime?.hour ?? 10,
+        appointmentTime?.minute ?? 0,
+      );
+
+      debugPrint('📅 Scheduling alarms for:');
+      debugPrint('   Child: ${widget.childName} (${widget.childId})');
+      debugPrint('   Milestone: ${widget.milestoneId}');
+      debugPrint('   Appointment: $apptDateTime');
+      debugPrint('   Hospital: $hospitalName');
+      debugPrint('   Day before: $reminderDayBefore');
+      debugPrint('   3 hours before: $reminder3HoursBefore');
+      debugPrint('   Custom reminder: $customReminderEnabled');
+
+      // Build custom reminder DateTime if enabled
+      DateTime? customDateTime;
+      if (customReminderEnabled && customReminderTime != null) {
+        customDateTime = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          customReminderTime!.hour,
+          customReminderTime!.minute,
+        );
+        debugPrint('   Custom time: $customDateTime');
+      }
+
+      // Schedule the local alarms
+      await notificationService.scheduleVaccinationAlarms(
+        childId: widget.childId,
+        milestoneId: widget.milestoneId,
+        childName: widget.childName,
+        healthUnit: hospitalName,
+        appointmentDateTime: apptDateTime,
+        notifyOneDayBefore: reminderDayBefore,
+        notifyThreeHoursBefore: reminder3HoursBefore,
+        customReminderEnabled: customReminderEnabled,
+        customReminderDateTime: customDateTime,
+      );
+
+      // Verify scheduled alarms
+      final pending = await notificationService.getScheduledAlarms();
+      debugPrint('✅ Local alarms scheduled. Total pending: ${pending.length}');
+    } else {
+      // Cancel any existing local alarms for this reminder
+      await notificationService.cancelVaccinationAlarms(
+        childId: widget.childId,
+        milestoneId: widget.milestoneId,
+      );
+
+      debugPrint('🗑️ Local alarms cancelled for vaccination reminder');
     }
   }
 
@@ -223,7 +323,6 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
     }
   }
 
-
   Future<void> _pickDateFromCalendar() async {
     final today = DateTime.now();
     final todayOnly = DateTime(today.year, today.month, today.day);
@@ -265,11 +364,8 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
     return DateFormat('MMMM yyyy', 'ar').format(date);
   }
 
-
-
   @override
   Widget build(BuildContext context) {
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -279,144 +375,148 @@ class _VaccinationReminderPageState extends State<VaccinationReminderPage> {
             children: [
               SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 72, 16, 24),
-                child: _isLoading 
-                    ? const Center(child: CircularProgressIndicator(color: _kPrimaryColor))
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: _kPrimaryColor))
                     : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    VaccinationSummaryCard(
-                      statusLabel: widget.statusLabel,
-                      title: widget.vaccinationTitle,
-                      subtitle: widget.vaccineSubtitle,
-                      reminderDate: widget.reminderDate,
-                      appointmentDate: widget.appointmentDate,
-                      statusColor: widget.statusColor ?? _kOrange,
-                      statusBackgroundColor: widget.statusBackgroundColor ??
-                          _kOrange.withValues(alpha: 0.1),
-                      accentColor: widget.accentColor ?? _kOrange,
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton(
-                          onPressed: _pickDateFromCalendar,
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            foregroundColor: _kPrimaryColor,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          VaccinationSummaryCard(
+                            statusLabel: widget.statusLabel,
+                            title: widget.vaccinationTitle,
+                            subtitle: widget.vaccineSubtitle,
+                            reminderDate: widget.reminderDate,
+                            appointmentDate: widget.appointmentDate,
+                            statusColor: widget.statusColor ?? _kOrange,
+                            statusBackgroundColor:
+                                widget.statusBackgroundColor ??
+                                    _kOrange.withValues(alpha: 0.1),
+                            accentColor: widget.accentColor ?? _kOrange,
                           ),
-                          child: const Text(
-                            'عرض التقويم',
-                            style: TextStyle(
-                              fontFamily: _kFontFamily,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          const SizedBox(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton(
+                                onPressed: _pickDateFromCalendar,
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  foregroundColor: _kPrimaryColor,
+                                ),
+                                child: const Text(
+                                  'عرض التقويم',
+                                  style: TextStyle(
+                                    fontFamily: _kFontFamily,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _monthYearLabel(selectedDate),
+                                    style: const TextStyle(
+                                      fontFamily: _kFontFamily,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: _kTextPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: Colors.black,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _monthYearLabel(selectedDate),
-                              style: const TextStyle(
-                                fontFamily: _kFontFamily,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: _kTextPrimary,
+                          const SizedBox(height: 12),
+                          InfiniteCalendarStrip(
+                            selectedDate: selectedDate,
+                            onDateSelected: (date) {
+                              setState(() {
+                                selectedDate = date;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          AppointmentDetailsCard(
+                            hospitalController: _hospitalController,
+                            appointmentTime: appointmentTime,
+                            onTimeTap: _pickAppointmentTime,
+                          ),
+                          const SizedBox(height: 24),
+                          ReminderSettingsCard(
+                            reminderDayBefore: reminderDayBefore,
+                            reminder3HoursBefore: reminder3HoursBefore,
+                            customReminderEnabled: customReminderEnabled,
+                            customReminderTime: customReminderTime,
+                            onReminderDayBeforeChanged: (value) {
+                              setState(() {
+                                reminderDayBefore = value;
+                              });
+                            },
+                            onReminder3HoursChanged: (value) {
+                              setState(() {
+                                reminder3HoursBefore = value;
+                              });
+                            },
+                            onCustomReminderChanged: (value) {
+                              setState(() {
+                                customReminderEnabled = value;
+                              });
+                            },
+                            onCustomTimeTap: _pickCustomReminderTime,
+                          ),
+                          const SizedBox(height: 24),
+                          NotificationTypeCard(
+                            alarmEnabled: alarmEnabled,
+                            notificationEnabled: notificationEnabled,
+                            onAlarmChanged: (value) {
+                              setState(() {
+                                alarmEnabled = value;
+                              });
+                            },
+                            onNotificationChanged: (value) {
+                              setState(() {
+                                notificationEnabled = value;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          PrimaryButton(
+                            label:
+                                _isSaving ? 'جاري الحفظ...' : 'حفظ الإعدادات',
+                            onPressed:
+                                _isSaving ? () {} : _saveReminderSettings,
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 50,
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                ),
+                                shape: const StadiumBorder(),
+                              ),
+                              child: const Text(
+                                'إلغاء',
+                                style: TextStyle(
+                                  fontFamily: _kFontFamily,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: Colors.black,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    InfiniteCalendarStrip(
-                      selectedDate: selectedDate,
-                      onDateSelected: (date) {
-                        setState(() {
-                          selectedDate = date;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    AppointmentDetailsCard(
-                      hospitalController: _hospitalController,
-                      appointmentTime: appointmentTime,
-                      onTimeTap: _pickAppointmentTime,
-                    ),
-                    const SizedBox(height: 24),
-                    ReminderSettingsCard(
-                      reminderDayBefore: reminderDayBefore,
-                      reminder3HoursBefore: reminder3HoursBefore,
-                      customReminderEnabled: customReminderEnabled,
-                      customReminderTime: customReminderTime,
-                      onReminderDayBeforeChanged: (value) {
-                        setState(() {
-                          reminderDayBefore = value;
-                        });
-                      },
-                      onReminder3HoursChanged: (value) {
-                        setState(() {
-                          reminder3HoursBefore = value;
-                        });
-                      },
-                      onCustomReminderChanged: (value) {
-                        setState(() {
-                          customReminderEnabled = value;
-                        });
-                      },
-                      onCustomTimeTap: _pickCustomReminderTime,
-                    ),
-                    const SizedBox(height: 24),
-                    NotificationTypeCard(
-                      alarmEnabled: alarmEnabled,
-                      notificationEnabled: notificationEnabled,
-                      onAlarmChanged: (value) {
-                        setState(() {
-                          alarmEnabled = value;
-                        });
-                      },
-                      onNotificationChanged: (value) {
-                        setState(() {
-                          notificationEnabled = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    PrimaryButton(
-                      label: _isSaving ? 'جاري الحفظ...' : 'حفظ الإعدادات',
-                      onPressed: _isSaving ? () {} : _saveReminderSettings,
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 50,
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: Colors.black.withValues(alpha: 0.5),
                           ),
-                          shape: const StadiumBorder(),
-                        ),
-                        child: const Text(
-                          'إلغاء',
-                          style: TextStyle(
-                            fontFamily: _kFontFamily,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black,
-                          ),
-                        ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ),
               Positioned(
                 top: 0,
@@ -826,7 +926,8 @@ class _InfiniteCalendarStripState extends State<InfiniteCalendarStrip> {
                         ? _kPrimaryColor.withValues(alpha: 0.2)
                         : Colors.black.withValues(alpha: 0.1),
                     blurRadius: isSelected ? 15 : 3,
-                    offset: isSelected ? const Offset(0, 10) : const Offset(0, 1),
+                    offset:
+                        isSelected ? const Offset(0, 10) : const Offset(0, 1),
                     spreadRadius: isSelected ? -3 : 0,
                   ),
                 ],
@@ -934,7 +1035,8 @@ class AppointmentDetailsCard extends StatelessWidget {
                 ),
                 children: [
                   TextSpan(text: 'الوقت'),
-                  TextSpan(text: '*', style: TextStyle(color: Color(0xFFEF4444))),
+                  TextSpan(
+                      text: '*', style: TextStyle(color: Color(0xFFEF4444))),
                 ],
               ),
             ),
@@ -1247,7 +1349,8 @@ class _TimeSelectionField extends StatelessWidget {
           style: TextStyle(
             fontFamily: _kFontFamily,
             fontSize: 14,
-            color: enabled ? Colors.black : Colors.black.withValues(alpha: 0.45),
+            color:
+                enabled ? Colors.black : Colors.black.withValues(alpha: 0.45),
           ),
         ),
       ),
