@@ -49,6 +49,11 @@ import 'package:Ajial/vaccinations/vaccination_success_page.dart';
 import 'package:Ajial/vaccinations/kids_vaccination_home_page.dart';
 import 'package:Ajial/vaccinations/vaccination_dashboard_page.dart';
 import 'package:Ajial/family/family_page.dart';
+import 'package:Ajial/providers/tasks_provider.dart';
+import 'package:Ajial/tasks/tasks_welcome_page.dart';
+import 'package:Ajial/tasks/tasks_main_page.dart';
+import 'package:Ajial/tasks/tasks_done_page.dart';
+import 'package:Ajial/tasks/tasks_categories_page.dart';
 
 // Background handler is only supported on mobile (Android/iOS), not on web.
 @pragma('vm:entry-point')
@@ -185,6 +190,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ChildProfileProvider()),
         ChangeNotifierProvider(create: (_) => NavBarProvider()),
         ChangeNotifierProvider(create: (_) => ChildDataProvider()),
+        ChangeNotifierProvider(create: (_) => TasksProvider()),
       ],
       child: const AjialApp(),
     ),
@@ -234,6 +240,10 @@ class AjialApp extends StatelessWidget {
         '/kids-vaccination-home': (context) => const KidsVaccinationHomePage(),
         '/vaccination-dashboard': (context) => const VaccinationDashboardPage(),
         '/family': (context) => const FamilyPage(),
+        '/tasks-welcome': (context) => const TasksWelcomePage(),
+        '/tasks': (context) => const TasksMainPage(),
+        '/tasks-done': (context) => const TasksDonePage(),
+        '/tasks-categories': (context) => const TasksCategoriesPage(),
         '/child-profile': (context) => const MyChildProfilePage(),
         '/child-data': (context) => const ChildDataProfilePage(),
         '/child-data-form': (context) => const ChildDataProfileFormPage(),
