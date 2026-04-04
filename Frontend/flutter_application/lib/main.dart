@@ -49,6 +49,8 @@ import 'package:Ajial/family/family_page.dart';
 import 'package:Ajial/providers/tasks_provider.dart';
 import 'package:Ajial/tasks/tasks_welcome_page.dart';
 import 'package:Ajial/tasks/tasks_main_page.dart';
+import 'package:Ajial/tasks/tasks_done_page.dart';
+import 'package:Ajial/tasks/tasks_categories_page.dart';
 
 // Background handler is only supported on mobile (Android/iOS), not on web.
 @pragma('vm:entry-point')
@@ -179,6 +181,8 @@ class AjialApp extends StatelessWidget {
         '/family': (context) => const FamilyPage(),
         '/tasks-welcome': (context) => const TasksWelcomePage(),
         '/tasks': (context) => const TasksMainPage(),
+        '/tasks-done': (context) => const TasksDonePage(),
+        '/tasks-categories': (context) => const TasksCategoriesPage(),
         '/child-profile': (context) => const MyChildProfilePage(),
         '/child-data': (context) => const ChildDataProfilePage(),
         '/child-data-form': (context) => const ChildDataProfileFormPage(),

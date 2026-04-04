@@ -118,6 +118,45 @@ class TasksProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateTask(TaskModel updated) {
+    final index = _tasks.indexWhere((t) => t.id == updated.id);
+    if (index != -1) {
+      _tasks[index] = updated;
+      notifyListeners();
+    }
+  }
+
+  // ── Category helpers ──
+
+  /// Count tasks in a given category (current tab).
+  int countForCategory(String name) {
+    return _tasks.where((t) => t.category == name).length;
+  }
+
+  /// Rename an existing category and update all tasks that use it.
+  void renameCategory(String oldName, String newName) {
+    final idx = _categories.indexOf(oldName);
+    if (idx == -1 || _categories.contains(newName)) return;
+    _categories[idx] = newName;
+    for (int i = 0; i < _tasks.length; i++) {
+      if (_tasks[i].category == oldName) {
+        _tasks[i] = _tasks[i].copyWith(category: newName);
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Remove a category and reassign its tasks to "الكل".
+  void removeCategory(String name) {
+    _categories.remove(name);
+    for (int i = 0; i < _tasks.length; i++) {
+      if (_tasks[i].category == name) {
+        _tasks[i] = _tasks[i].copyWith(category: 'الكل');
+      }
+    }
+    notifyListeners();
+  }
+
   void toggleComplete(String id) {
     final task = _tasks.firstWhere((t) => t.id == id);
     task.isCompleted = !task.isCompleted;

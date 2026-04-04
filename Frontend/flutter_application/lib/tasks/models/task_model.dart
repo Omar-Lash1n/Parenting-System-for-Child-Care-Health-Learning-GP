@@ -27,6 +27,30 @@ class TaskModel {
 
   bool get isForChild => assignees.any((a) => !a.isSelf);
   bool get isForSelf  => assignees.isEmpty || assignees.any((a) => a.isSelf);
+
+  TaskModel copyWith({
+    String? id,
+    String? title,
+    String? category,
+    List<Assignee>? assignees,
+    Color? color,
+    DateTime? date,
+    TimeOfDay? time,
+    bool? isCompleted,
+  }) {
+    return TaskModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      category: category ?? this.category,
+      assignees: assignees ?? this.assignees,
+      color: color ?? this.color,
+      date: date ?? this.date,
+      time: time ?? this.time,
+      createdAt: createdAt,
+      isCompleted: isCompleted ?? this.isCompleted,
+    );
+  }
+
 }
 
 /// Represents an assignee option (self or a child).
