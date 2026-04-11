@@ -781,6 +781,20 @@ public class AuthService : IAuthService
 
             await _unitOfWork.Parents.AddAsync(parent);
 
+            // ✅ Seed default task categories for this parent
+            var defaultCategories = new[]
+            {
+                new TaskCategory { Id = Guid.NewGuid(), ParentId = parent.Id, Name = "الكل",                IsSystem = true,  CreatedAt = DateTime.Now },
+                new TaskCategory { Id = Guid.NewGuid(), ParentId = parent.Id, Name = "متطلبات المنزل",     IsSystem = false, CreatedAt = DateTime.Now },
+                new TaskCategory { Id = Guid.NewGuid(), ParentId = parent.Id, Name = "دواء",               IsSystem = false, CreatedAt = DateTime.Now },
+                new TaskCategory { Id = Guid.NewGuid(), ParentId = parent.Id, Name = "كشف",               IsSystem = false, CreatedAt = DateTime.Now },
+            };
+
+            foreach (var category in defaultCategories)
+            {
+                await _unitOfWork.TaskCategories.AddAsync(category);
+            }
+
             // ✅ Single SaveChanges - EF Core handles transaction automatically
             await _unitOfWork.SaveChangesAsync();
 

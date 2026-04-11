@@ -22,6 +22,9 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<ChildVaccination> ChildVaccinations { get; private set; }
     public IRepository<Specialist> Specialists { get; private set; }
     public IRepository<VaccinationAppointment> VaccinationAppointments { get; private set; }  // ✅ Vaccination Reminders
+    public IRepository<TaskCategory> TaskCategories { get; private set; }  // ✅ Task Feature
+    public IRepository<ParentTask> Tasks { get; private set; }             // ✅ Task Feature
+    public IRepository<TaskAssignee> TaskAssignees { get; private set; }   // ✅ Task Feature
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -38,6 +41,9 @@ public class UnitOfWork : IUnitOfWork
         ChildVaccinations = new Repository<ChildVaccination>(_context);
         Specialists = new Repository<Specialist>(_context);
         VaccinationAppointments = new Repository<VaccinationAppointment>(_context);  // ✅ Vaccination Reminders
+        TaskCategories = new Repository<TaskCategory>(_context);  // ✅ Task Feature
+        Tasks = new Repository<ParentTask>(_context);             // ✅ Task Feature
+        TaskAssignees = new Repository<TaskAssignee>(_context);   // ✅ Task Feature
     }
 
     public async Task<int> SaveChangesAsync()

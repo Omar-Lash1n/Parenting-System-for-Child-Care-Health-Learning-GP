@@ -91,6 +91,9 @@ builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IVaccinationReminderService, VaccinationReminderService>(); // ✅ Vaccination Reminder Page
 builder.Services.AddScoped<IFcmService, FcmService>();                                  // ✅ Firebase Cloud Messaging
 builder.Services.AddHostedService<VaccinationReminderBackgroundWorker>();               // ✅ Reminder Background Worker
+builder.Services.AddScoped<ITaskCategoryService, TaskCategoryService>();                // ✅ Task Categories
+builder.Services.AddScoped<ITaskService, TaskService>();                                // ✅ Task Management
+builder.Services.AddHostedService<TaskReminderBackgroundWorker>();                      // ✅ Task Reminder Worker
 // ✅ Infrastructure Services
 builder.Services.AddScoped<IImageService, AzureBlobImageService>(); // ✅ NEW - Image Upload to Azure
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();

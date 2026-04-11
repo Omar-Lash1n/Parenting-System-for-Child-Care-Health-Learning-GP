@@ -21,6 +21,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChildVaccination> ChildVaccinations { get; set; } = null!;
     public DbSet<Specialist> Specialists { get; set; } = null!;
     public DbSet<VaccinationAppointment> VaccinationAppointments { get; set; } = null!;  // ✅ Vaccination Reminders
+    public DbSet<TaskCategory> TaskCategories { get; set; } = null!;  // ✅ Task Feature
+    public DbSet<ParentTask> Tasks { get; set; } = null!;             // ✅ Task Feature
+    public DbSet<TaskAssignee> TaskAssignees { get; set; } = null!;   // ✅ Task Feature
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -331,6 +334,93 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(va => va.IsProcessedThreeHoursBefore);
             entity.HasIndex(va => va.IsProcessedCustom);
             entity.HasIndex(va => va.IsProcessedAtTime);
+        });
+
+        // ✅ TaskCategory Configuration
+        modelBuilder.Entity<TaskCategory>(entity =>
+        {
+            entity.HasKey(tc => tc.Id);
+
+            entity.Property(tc => tc.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(tc => tc.IsSystem)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(tc => tc.CreatedAt)
+                .IsRequired();
+
+            entity.HasOne(tc => tc.Parent)
+                .WithMany()
+                .HasForeignKey(tc => tc.ParentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(tc => tc.ParentId);
+        });
+
+        // ✅ ParentTask Configuration
+        modelBuilder.Entity<ParentTask>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+
+            entity.Property(t => t.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(t => t.Color)
+                .HasMaxLength(20);
+
+            entity.Property(t => t.IsCompleted)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(t => t.IsPushSent)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(t => t.IncludeParent)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(t => t.CreatedAt)
+                .IsRequired();
+
+            entity.HasOne(t => t.Parent)
+                .WithMany()
+                .HasForeignKey(t => t.ParentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(t => t.Category)
+                .WithMany(tc => tc.Tasks)
+                .HasForeignKey(t => t.CategoryId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
+
+            // Performance indexes for background worker
+            entity.HasIndex(t => t.ParentId);
+            entity.HasIndex(t => t.IsPushSent);
+            entity.HasIndex(t => t.DueDate);
+            entity.HasIndex(t => t.IsCompleted);
+        });
+
+        // ✅ TaskAssignee Configuration (composite PK join table)
+        modelBuilder.Entity<TaskAssignee>(entity =>
+        {
+            entity.HasKey(ta => new { ta.TaskId, ta.ChildId });
+
+            entity.HasOne(ta => ta.Task)
+                .WithMany(t => t.Assignees)
+                .HasForeignKey(ta => ta.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ta => ta.Child)
+                .WithMany()
+                .HasForeignKey(ta => ta.ChildId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(ta => ta.TaskId);
+            entity.HasIndex(ta => ta.ChildId);
         });
 
         // Seed data
