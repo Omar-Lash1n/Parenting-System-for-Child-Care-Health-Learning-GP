@@ -20,3 +20,10 @@ public enum SpecialistStatus
     Approved = 2,   // تمت الموافقة
     Rejected = 3    // مرفوض
 }
+
+public enum HealthUnitType
+{
+    HealthUnit = 1,          // وحدة صحية
+    Hospital = 2,            // مستشفى
+    VaccinationCenter = 3    // مركز تطعيم
+}

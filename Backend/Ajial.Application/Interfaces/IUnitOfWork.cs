@@ -19,6 +19,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<TaskCategory> TaskCategories { get; }  // ✅ Task Feature
     IRepository<ParentTask> Tasks { get; }             // ✅ Task Feature
     IRepository<TaskAssignee> TaskAssignees { get; }   // ✅ Task Feature
+    IRepository<HealthUnit> HealthUnits { get; }       // ✅ Health Unit Search Feature
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

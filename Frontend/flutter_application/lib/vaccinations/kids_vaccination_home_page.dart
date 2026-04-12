@@ -517,7 +517,7 @@ class _FeatureGrid extends StatelessWidget {
                 iconColor: _kOrange,
                 bgColor: _kOrange.withOpacity(0.05),
                 onTap: () {
-                  // TODO: navigate to vaccination centres
+                  Navigator.pushNamed(context, '/health-unit-search');
                 },
               ),
             ),

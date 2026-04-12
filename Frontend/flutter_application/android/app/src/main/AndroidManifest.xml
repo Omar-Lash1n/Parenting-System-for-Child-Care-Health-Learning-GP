@@ -11,6 +11,10 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     
+    <!-- Location permissions for health unit search -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
     <!-- Alarm package required permissions -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -42,6 +46,11 @@
         <!-- Alarm package: notification on kill service -->
         <service android:name="com.gdelataillade.alarm.services.NotificationOnKillService" />
         
+        <!-- TODO: Replace YOUR_GOOGLE_MAPS_API_KEY with your actual Google Maps API key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCQaAQjBqwq5WY8QXnX__Q0jmbHH0-NVdo"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -54,6 +54,8 @@ import 'package:Ajial/tasks/tasks_welcome_page.dart';
 import 'package:Ajial/tasks/tasks_main_page.dart';
 import 'package:Ajial/tasks/tasks_done_page.dart';
 import 'package:Ajial/tasks/tasks_categories_page.dart';
+import 'package:Ajial/providers/health_unit_provider.dart';
+import 'package:Ajial/health-units/health_unit_search_page.dart';
 
 // Background handler is only supported on mobile (Android/iOS), not on web.
 @pragma('vm:entry-point')
@@ -191,6 +193,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => NavBarProvider()),
         ChangeNotifierProvider(create: (_) => ChildDataProvider()),
         ChangeNotifierProvider(create: (_) => TasksProvider()),
+        ChangeNotifierProvider(create: (_) => HealthUnitProvider()),
       ],
       child: const AjialApp(),
     ),
@@ -247,6 +250,7 @@ class AjialApp extends StatelessWidget {
         '/child-profile': (context) => const MyChildProfilePage(),
         '/child-data': (context) => const ChildDataProfilePage(),
         '/child-data-form': (context) => const ChildDataProfileFormPage(),
+        '/health-unit-search': (context) => const HealthUnitSearchPage(),
       },
     );
   }

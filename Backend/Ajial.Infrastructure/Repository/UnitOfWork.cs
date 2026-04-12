@@ -25,6 +25,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<TaskCategory> TaskCategories { get; private set; }  // ✅ Task Feature
     public IRepository<ParentTask> Tasks { get; private set; }             // ✅ Task Feature
     public IRepository<TaskAssignee> TaskAssignees { get; private set; }   // ✅ Task Feature
+    public IRepository<HealthUnit> HealthUnits { get; private set; }       // ✅ Health Unit Search Feature
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -44,6 +45,7 @@ public class UnitOfWork : IUnitOfWork
         TaskCategories = new Repository<TaskCategory>(_context);  // ✅ Task Feature
         Tasks = new Repository<ParentTask>(_context);             // ✅ Task Feature
         TaskAssignees = new Repository<TaskAssignee>(_context);   // ✅ Task Feature
+        HealthUnits = new Repository<HealthUnit>(_context);       // ✅ Health Unit Search Feature
     }
 
     public async Task<int> SaveChangesAsync()

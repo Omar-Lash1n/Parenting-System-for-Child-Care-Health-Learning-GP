@@ -94,6 +94,7 @@ builder.Services.AddHostedService<VaccinationReminderBackgroundWorker>();       
 builder.Services.AddScoped<ITaskCategoryService, TaskCategoryService>();                // ✅ Task Categories
 builder.Services.AddScoped<ITaskService, TaskService>();                                // ✅ Task Management
 builder.Services.AddHostedService<TaskReminderBackgroundWorker>();                      // ✅ Task Reminder Worker
+builder.Services.AddScoped<IHealthUnitService, HealthUnitService>();                    // ✅ Health Unit Search
 // ✅ Infrastructure Services
 builder.Services.AddScoped<IImageService, AzureBlobImageService>(); // ✅ NEW - Image Upload to Azure
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();

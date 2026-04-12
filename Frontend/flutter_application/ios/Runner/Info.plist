@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>يريد التطبيق استخدام لموقعك الحالي لاستمرار عملية البحث</string>
 </dict>
 </plist>

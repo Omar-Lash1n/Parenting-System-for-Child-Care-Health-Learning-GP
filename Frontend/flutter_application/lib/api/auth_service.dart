@@ -1840,6 +1840,118 @@ class AuthService {
       return (false, 'خطأ في الاتصال');
     }
   }
+
+  // ============================================================
+  // ==================== Health Unit API =======================
+  // ============================================================
+
+  /// البحث عن الوحدات الصحية
+  /// GET /api/HealthUnit/search
+  Future<Map<String, dynamic>?> searchHealthUnits({
+    double? latitude,
+    double? longitude,
+    String? keyword,
+    String? type,
+    int? cityId,
+    double radiusKm = 50,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final String? token = await getToken();
+    if (token == null) {
+      print('❌ No token found for searchHealthUnits');
+      return null;
+    }
+
+    final Map<String, String> queryParams = {
+      'radiusKm': radiusKm.toString(),
+      'page': page.toString(),
+      'pageSize': pageSize.toString(),
+    };
+    if (latitude != null) queryParams['latitude'] = latitude.toString();
+    if (longitude != null) queryParams['longitude'] = longitude.toString();
+    if (keyword != null && keyword.isNotEmpty) queryParams['keyword'] = keyword;
+    if (type != null && type.isNotEmpty) queryParams['type'] = type;
+    if (cityId != null) queryParams['cityId'] = cityId.toString();
+
+    final uri = Uri.parse('$_apiBaseUrl/HealthUnit/search')
+        .replace(queryParameters: queryParams);
+
+    print('📤 searchHealthUnits: $uri');
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('📥 searchHealthUnits status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true) {
+          return responseBody;
+        }
+      }
+
+      print('❌ searchHealthUnits error: ${response.body}');
+      return null;
+    } catch (e) {
+      print('❌ searchHealthUnits exception: $e');
+      return null;
+    }
+  }
+
+  /// جلب تفاصيل وحدة صحية
+  /// GET /api/HealthUnit/{id}
+  Future<Map<String, dynamic>?> getHealthUnitDetail(
+    int id, {
+    double? latitude,
+    double? longitude,
+  }) async {
+    final String? token = await getToken();
+    if (token == null) {
+      print('❌ No token found for getHealthUnitDetail');
+      return null;
+    }
+
+    final Map<String, String> queryParams = {};
+    if (latitude != null) queryParams['latitude'] = latitude.toString();
+    if (longitude != null) queryParams['longitude'] = longitude.toString();
+
+    final uri = Uri.parse('$_apiBaseUrl/HealthUnit/$id')
+        .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+    print('📤 getHealthUnitDetail: $uri');
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('📥 getHealthUnitDetail status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return responseBody['data'] as Map<String, dynamic>;
+        }
+      }
+
+      print('❌ getHealthUnitDetail error: ${response.body}');
+      return null;
+    } catch (e) {
+      print('❌ getHealthUnitDetail exception: $e');
+      return null;
+    }
+  }
 }
 
 // ============================================================
