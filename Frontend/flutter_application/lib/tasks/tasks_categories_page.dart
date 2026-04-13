@@ -34,11 +34,21 @@ class _TasksCategoriesViewState extends State<_TasksCategoriesView> {
       builder: (_) => _CategorySheet(
         title: 'اضافة تصنيف',
         buttonLabel: 'اضف',
-        onSave: (name) {
-          context.read<TasksProvider>().addCategory(name);
-          ScaffoldMessenger.of(context).showSnackBar(
-            _buildSnackBar('تم اضافة تصنيف "$name"'),
-          );
+        onSave: (name) async {
+          try {
+            await context.read<TasksProvider>().addCategory(name);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                _buildSnackBar('تم اضافة تصنيف "$name"'),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                _buildErrorSnackBar('فشل إضافة التصنيف: ${e.toString().replaceFirst('Exception: ', '')}'),
+              );
+            }
+          }
         },
       ),
     );
@@ -53,11 +63,21 @@ class _TasksCategoriesViewState extends State<_TasksCategoriesView> {
         title: 'تحديث التصنيف',
         buttonLabel: 'حفظ',
         initialValue: current,
-        onSave: (name) {
-          context.read<TasksProvider>().renameCategory(current, name);
-          ScaffoldMessenger.of(context).showSnackBar(
-            _buildSnackBar('تم التغيير الى "$name"'),
-          );
+        onSave: (name) async {
+          try {
+            await context.read<TasksProvider>().renameCategory(current, name);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                _buildSnackBar('تم التغيير الى "$name"'),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                _buildErrorSnackBar('فشل تعديل التصنيف: ${e.toString().replaceFirst('Exception: ', '')}'),
+              );
+            }
+          }
         },
       ),
     );
@@ -70,7 +90,20 @@ class _TasksCategoriesViewState extends State<_TasksCategoriesView> {
       builder: (_) => _DeleteCategoryDialog(categoryName: name),
     );
     if (confirmed == true && mounted) {
-      context.read<TasksProvider>().removeCategory(name);
+      try {
+        await context.read<TasksProvider>().removeCategory(name);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            _buildSnackBar('تم حذف التصنيف بنجاح'),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            _buildErrorSnackBar('فشل حذف التصنيف: ${e.toString().replaceFirst('Exception: ', '')}'),
+          );
+        }
+      }
     }
   }
 
@@ -86,6 +119,35 @@ class _TasksCategoriesViewState extends State<_TasksCategoriesView> {
         textDirection: TextDirection.rtl,
         children: [
           const Icon(Icons.check, color: Colors.white, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontFamily: _kFont,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  SnackBar _buildErrorSnackBar(String message) {
+    return SnackBar(
+      backgroundColor: const Color(0xFFBF092F),
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 84),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      duration: const Duration(seconds: 3),
+      content: Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          const Icon(Icons.error_outline, color: Colors.white, size: 22),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

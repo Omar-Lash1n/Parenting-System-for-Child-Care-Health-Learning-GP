@@ -10,8 +10,14 @@ import 'package:Ajial/tasks/models/task_model.dart';
 const Color _kPrimary = Color(0xFFBF092F);
 const String _kFont = 'IBM Plex Sans Arabic';
 
-class TasksDonePage extends StatelessWidget {
+class TasksDonePage extends StatefulWidget {
   const TasksDonePage({super.key});
+
+  @override
+  State<TasksDonePage> createState() => _TasksDonePageState();
+}
+
+class _TasksDonePageState extends State<TasksDonePage> {
 
   String _monthName(int m) {
     const months = [
@@ -30,6 +36,16 @@ class TasksDonePage extends StatelessWidget {
       map.putIfAbsent(key, () => []).add(t);
     }
     return map;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<TasksProvider>().loadDoneTasks();
+      }
+    });
   }
 
   @override

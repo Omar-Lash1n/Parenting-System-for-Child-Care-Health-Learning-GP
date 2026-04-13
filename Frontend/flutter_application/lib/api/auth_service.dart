@@ -13,6 +13,7 @@ class AuthService {
       "https://ajial-api-dev-dvg9hfgtdgewekcv.westeurope-01.azurewebsites.net/api";
 
   static const String _tokenKey = 'ajial_auth_token';
+  static const String _parentIdKey = 'ajial_parent_id'; // ← added
   static const String _childTokenKey = 'ajial_child_token';
   static const String _childIdKey = 'ajial_child_id';
   static const String _childNameKey = 'ajial_child_name';
@@ -117,6 +118,19 @@ class AuthService {
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString(_tokenKey, token);
 
+          // Save parentId from login response so fetchCategories() can use it
+          // without needing to decode the JWT claim.
+          final rawId = responseBody['data']['parentId']
+              ?? responseBody['data']['ParentId']
+              ?? responseBody['data']['id']
+              ?? responseBody['data']['userId'];
+          if (rawId != null) {
+            await prefs.setString(_parentIdKey, rawId.toString());
+            print('Login: parentId saved: $rawId');
+          } else {
+            print('Login: no parentId field found in response data — will derive from JWT.');
+          }
+
           return (token, null);
         } else {
           return (
@@ -147,6 +161,7 @@ class AuthService {
   Future<void> logout() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await prefs.remove(_parentIdKey); // ← also clear parentId
     await prefs.remove(_childTokenKey);
     await prefs.remove(_childIdKey);
     await prefs.remove(_childNameKey);
@@ -157,6 +172,12 @@ class AuthService {
   Future<String?> getToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenKey);
+  }
+
+  /// الحصول على معرف الوالد المحفوظ من استجابة تسجيل الدخول.
+  Future<String?> getSavedParentId() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_parentIdKey);
   }
 
   // ==================== Child Functions =======================

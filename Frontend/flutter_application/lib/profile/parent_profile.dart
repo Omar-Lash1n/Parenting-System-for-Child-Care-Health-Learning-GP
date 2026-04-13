@@ -13,6 +13,7 @@ import 'package:Ajial/profile/delete_account_page.dart';
 import 'package:Ajial/profile/my_child_profile.dart';
 import 'package:Ajial/add-child/add-child-flow.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
+import 'package:Ajial/providers/tasks_provider.dart';
 import 'package:Ajial/widgets/skeleton_loading.dart';
 
 // --- CONSTANTS ---
@@ -1083,6 +1084,9 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
           child: ElevatedButton(
             onPressed: () async {
               await AuthService().logout();
+              if (!context.mounted) return;
+              // Clear stale in-memory category state so re-login fetches fresh data
+              context.read<TasksProvider>().reset();
               Navigator.pushNamedAndRemoveUntil(
                   context, '/login', (route) => false);
             },

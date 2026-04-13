@@ -161,6 +161,35 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
+                  // Tasks Of Parent and Childs
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: OutlinedButton.icon(
+                      onPressed: provider.isLoggingOut
+                          ? null
+                          : () {
+                              Navigator.pushNamed(context, '/tasks-welcome');
+                            },
+                      icon: const Icon(Icons.task, color: kPrimaryColor),
+                      label: const Text(
+                        'مهامي ومهام اطفالي',
+                        style: TextStyle(
+                          fontFamily: kFontFamily,
+                          fontSize: 18,
+                          color: kPrimaryColor,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: kPrimaryColor),
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
                   // Logout Button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 40),

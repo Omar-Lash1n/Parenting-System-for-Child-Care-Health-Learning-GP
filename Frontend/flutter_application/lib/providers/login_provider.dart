@@ -63,27 +63,21 @@ class LoginProvider extends ChangeNotifier {
       if (!context.mounted) return;
 
       if (token != null) {
-        // Success
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'تم تسجيل الدخول بنجاح!',
-              style: TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
+        // Reset loading state BEFORE navigating so the finally block's
+        // notifyListeners() does not try to rebuild a deactivated widget.
+        _isLoading = false;
+        notifyListeners();
 
         // Navigate to home with fade transition
+        if (!context.mounted) return;
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => HomeScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                HomeScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
             },
             transitionDuration: const Duration(milliseconds: 700),
           ),
@@ -112,8 +106,11 @@ class LoginProvider extends ChangeNotifier {
         ),
       );
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      // Only reset if not already reset by the success path above
+      if (_isLoading) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 

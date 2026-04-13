@@ -8,6 +8,8 @@ import 'package:Ajial/providers/nav_bar_provider.dart';
 import 'package:Ajial/tasks/widgets/task_instruction_overlay.dart';
 import 'package:Ajial/tasks/add_task_sheet.dart';
 import 'package:Ajial/tasks/models/task_model.dart';
+import 'package:Ajial/providers/family_provider.dart';
+import 'package:Ajial/providers/parent_profile_provider.dart';
 
 const Color _kPrimaryColor = Color(0xFFBF092F);
 const String _kFontFamily = 'IBM Plex Sans Arabic';
@@ -32,7 +34,12 @@ class _TasksMainPageState extends State<TasksMainPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<TasksProvider>().checkInstructionsSeen();
+      final provider = context.read<TasksProvider>();
+      provider.checkInstructionsSeen();
+      // Always reload from the API each time this page is entered,
+      // so newly added categories are visible even after navigation.
+      provider.reloadCategories();
+      provider.reloadTasks(); // Fetch tasks on init
     });
   }
 
@@ -1114,14 +1121,6 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
   late TimeOfDay? _selectedTime;
   late Set<String> _selectedAssigneeIds;
 
-  // Mock assignees — same as add sheet
-  final List<Assignee> _assignees = const [
-    Assignee(id: 'self', name: 'حسابي', isSelf: true),
-    Assignee(id: 'child1', name: 'طفل ١'),
-    Assignee(id: 'child2', name: 'طفل ٢'),
-    Assignee(id: 'child3', name: 'طفل ٣'),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -1131,7 +1130,54 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
     _selectedCategory = t.category;
     _selectedDate = t.date;
     _selectedTime = t.time;
-    _selectedAssigneeIds = t.assignees.map((a) => a.id).toSet();
+    _selectedAssigneeIds = t.assignees.map((a) {
+      if (a.isSelf) return 'self';
+      return a.id;
+    }).toSet();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final familyProv = context.read<FamilyProvider>();
+      if (familyProv.status == FamilyStatus.initial) {
+        familyProv.loadChildren();
+      }
+      final parentProv = context.read<ParentProfileProvider>();
+      if (parentProv.profileData == null && !parentProv.isLoading) {
+        parentProv.fetchProfile();
+      }
+    });
+  }
+
+  List<Assignee> _getComputedAssignees({bool listen = true}) {
+    final parentProvider = Provider.of<ParentProfileProvider>(context, listen: listen);
+    final familyProvider = Provider.of<FamilyProvider>(context, listen: listen);
+    
+    final parentName = parentProvider.fullName.isNotEmpty ? parentProvider.fullName : 'حسابي';
+    final parentImage = parentProvider.profileImageUrl;
+    final assigneesList = <Assignee>[
+      Assignee(id: 'self', name: parentName, imageUrl: parentImage, isSelf: true),
+    ];
+
+    if (familyProvider.children.isNotEmpty) {
+      for (var child in familyProvider.children) {
+        assigneesList.add(Assignee(
+          id: child.childId,
+          name: child.fullName,
+          imageUrl: child.photoUrl,
+          isSelf: false,
+        ));
+      }
+    } else if (parentProvider.children.isNotEmpty) {
+      for (var child in parentProvider.children) {
+        assigneesList.add(Assignee(
+          id: child['id']?.toString() ?? '',
+          name: child['fullName']?.toString() ?? 'طفل',
+          imageUrl: child['profileImageUrl']?.toString(),
+          isSelf: false,
+        ));
+      }
+    }
+    return assigneesList;
   }
 
   @override
@@ -1201,12 +1247,28 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
       return;
     }
     final provider = ctx.read<TasksProvider>();
+    
+    // Resolve dynamic categoryId if the name changed
+    String catName = _selectedCategory ?? widget.task.category;
+    String? catId = widget.task.categoryId;
+    if (catName != widget.task.category) {
+      if (catName == 'الكل') {
+        catId = null;
+      } else {
+        try {
+          final catModel = provider.categoryModels.firstWhere((c) => c.name == catName);
+          catId = catModel.id;
+        } catch (_) {}
+      }
+    }
+
     final assignees = _selectedAssigneeIds
-        .map((id) => _assignees.firstWhere((a) => a.id == id))
+        .map((id) => _getComputedAssignees(listen: false).firstWhere((a) => a.id == id, orElse: () => _getComputedAssignees(listen: false).first))
         .toList();
     final updated = widget.task.copyWith(
       title: title,
-      category: _selectedCategory ?? widget.task.category,
+      category: catName,
+      categoryId: catId, // Include the resolved ID so updateTask has it
       color: _selectedColor,
       date: _selectedDate,
       time: _selectedTime,
@@ -1264,6 +1326,7 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
     final provider = context.read<TasksProvider>();
     final cats = provider.categories.where((c) => c != 'الكل').toList();
     final bottomPad = MediaQuery.of(context).viewInsets.bottom;
+    final currentAssignees = _getComputedAssignees();
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -1441,10 +1504,10 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                   height: 79,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: _assignees.length,
+                    itemCount: currentAssignees.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 12),
                     itemBuilder: (context, index) {
-                      final a = _assignees[index];
+                      final a = currentAssignees[index];
                       final isSelected = _selectedAssigneeIds.contains(a.id);
                       return GestureDetector(
                         onTap: () => setState(() {

@@ -1,7 +1,9 @@
 // --- lib/providers/home_provider.dart ---
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:Ajial/api/auth_service.dart';
+import 'package:Ajial/providers/tasks_provider.dart';
 import 'package:Ajial/signup-login-pages/login.dart';
 
 /// HomeProvider - Handles home screen state and logout logic
@@ -23,6 +25,9 @@ class HomeProvider extends ChangeNotifier {
       await _authService.logout();
 
       if (!context.mounted) return;
+
+      // Clear stale in-memory category state so re-login fetches fresh data
+      context.read<TasksProvider>().reset();
 
       // Navigate to login and remove all previous routes
       Navigator.pushAndRemoveUntil(
@@ -48,3 +53,4 @@ class HomeProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
+

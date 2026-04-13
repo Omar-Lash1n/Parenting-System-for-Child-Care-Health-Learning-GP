@@ -4,6 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:Ajial/providers/tasks_provider.dart';
+import 'package:Ajial/providers/parent_profile_provider.dart';
+import 'package:Ajial/providers/family_provider.dart';
 import 'package:Ajial/tasks/models/task_model.dart';
 
 const Color _kPrimaryColor = Color(0xFFBF092F);
@@ -53,13 +55,53 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
 
   OverlayEntry? _categoryOverlay;
 
-  // Mock assignees — will be replaced with API data
-  final List<Assignee> _assignees = const [
-    Assignee(id: 'self', name: 'حسابي', isSelf: true),
-    Assignee(id: 'child1', name: 'طفل ١'),
-    Assignee(id: 'child2', name: 'طفل ٢'),
-    Assignee(id: 'child3', name: 'طفل ٣'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final familyProv = context.read<FamilyProvider>();
+      if (familyProv.status == FamilyStatus.initial) {
+        familyProv.loadChildren();
+      }
+      final parentProv = context.read<ParentProfileProvider>();
+      if (parentProv.profileData == null && !parentProv.isLoading) {
+        parentProv.fetchProfile();
+      }
+    });
+  }
+
+  List<Assignee> _getComputedAssignees({bool listen = true}) {
+    final parentProvider = Provider.of<ParentProfileProvider>(context, listen: listen);
+    final familyProvider = Provider.of<FamilyProvider>(context, listen: listen);
+    
+    final parentName = parentProvider.fullName.isNotEmpty ? parentProvider.fullName : 'حسابي';
+    final parentImage = parentProvider.profileImageUrl;
+    final assigneesList = <Assignee>[
+      Assignee(id: 'self', name: parentName, imageUrl: parentImage, isSelf: true),
+    ];
+
+    if (familyProvider.children.isNotEmpty) {
+      for (var child in familyProvider.children) {
+        assigneesList.add(Assignee(
+          id: child.childId,
+          name: child.fullName,
+          imageUrl: child.photoUrl,
+          isSelf: false,
+        ));
+      }
+    } else if (parentProvider.children.isNotEmpty) {
+      for (var child in parentProvider.children) {
+        assigneesList.add(Assignee(
+          id: child['id']?.toString() ?? '',
+          name: child['fullName']?.toString() ?? 'طفل',
+          imageUrl: child['profileImageUrl']?.toString(),
+          isSelf: false,
+        ));
+      }
+    }
+    return assigneesList;
+  }
 
   @override
   void dispose() {
@@ -276,7 +318,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
     }
   }
 
-  void _submit() {
+  void _submit() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -286,54 +328,79 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
     }
 
     final provider = context.read<TasksProvider>();
-    final category = _selectedCategory ?? provider.categories[0];
+    final catName = _selectedCategory ?? provider.categories[0];
+
+    String? catId;
+    if (catName != 'الكل') {
+      try {
+        final catModel = provider.categoryModels.firstWhere((c) => c.name == catName);
+        catId = catModel.id;
+        if (catId.startsWith('default_')) catId = null;
+      } catch (_) {}
+    }
+
     // Don't default to self; keep empty if nothing was selected
     final selectedIds = _selectedAssigneeIds;
 
     // Empty list means no assignee chosen — keep it empty
     final assignees = selectedIds
-        .map((id) => _assignees.firstWhere((a) => a.id == id))
+        .map((id) => _getComputedAssignees(listen: false).firstWhere((a) => a.id == id))
         .toList();
 
     // ONE task, with all selected assignees
     final task = TaskModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: 'local_${DateTime.now().millisecondsSinceEpoch}',
       title: title,
-      category: category,
+      category: catName,
+      categoryId: catId,
       assignees: assignees,
       color: _selectedColor,
       date: _selectedDate,   // null if not chosen
       time: _selectedTime,   // null if not chosen
     );
-    provider.addTask(task);
+    
+    try {
+      await provider.addTask(task);
 
-    if (!mounted) return;
-    // Show green success toast
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
-            SizedBox(width: 10),
-            Text(
-              'تم اضافة المهمة بنجاح!',
-              style: TextStyle(
-                fontFamily: _kFontFamily,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+      if (!mounted) return;
+      // Show green success toast
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Text(
+                'تم اضافة المهمة بنجاح!',
+                style: TextStyle(
+                  fontFamily: _kFontFamily,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+          backgroundColor: const Color(0xFF2E7D32),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          duration: const Duration(seconds: 2),
         ),
-        backgroundColor: const Color(0xFF2E7D32),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-    Navigator.pop(context);
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'فشل إضافة المهمة: ${e.toString().replaceFirst('Exception: ', '')}',
+            style: const TextStyle(fontFamily: _kFontFamily, color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFFBF092F),
+        ),
+      );
+    }
   }
 
   void _showAddCategoryDialog() async {
@@ -458,8 +525,45 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
       ),
     );
     if (result != null && mounted) {
-      context.read<TasksProvider>().addCategory(result);
+      // Optimistically select the new category in the UI immediately
       setState(() => _selectedCategory = result);
+
+      // Call the async API — show a SnackBar if it fails
+      try {
+        await context.read<TasksProvider>().addCategory(result);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'فشل إضافة التصنيف: ${e.toString().replaceFirst('Exception: ', '')}',
+                      style: const TextStyle(
+                        fontFamily: _kFontFamily,
+                        fontSize: 13,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFFBF092F),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+              margin:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          // Revert the selection since the category wasn't actually created
+          setState(() => _selectedCategory = null);
+        }
+      }
     }
   }
 
@@ -700,14 +804,15 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
   }
 
   Widget _assigneeRow() {
+    final currentAssignees = _getComputedAssignees();
     return SizedBox(
-      height: 75,
+      height: 79,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _assignees.length,
+        itemCount: currentAssignees.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
-          final a = _assignees[index];
+          final a = currentAssignees[index];
           final isSelected = _selectedAssigneeIds.contains(a.id);
           return GestureDetector(
             onTap: () {
@@ -720,50 +825,53 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
               });
             },
             child: SizedBox(
-              width: 60,
-              height: 75,
+              width: 74,
+              height: 79,
               child: Stack(
                 alignment: Alignment.topCenter,
                 children: [
                   Container(
-                    width: 58,
-                    height: 58,
+                    width: 74,
+                    height: 74,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: isSelected
-                            ? const Color(0xFF4CAF50)
+                            ? const Color(0xFF01A449)
                             : Colors.transparent,
                         width: 2.5,
                       ),
                     ),
                     child: CircleAvatar(
-                      radius: 25,
+                      radius: 35,
                       backgroundColor: const Color(0xFFE0E0E0),
-                      child: a.isSelf
-                          ? const Icon(Icons.person,
-                              color: Colors.white, size: 28)
-                          : Text(
-                              a.name.characters.first,
-                              style: const TextStyle(
-                                fontFamily: _kFontFamily,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
+                      backgroundImage: (a.imageUrl != null && a.imageUrl!.isNotEmpty)
+                          ? NetworkImage(a.imageUrl!)
+                          : null,
+                      child: (a.imageUrl != null && a.imageUrl!.isNotEmpty)
+                          ? null
+                          : a.isSelf
+                              ? const Icon(Icons.person, color: Colors.white, size: 32)
+                              : Text(
+                                  a.name.isNotEmpty ? a.name.characters.first : 'ط',
+                                  style: const TextStyle(
+                                    fontFamily: _kFontFamily,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
                     ),
                   ),
-                  // Green checkmark badge
                   if (isSelected)
                     Positioned(
-                      bottom: 4,
-                      right: 2,
+                      bottom: 0,
+                      right: 0,
                       child: Container(
-                        width: 22,
-                        height: 22,
+                        width: 24,
+                        height: 24,
                         decoration: const BoxDecoration(
-                          color: Color(0xFF4CAF50),
+                          color: Color(0xFF01A449),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -784,24 +892,22 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
 
   Widget _colorRow() {
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      spacing: 12,
+      runSpacing: 12,
       children: _kTaskColors.map((c) {
         final isSelected = _selectedColor == c;
         return GestureDetector(
           onTap: () => setState(() => _selectedColor = c),
           child: Container(
-            width: 36,
-            height: 36,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: c,
               shape: BoxShape.circle,
-              border: Border.all(
-                color:
-                    isSelected ? const Color(0xFF333333) : Colors.transparent,
-                width: 2.5,
-              ),
             ),
+            child: isSelected
+                ? const Icon(Icons.check, size: 18, color: Colors.white)
+                : null,
           ),
         );
       }).toList(),
