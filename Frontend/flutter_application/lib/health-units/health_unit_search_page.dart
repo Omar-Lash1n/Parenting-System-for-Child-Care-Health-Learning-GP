@@ -253,6 +253,7 @@ class _HealthUnitSearchPageState extends State<HealthUnitSearchPage> {
                     onPressed: () {
                       if (provider.locationPermissionGranted &&
                           provider.userLatitude != null) {
+                        _searchController.clear();
                         _mapController?.animateCamera(
                           CameraUpdate.newLatLngZoom(
                             LatLng(provider.userLatitude!,
@@ -260,12 +261,13 @@ class _HealthUnitSearchPageState extends State<HealthUnitSearchPage> {
                             _kLocationZoom,
                           ),
                         );
-                        provider.searchHealthUnits(
-                          latitude: provider.userLatitude,
-                          longitude: provider.userLongitude,
+                        provider.updateUserLocation(
+                          provider.userLatitude!,
+                          provider.userLongitude!,
                         );
                         setState(() => _showResults = true);
                       } else {
+                        _searchController.clear();
                         _handleLocationRequest();
                       }
                     },

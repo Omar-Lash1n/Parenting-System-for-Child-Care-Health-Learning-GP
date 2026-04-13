@@ -45,7 +45,17 @@ class HealthUnitProvider extends ChangeNotifier {
     _isLoading = true;
     _hasError = false;
     _errorMessage = '';
-    if (keyword != null) _searchKeyword = keyword;
+
+    // Entering keyword mode: clear location state so the next request is a
+    // pure keyword search with no radius filter, and drop the 'قريب' chip.
+    if (keyword != null && keyword.isNotEmpty) {
+      _searchKeyword = keyword;
+      _userLatitude = null;
+      _userLongitude = null;
+      if (_activeFilter == 'قريب') _activeFilter = 'الكل';
+    } else if (keyword != null) {
+      _searchKeyword = keyword;
+    }
     notifyListeners();
 
     // Only send coordinates when explicitly passed — don't fall back to stored
@@ -99,6 +109,7 @@ class HealthUnitProvider extends ChangeNotifier {
       if (_locationPermissionGranted &&
           _userLatitude != null &&
           _userLongitude != null) {
+        _searchKeyword = ''; // clear stale keyword — location search has no text filter
         searchHealthUnits(
           latitude: _userLatitude,
           longitude: _userLongitude,
@@ -125,6 +136,7 @@ class HealthUnitProvider extends ChangeNotifier {
     _userLatitude = lat;
     _userLongitude = lng;
     _locationPermissionGranted = true;
+    _searchKeyword = ''; // clear stale keyword — location search has no text filter
     notifyListeners();
     searchHealthUnits(latitude: lat, longitude: lng);
   }

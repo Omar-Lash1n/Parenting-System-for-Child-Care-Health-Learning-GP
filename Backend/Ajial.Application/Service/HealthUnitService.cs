@@ -60,6 +60,13 @@ public class HealthUnitService : IHealthUnitService
             // ── Query from repository ──────────────────────────────────
             var allUnits = await _unitOfWork.HealthUnits.FindAsync(hu => hu.IsActive);
 
+            // ── Load cities for name mapping and keyword matching ──────
+            // Cities are a small static list (~27 governorates), so an in-memory
+            // dictionary lookup is cheaper than a join and lets the keyword filter
+            // match on city name without depending on navigation-property loading.
+            var cities = await _unitOfWork.Cities.GetAllAsync();
+            var cityLookup = cities.ToDictionary(c => c.Id, c => c);
+
             // ── Apply filters (in-memory since dataset is small ~100-200 records) ──
             var filtered = allUnits.AsEnumerable();
 
@@ -72,16 +79,25 @@ public class HealthUnitService : IHealthUnitService
             if (!string.IsNullOrWhiteSpace(request.Keyword))
             {
                 var keyword = request.Keyword.Length > 100 ? request.Keyword[..100] : request.Keyword;
+                // Match on the unit's own name and on its city name (via CityId).
+                // Address columns are intentionally excluded — Egyptian addresses often
+                // contain other city names as part of road names (e.g. "طريق أسوان-القاهرة"
+                // for a facility in Aswan), which produced false positives.
                 filtered = filtered.Where(hu =>
-                    hu.NameAr.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
-                    hu.NameEn.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
-                    hu.AddressAr.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
-                    (hu.AddressEn != null && hu.AddressEn.Contains(keyword, StringComparison.OrdinalIgnoreCase)));
-            }
+                {
+                    if (hu.NameAr.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
+                        hu.NameEn.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
 
-            // ── Load cities for name mapping ───────────────────────────
-            var cities = await _unitOfWork.Cities.GetAllAsync();
-            var cityLookup = cities.ToDictionary(c => c.Id, c => c);
+                    if (!cityLookup.TryGetValue(hu.CityId, out var city) || city == null)
+                        return false;
+
+                    return city.NameAr.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                        || (city.Name != null && city.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+                });
+            }
 
             // ── Calculate distance and map to DTOs ─────────────────────
             bool hasCoordinates = request.Latitude.HasValue && request.Longitude.HasValue;
