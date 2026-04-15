@@ -178,8 +178,10 @@ class TasksProvider extends ChangeNotifier {
     return map.values.toList();
   }
 
-  List<TaskModel> get myTasks    => _tasks.where((t) => t.isForSelf).toList();
-  List<TaskModel> get kidsTasks  => _tasks.where((t) => t.isForChild).toList();
+  // ALL tasks added from the add-task sheet belong to "مهامي".
+  // "مهام أطفالي" has completely different logic and a separate data source.
+  List<TaskModel> get myTasks   => List.unmodifiable(_tasks);
+  List<TaskModel> get kidsTasks => const []; // sourced separately — not from _tasks
 
   /// Current visible tasks based on active tab and filter.
   List<TaskModel> get filteredTasks {

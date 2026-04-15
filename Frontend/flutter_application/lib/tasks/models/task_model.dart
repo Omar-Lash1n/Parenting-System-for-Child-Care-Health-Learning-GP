@@ -28,7 +28,9 @@ class TaskModel {
   }) : createdAt = createdAt ?? DateTime.now();
 
   bool get isForChild => assignees.any((a) => !a.isSelf);
-  bool get isForSelf => assignees.isEmpty || assignees.any((a) => a.isSelf);
+  // isForSelf is true only when the parent was EXPLICITLY selected.
+  // An empty assignee list means "no one" — not the same as self.
+  bool get isForSelf => assignees.any((a) => a.isSelf);
 
   TaskModel copyWith({
     String? id,
