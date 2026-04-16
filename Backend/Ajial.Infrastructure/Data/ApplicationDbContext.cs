@@ -25,6 +25,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<ParentTask> Tasks { get; set; } = null!;             // ✅ Task Feature
     public DbSet<TaskAssignee> TaskAssignees { get; set; } = null!;   // ✅ Task Feature
     public DbSet<HealthUnit> HealthUnits { get; set; } = null!;        // ✅ Health Unit Search Feature
+    public DbSet<ChildTask> ChildTasks { get; set; } = null!;                      // ✅ Child Tasks Feature
+    public DbSet<ChildTaskAssignee> ChildTaskAssignees { get; set; } = null!;     // ✅ Child Tasks Feature
+    public DbSet<ChildTaskRecurrence> ChildTaskRecurrences { get; set; } = null!; // ✅ Child Tasks Feature
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -422,6 +425,84 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(ta => ta.TaskId);
             entity.HasIndex(ta => ta.ChildId);
+        });
+
+        // ✅ ChildTask Configuration
+        modelBuilder.Entity<ChildTask>(entity =>
+        {
+            entity.HasKey(ct => ct.Id);
+
+            entity.Property(ct => ct.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(ct => ct.TaskImageUrl)
+                .HasMaxLength(2048);
+
+            entity.Property(ct => ct.RecordingUrl)
+                .HasMaxLength(2048);
+
+            entity.Property(ct => ct.Stars)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(ct => ct.CreatedAt)
+                .IsRequired();
+
+            entity.HasOne(ct => ct.Parent)
+                .WithMany()
+                .HasForeignKey(ct => ct.ParentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ct => ct.Recurrence)
+                .WithOne(r => r.Task)
+                .HasForeignKey<ChildTaskRecurrence>(r => r.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(ct => ct.ParentId);
+            entity.HasIndex(ct => ct.DueDate);
+        });
+
+        // ✅ ChildTaskAssignee Configuration (composite PK join table)
+        modelBuilder.Entity<ChildTaskAssignee>(entity =>
+        {
+            entity.HasKey(cta => new { cta.TaskId, cta.ChildId });
+
+            entity.Property(cta => cta.IsCompleted)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.HasOne(cta => cta.Task)
+                .WithMany(ct => ct.Assignees)
+                .HasForeignKey(cta => cta.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(cta => cta.Child)
+                .WithMany()
+                .HasForeignKey(cta => cta.ChildId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(cta => cta.TaskId);
+            entity.HasIndex(cta => cta.ChildId);
+            entity.HasIndex(cta => new { cta.ChildId, cta.IsCompleted }); // fast lookup per-child
+        });
+
+        // ✅ ChildTaskRecurrence Configuration
+        modelBuilder.Entity<ChildTaskRecurrence>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+
+            entity.Property(r => r.RepeatDays)
+                .HasMaxLength(200);
+
+            entity.Property(r => r.RepeatTime)
+                .HasMaxLength(5);
+
+            entity.Property(r => r.IsRecurring)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.HasIndex(r => r.TaskId).IsUnique();
         });
 
         // ✅ HealthUnit Configuration

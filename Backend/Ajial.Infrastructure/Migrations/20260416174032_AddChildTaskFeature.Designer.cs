@@ -4,6 +4,7 @@ using Ajial.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ajial.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260416174032_AddChildTaskFeature")]
+    partial class AddChildTaskFeature
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -115,14 +118,25 @@ namespace Ajial.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("DueDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsCompletedByParent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<Guid>("ParentId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("RecordingDurationSeconds")
+                        .HasColumnType("int");
 
                     b.Property<string>("RecordingUrl")
                         .HasMaxLength(2048)
@@ -152,6 +166,8 @@ namespace Ajial.Infrastructure.Migrations
 
                     b.HasIndex("DueDate");
 
+                    b.HasIndex("IsCompletedByParent");
+
                     b.HasIndex("ParentId");
 
                     b.ToTable("ChildTasks");
@@ -165,21 +181,11 @@ namespace Ajial.Infrastructure.Migrations
                     b.Property<Guid>("ChildId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsCompleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
                     b.HasKey("TaskId", "ChildId");
 
                     b.HasIndex("ChildId");
 
                     b.HasIndex("TaskId");
-
-                    b.HasIndex("ChildId", "IsCompleted");
 
                     b.ToTable("ChildTaskAssignees");
                 });

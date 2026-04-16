@@ -20,6 +20,9 @@ public interface IUnitOfWork : IDisposable
     IRepository<ParentTask> Tasks { get; }             // ✅ Task Feature
     IRepository<TaskAssignee> TaskAssignees { get; }   // ✅ Task Feature
     IRepository<HealthUnit> HealthUnits { get; }       // ✅ Health Unit Search Feature
+    IRepository<ChildTask> ChildTasks { get; }                      // ✅ Child Tasks Feature
+    IRepository<ChildTaskAssignee> ChildTaskAssignees { get; }     // ✅ Child Tasks Feature
+    IRepository<ChildTaskRecurrence> ChildTaskRecurrences { get; } // ✅ Child Tasks Feature
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

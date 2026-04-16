@@ -246,4 +246,140 @@ public class AzureBlobImageService : IImageService
 
         return blobClient.Uri.ToString();
     }
-}
+
+    /// <summary>
+    /// Upload task recording to Azure Blob Storage (child-tasks-recording container)
+    /// Blob path: task-recordings/{parentId}/rec-{guid}.{extension}
+    /// </summary>
+    public async Task<string> UploadChildTaskRecordingAsync(IFormFile recording, Guid parentId)
+    {
+        try
+        {
+            // Validate size (max 10 MB)
+            const long maxSizeInBytes = 10 * 1024 * 1024;
+            if (recording.Length > maxSizeInBytes)
+                throw new ArgumentException("حجم التسجيل يجب ألا يتجاوز 10 ميجابايت");
+
+            // Validate content type
+            var allowedTypes = new[] { "audio/mpeg", "audio/mp4", "audio/aac", "audio/wav", "audio/x-m4a", "audio/ogg", "audio/webm" };
+            if (!allowedTypes.Contains(recording.ContentType.ToLowerInvariant()))
+                throw new ArgumentException("نوع الملف غير مدعوم. يُسمح فقط بملفات الصوت");
+
+            var recordingContainerName = _configuration["AzureStorage:ChildTaskRecordingContainerName"] ?? "child-tasks-recording";
+            var containerClient = _blobServiceClient.GetBlobContainerClient(recordingContainerName);
+            await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+            var extension = Path.GetExtension(recording.FileName).ToLowerInvariant();
+            if (string.IsNullOrEmpty(extension)) extension = ".m4a";
+
+            var blobName = $"task-recordings/{parentId}/rec-{Guid.NewGuid()}{extension}";
+            var blobClient = containerClient.GetBlobClient(blobName);
+
+            var blobHttpHeaders = new BlobHttpHeaders
+            {
+                ContentType = recording.ContentType,
+                CacheControl = "public, max-age=31536000"
+            };
+
+            using var stream = recording.OpenReadStream();
+            await blobClient.UploadAsync(stream, new BlobUploadOptions
+            {
+                HttpHeaders = blobHttpHeaders
+            });
+
+            return blobClient.Uri.ToString();
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"فشل في رفع التسجيل الصوتي: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Upload task illustration image to Azure Blob Storage (child-task-images container)
+    /// Blob path: task-images/{parentId}/img-{guid}.{extension}
+    /// </summary>
+    public async Task<string> UploadChildTaskImageAsync(IFormFile image, Guid parentId)
+    {
+        try
+        {
+            // Validate size (max 5 MB)
+            const long maxSizeInBytes = 5 * 1024 * 1024;
+            if (image.Length > maxSizeInBytes)
+                throw new ArgumentException("حجم الصورة يجب ألا يتجاوز 5 ميجابايت");
+
+            // Validate content type
+            var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
+            if (!allowedTypes.Contains(image.ContentType.ToLowerInvariant()))
+                throw new ArgumentException("نوع الملف غير مدعوم. يُسمح فقط بـ JPEG أو PNG أو WebP أو GIF");
+
+            var imageContainerName = _configuration["AzureStorage:ChildTaskImageContainerName"] ?? "child-task-images";
+            var containerClient = _blobServiceClient.GetBlobContainerClient(imageContainerName);
+            await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+            var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
+            if (string.IsNullOrEmpty(extension)) extension = ".jpg";
+
+            var blobName = $"task-images/{parentId}/img-{Guid.NewGuid()}{extension}";
+            var blobClient = containerClient.GetBlobClient(blobName);
+
+            var blobHttpHeaders = new BlobHttpHeaders
+            {
+                ContentType = image.ContentType,
+                CacheControl = "public, max-age=31536000"
+            };
+
+            using var stream = image.OpenReadStream();
+            await blobClient.UploadAsync(stream, new BlobUploadOptions
+            {
+                HttpHeaders = blobHttpHeaders
+            });
+
+            return blobClient.Uri.ToString();
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"فشل في رفع صورة المهمة: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Delete a blob by its full Azure URL — parses container name from URL path.
+    /// Works cross-container unlike DeleteImageAsync (which uses only the default container).
+    /// URL format: https://{account}.blob.core.windows.net/{container}/{blobPath}
+    /// </summary>
+    public async Task<bool> DeleteBlobByUrlAsync(string blobUrl)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(blobUrl))
+                return false;
+
+            var uri = new Uri(blobUrl);
+            // uri.Segments: ["/", "container/", "path/", "file.ext"]
+            var segments = uri.Segments;
+            if (segments.Length < 3)
+                return false;
+
+            var containerName = segments[1].TrimEnd('/');
+            var blobName = string.Concat(segments.Skip(2)).TrimStart('/');
+
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            var blobClient = containerClient.GetBlobClient(blobName);
+
+            return await blobClient.DeleteIfExistsAsync();
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
