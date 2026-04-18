@@ -7,6 +7,8 @@ import 'package:Ajial/providers/tasks_provider.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
 import 'package:Ajial/tasks/widgets/task_instruction_overlay.dart';
 import 'package:Ajial/tasks/add_task_sheet.dart';
+import 'package:Ajial/tasks/add_kids_task_sheet.dart';
+import 'package:Ajial/tasks/kids_tasks_page.dart';
 import 'package:Ajial/tasks/models/task_model.dart';
 import 'package:Ajial/providers/family_provider.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
@@ -95,27 +97,41 @@ class _TasksMainPageState extends State<TasksMainPage> {
                       myTabKey: _myTabKey,
                     ),
                     const SizedBox(height: 12),
-                    _FilterChipsRow(
-                      activeFilter: provider.activeFilter,
-                      onFilterChanged:
-                          provider.showInstructions ? null : provider.setFilter,
-                    ),
-                    Expanded(
-                      child: provider.filteredTasks.isEmpty
-                          ? _EmptyState(
-                              activeFilter: provider.activeFilter,
-                              filterName:
-                                  provider.categories[provider.activeFilter],
-                            )
-                          : _TaskListView(grouped: provider.groupedTasks),
-                    ),
-                    const SizedBox(height: 70),
+
+                    // ── Tab content ──────────────────────────────────────────
+                    if (provider.activeTab == 1) ...
+                      [
+                        // "مهام أطفالي" has its own page
+                        const Expanded(child: KidsTasksPage()),
+                        const SizedBox(height: 70),
+                      ]
+                    else ...
+                      [
+                        // "مهامي" — filter chips + task list
+                        _FilterChipsRow(
+                          activeFilter: provider.activeFilter,
+                          onFilterChanged:
+                              provider.showInstructions ? null : provider.setFilter,
+                        ),
+                        Expanded(
+                          child: provider.filteredTasks.isEmpty
+                              ? _EmptyState(
+                                  activeFilter: provider.activeFilter,
+                                  filterName:
+                                      provider.categories[provider.activeFilter],
+                                )
+                              : _TaskListView(grouped: provider.groupedTasks),
+                        ),
+                        const SizedBox(height: 70),
+                      ],
                   ],
                 ),
               ),
 
-              // ── Dashed arrow: starts from center text, points to FAB ──
-              if (provider.filteredTasks.isEmpty && !provider.showInstructions)
+              // ── Dashed arrow (مهامي only, when empty) ──
+              if (provider.activeTab == 0 &&
+                  provider.filteredTasks.isEmpty &&
+                  !provider.showInstructions)
                 Positioned(
                   bottom: 120,
                   right: 48,
@@ -130,7 +146,18 @@ class _TasksMainPageState extends State<TasksMainPage> {
                   ),
                 ),
 
-              // ── FAB ──
+              // ── FAB: gift (kids tab) ──
+              if (provider.activeTab == 1)
+                Positioned(
+                  bottom: 148,
+                  right: 16,
+                  child: _GiftFab(
+                    onPressed: () {
+                      // TODO: Navigate to rewards / gift screen
+                    },
+                  ),
+                ),
+
               Positioned(
                 bottom: 80,
                 right: 16,
@@ -138,7 +165,9 @@ class _TasksMainPageState extends State<TasksMainPage> {
                   fabKey: _fabKey,
                   onPressed: provider.showInstructions
                       ? null
-                      : () => showAddTaskSheet(context),
+                      : provider.activeTab == 0
+                          ? () => showAddTaskSheet(context)
+                          : () => showAddKidsTaskSheet(context),
                 ),
               ),
 
@@ -1953,6 +1982,50 @@ class _DeleteConfirmDialog extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────── Gift FAB (kids tab) ────────────────────────────────────
+
+/// Orange gradient gift FAB — shown in مهام أطفالي tab.
+class _GiftFab extends StatelessWidget {
+  final VoidCallback? onPressed;
+  const _GiftFab({this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 55,
+        height: 55,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFFEA400), Color(0xFFFD5E00)],
+          ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: _kPrimaryColor.withValues(alpha: 0.1),
+              blurRadius: 22,
+              offset: Offset.zero,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Image.asset(
+            'images/gift.png',
+            width: 26,
+            height: 26,
+            color: Colors.white,
+            errorBuilder: (_, __, ___) =>
+                const Icon(Icons.card_giftcard, size: 24, color: Colors.white),
           ),
         ),
       ),

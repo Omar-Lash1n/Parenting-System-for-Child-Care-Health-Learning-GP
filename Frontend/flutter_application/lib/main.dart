@@ -68,12 +68,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// Called by the alarm package when an alarm triggers (works even from background/killed state).
 void _handleAlarmRinging(AlarmSettings alarmSettings) {
   debugPrint('🔔 Alarm ringing! ID: ${alarmSettings.id}');
-  
+
   // Parse the notification body to extract child info
   // We use the notification settings to carry the payload info
   final title = alarmSettings.notificationSettings.title;
   final body = alarmSettings.notificationSettings.body;
-  
+
   // Navigate to the alarm screen
   navigatorKey.currentState?.push(
     MaterialPageRoute(

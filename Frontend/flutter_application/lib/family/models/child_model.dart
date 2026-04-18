@@ -55,6 +55,7 @@ class ChildModel with _$ChildModel {
     if (age == 0) return 'أقل من سنة';
     if (age == 1) return 'سنة واحدة';
     if (age == 2) return 'سنتان';
+    if (age == 3) return '3 سنوات';
     return '$age سنوات';
   }
 
