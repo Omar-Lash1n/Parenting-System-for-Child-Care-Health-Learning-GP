@@ -1,4 +1,4 @@
-﻿using Ajial.Application.DTOs.Child;
+using Ajial.Application.DTOs.Child;
 using Ajial.Application.DTOs.Common;
 using Ajial.Application.Interfaces;
 using Ajial.Application.Validators;
@@ -329,7 +329,9 @@ public class ChildService : IChildService
         // Determine age in full years
         var (ageYears, _, _) = CalculateExactAge(child.BirthDate);
         bool isEligible = ageYears >= 4;
-        bool hasAccount = !string.IsNullOrEmpty(child.ChildLoginId);
+        // HasAccount is true only when the child has BOTH a ChildLoginId AND a PasswordHash,
+        // meaning the child has actually registered their account from the child-side app.
+        bool hasAccount = !string.IsNullOrEmpty(child.ChildLoginId) && !string.IsNullOrEmpty(child.PasswordHash);
 
         string message;
         string action;
@@ -1047,7 +1049,9 @@ public class ChildService : IChildService
             }
 
             // Step 5: Check child doesn't already have an account
-            if (!string.IsNullOrEmpty(child.ChildLoginId))
+            // A real child account requires BOTH a ChildLoginId AND a PasswordHash.
+            // ChildLoginId alone may have been set by the parent at child-creation time.
+            if (!string.IsNullOrEmpty(child.ChildLoginId) && !string.IsNullOrEmpty(child.PasswordHash))
             {
                 return ApiResponse<ChildAccountDetailsDto>.FailureResponse(
                     "فشل في إنشاء حساب الطفل",
@@ -1055,9 +1059,10 @@ public class ChildService : IChildService
                 );
             }
 
-            // Step 6: Check ChildLoginId uniqueness
+            // Step 6: Check ChildLoginId uniqueness (exclude the current child in case the parent
+            // already assigned the same ChildLoginId when adding this child record)
             var existingChild = await _unitOfWork.Children.GetFirstOrDefaultAsync(
-                c => c.ChildLoginId == trimmedLoginId
+                c => c.ChildLoginId == trimmedLoginId && c.Id != childId
             );
 
             if (existingChild != null)
