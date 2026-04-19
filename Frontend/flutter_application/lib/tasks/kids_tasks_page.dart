@@ -6,9 +6,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:Ajial/tasks/models/child_task_model.dart';
+import 'package:Ajial/tasks/models/task_list_model.dart';
 import 'package:Ajial/tasks/repositories/child_task_repository.dart';
 import 'package:Ajial/tasks/add_kids_task_sheet.dart';
+import 'package:Ajial/tasks/child_tasks_list_page.dart';
 import 'package:Ajial/family/models/child_model.dart';
+import 'package:Ajial/profile/making_child_account.dart';
 
 const Color _kPrimary = Color(0xFFBF092F);
 const String _kFont = 'IBM Plex Sans Arabic';
@@ -221,9 +224,10 @@ class _CardLayout extends StatelessWidget {
   final ChildTaskModel child;
   final bool showStars;
   final bool starsDimmed;
-  final bool usePhotoAvatar; // true → network photo, false → baby icon
+  final bool usePhotoAvatar;
   final bool showOnlineDot;
   final List<Widget> bottomButtons;
+  final int? starsOverride; // live value (overrides child.totalStars)
 
   const _CardLayout({
     required this.child,
@@ -232,6 +236,7 @@ class _CardLayout extends StatelessWidget {
     this.usePhotoAvatar = false,
     this.showOnlineDot = false,
     required this.bottomButtons,
+    this.starsOverride,
   });
 
   @override
@@ -252,7 +257,7 @@ class _CardLayout extends StatelessWidget {
               // Photo (right in RTL)
               if (usePhotoAvatar)
                 Stack(children: [
-                  _ChildAvatar(photoUrl: child.profileImageUrl, size: 80),
+                  _ChildAvatar(photoUrl: child.profileImageUrl, size: 80, fullName: child.fullName),
                   if (showOnlineDot)
                     Positioned(
                       bottom: 2,
@@ -298,10 +303,11 @@ class _CardLayout extends StatelessWidget {
 
               const SizedBox(width: 12),
 
-              // Name + age (centre, expands)
+              // Name + age (starts right, next to photo)
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  textDirection: TextDirection.rtl,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       child.fullName,
@@ -338,7 +344,7 @@ class _CardLayout extends StatelessWidget {
               if (showStars)
                 Opacity(
                   opacity: starsDimmed ? 0.5 : 1.0,
-                  child: _StarsBadge(count: child.totalStars),
+                  child: _StarsBadge(count: starsOverride ?? child.totalStars),
                 ),
             ],
           ),
@@ -353,30 +359,178 @@ class _CardLayout extends StatelessWidget {
   }
 }
 
-// ─────────────────── Card 1: Active / Eligible ────────────────────────────────
+// ─────────────────── Card 1: Active / Eligible ────────────────────────────────────
+// Loads a mini task-preview (up to 2 pending tasks with toggle) from the repo.
+// "عرض جميع المهام" is enabled only when pendingCount + completedCount > 0.
 
-class _ActiveChildCard extends StatelessWidget {
+class _ActiveChildCard extends StatefulWidget {
   final ChildTaskModel child;
   final void Function(ChildTaskModel) onAssign;
   const _ActiveChildCard({required this.child, required this.onAssign});
 
   @override
+  State<_ActiveChildCard> createState() => _ActiveChildCardState();
+}
+
+class _ActiveChildCardState extends State<_ActiveChildCard> {
+  final _repo = ChildTaskRepository();
+  List<TaskItem>? _previewTasks;
+  bool _hasAnyTask = false;
+  int? _currentStars; // updated in real-time from fetchChildTasks
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreview();
+  }
+
+  Future<void> _loadPreview() async {
+    try {
+      final res = await _repo.fetchChildTasks(widget.child.childId);
+      if (!mounted) return;
+      setState(() {
+        _previewTasks = res.pendingTasks.take(2).toList();
+        _hasAnyTask =
+            res.pendingTasks.isNotEmpty || res.completedTasks.isNotEmpty;
+        _currentStars = res.totalStars; // ← live update
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _previewTasks = []);
+    }
+  }
+
+  Future<void> _toggle(TaskItem task) async {
+    try {
+      await _repo.toggleTaskComplete(task.taskId, widget.child.childId);
+      await _loadPreview();
+    } catch (_) {}
+  }
+
+  void _openAllTasks(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChildTasksListPage(
+          childId: widget.child.childId,
+          fullName: widget.child.fullName,
+          profileImageUrl: widget.child.profileImageUrl,
+          ageText: widget.child.ageText,
+        ),
+      ),
+    ).then((_) => _loadPreview());
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final child = widget.child;
     return _CardLayout(
       child: child,
+      starsOverride: _currentStars, // real-time stars
       starsDimmed: false,
       usePhotoAvatar: true,
       showOnlineDot: true,
       bottomButtons: [
-        _OutlinedBtn(label: 'انساب مهمة', onTap: () => onAssign(child)),
+        // ── Mini task preview ───────────────────────────────────────────────
+        if (_previewTasks != null && _previewTasks!.isNotEmpty) ...[
+          ..._previewTasks!.map((t) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _MiniTaskRow(
+                  task: t,
+                  onToggle: () => _toggle(t),
+                ),
+              )),
+        ],
+        // ── انساب مهمة ─────────────────────────────────────────────────────
+        _OutlinedBtn(
+            label: 'انساب مهمة', onTap: () => widget.onAssign(child)),
         const SizedBox(height: 8),
-        _PlainBtn(label: 'عرض جميع المهام', onTap: () {}),
+        // ── عرض جميع المهام ── disabled when no tasks ──────────────────────
+        GestureDetector(
+          onTap: _hasAnyTask ? () => _openAllTasks(context) : null,
+          child: Container(
+            width: double.infinity,
+            height: 50,
+            alignment: Alignment.center,
+            child: Text(
+              'عرض جميع المهام',
+              style: TextStyle(
+                fontFamily: _kFont,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: _hasAnyTask
+                    ? Colors.black
+                    : Colors.black.withValues(alpha: 0.35),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
+// ─── Mini task row (inside active card preview) ────────────────────────────────
+
+class _MiniTaskRow extends StatelessWidget {
+  final TaskItem task;
+  final VoidCallback onToggle;
+  const _MiniTaskRow({required this.task, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          // Task title (right-aligned)
+          Expanded(
+            child: Text(
+              task.title,
+              textDirection: TextDirection.rtl,
+              style: const TextStyle(
+                  fontFamily: _kFont, fontSize: 14, color: Colors.black),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Check toggle (left)
+          GestureDetector(
+            onTap: onToggle,
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: task.isCompleted
+                    ? const Color(0xFF01A449)
+                    : Colors.transparent,
+                border: task.isCompleted
+                    ? null
+                    : Border.all(color: const Color(0xFFD9D9D9), width: 1.5),
+              ),
+              child: task.isCompleted
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
 // ─────────────────── Card 2: Account not activated ────────────────────────────
+// isAccountActive == false  →  full white card, red baby icon, dimmed stars,
+// "تفعيل الحساب" (40px outline) + "عرض جميع المهام" (50px plain)
 
 class _InactiveAccountCard extends StatelessWidget {
   final ChildTaskModel child;
@@ -384,20 +538,134 @@ class _InactiveAccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _CardLayout(
-      child: child,
-      starsDimmed: true,
-      usePhotoAvatar: false,
-      bottomButtons: [
-        _OutlinedBtn(label: 'تفعيل الحساب', onTap: () {}),
-        const SizedBox(height: 8),
-        _PlainBtn(label: 'عرض جميع المهام', onTap: () {}),
-      ],
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Info row ───────────────────────────────────────────────────────
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              // Right: red-tinted baby icon circle
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: _kPrimary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Image.asset(
+                    'images/happy,happy face,smiley,emoji,smile,.png',
+                    width: 32,
+                    height: 32,
+                    color: _kPrimary,
+                    errorBuilder: (_, __, ___) => const Icon(
+                        Icons.child_care, size: 36, color: _kPrimary),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Name + age (starts right, next to photo)
+              Expanded(
+                child: Column(
+                  textDirection: TextDirection.rtl,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      child.fullName,
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(
+                        fontFamily: _kFont,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      textDirection: TextDirection.rtl,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(child.ageText,
+                            style: const TextStyle(
+                                fontFamily: _kFont,
+                                fontSize: 14,
+                                color: Color(0xFF64748B))),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.calendar_today_outlined,
+                            size: 14, color: Color(0xFF64748B)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Left: dimmed stars badge
+              Opacity(
+                opacity: 0.5,
+                child: _StarsBadge(count: child.totalStars),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          // ── تفعيل الحساب (40px outlined) ──────────────────────────────────
+          GestureDetector(
+            onTap: () {
+              // TODO: navigate to account activation
+            },
+            child: Container(
+              width: double.infinity,
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(50),
+                border: Border.all(color: Colors.black.withValues(alpha: 0.5)),
+              ),
+              alignment: Alignment.center,
+              child: const Text(
+                'تفعيل الحساب',
+                style: TextStyle(
+                    fontFamily: _kFont,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // ── عرض جميع المهام (50px plain) ──────────────────────────────────
+          GestureDetector(
+            onTap: () {
+              // TODO: navigate to tasks list
+            },
+            child: Container(
+              width: double.infinity,
+              height: 50,
+              alignment: Alignment.center,
+              child: const Text(
+                'عرض جميع المهام',
+                style: TextStyle(
+                    fontFamily: _kFont,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 // ─────────────────── Card 3: No account ──────────────────────────────────────
+// hasAccount == false  →  white card, grey-tinted baby icon, no stars, "انشاء حساب" only
 
 class _NoAccountChildCard extends StatelessWidget {
   final ChildTaskModel child;
@@ -405,19 +673,118 @@ class _NoAccountChildCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _CardLayout(
-      child: child,
-      showStars: true,
-      starsDimmed: true,
-      usePhotoAvatar: false,
-      bottomButtons: [
-        _OutlinedBtn(label: 'انشاء حساب', onTap: () {}),
-      ],
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Info row ───────────────────────────────────────────────────────
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              // Right: grey baby icon (no account yet → neutral tone)
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD9D9D9),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Image.asset(
+                    'images/happy,happy face,smiley,emoji,smile,.png',
+                    width: 32,
+                    height: 32,
+                    color: const Color(0xFF9E9E9E),
+                    errorBuilder: (_, __, ___) => const Icon(
+                        Icons.child_care,
+                        size: 36,
+                        color: Color(0xFF9E9E9E)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Name + age (starts right, next to photo)
+              Expanded(
+                child: Column(
+                  textDirection: TextDirection.rtl,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      child.fullName,
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(
+                        fontFamily: _kFont,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      textDirection: TextDirection.rtl,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(child.ageText,
+                            style: const TextStyle(
+                                fontFamily: _kFont,
+                                fontSize: 14,
+                                color: Color(0xFF64748B))),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.calendar_today_outlined,
+                            size: 14, color: Color(0xFF64748B)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // No stars badge for children without account
+            ],
+          ),
+          const SizedBox(height: 22),
+          // ── انشاء حساب (40px outlined) ────────────────────────────────────
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      MakingChildAccountPage(childId: child.childId),
+                ),
+              );
+            },
+            child: Container(
+              width: double.infinity,
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(50),
+                border: Border.all(color: Colors.black.withValues(alpha: 0.5)),
+              ),
+              alignment: Alignment.center,
+              child: const Text(
+                'انشاء حساب',
+                style: TextStyle(
+                    fontFamily: _kFont,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 // ─────────────────── Card 4: Locked (< 4 years) ──────────────────────────────
+// Shows a compact white card (no action buttons) under a dark rgba(0,0,0,0.5) overlay
+// with a centred lock icon + reason text, exactly as in the Figma (height ~186px).
 
 class _LockedChildCard extends StatelessWidget {
   final ChildTaskModel child;
@@ -427,16 +794,57 @@ class _LockedChildCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        _CardLayout(
-          child: child,
-          showStars: true,
-          starsDimmed: true,
-          usePhotoAvatar: true,
-          bottomButtons: [
-            _OutlinedBtn(label: 'فتح الملف', onTap: () {}),
-          ],
+        // ── Base white card (no buttons, compact height) ──────────────────
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              _ChildAvatar(photoUrl: child.profileImageUrl, size: 80, fullName: child.fullName),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  textDirection: TextDirection.rtl,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      child.fullName,
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(
+                        fontFamily: _kFont,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      textDirection: TextDirection.rtl,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(child.ageText,
+                            style: const TextStyle(
+                                fontFamily: _kFont,
+                                fontSize: 14,
+                                color: Color(0xFF64748B))),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.calendar_today_outlined,
+                            size: 14, color: Color(0xFF64748B)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        // Dark overlay
+        // ── Dark overlay — rgba(0,0,0,0.5) exactly like Figma ─────────────
         Positioned.fill(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
@@ -454,15 +862,18 @@ class _LockedChildCard extends StatelessWidget {
                         size: 38, color: Colors.black),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    child.lockedReason ??
-                        'ميزة المهام تفتح عند إتمام الطفل 4 سنوات',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontFamily: _kFont,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      child.lockedReason ??
+                          'ميزة المهام تفتح عند إتمام الطفل 4 سنوات',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontFamily: _kFont,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white),
+                    ),
                   ),
                 ],
               ),
@@ -517,34 +928,73 @@ class _StarsBadge extends StatelessWidget {
 class _ChildAvatar extends StatelessWidget {
   final String? photoUrl;
   final double size;
-  const _ChildAvatar({this.photoUrl, required this.size});
+  final String? fullName; // used for letter fallback
+  const _ChildAvatar({this.photoUrl, required this.size, this.fullName});
+
+  /// True when the URL is a server-side default placeholder.
+  bool get _isDefaultUrl {
+    if (photoUrl == null || photoUrl!.isEmpty) return true;
+    return photoUrl!.contains('/defaults/');
+  }
+
+  String get _firstLetter {
+    final name = (fullName ?? '').trim();
+    return name.isNotEmpty ? name.substring(0, 1) : '؟';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final hasPhoto = photoUrl != null && photoUrl!.isNotEmpty;
+    if (_isDefaultUrl) {
+      // Show first letter of name in a coloured circle
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: _kPrimary.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          _firstLetter,
+          style: TextStyle(
+            fontFamily: _kFont,
+            fontSize: size * 0.4,
+            fontWeight: FontWeight.w700,
+            color: _kPrimary,
+          ),
+        ),
+      );
+    }
+
+    // Real network photo
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: const Color(0xFFE0E0E0),
-        image: hasPhoto
-            ? DecorationImage(
-                image: NetworkImage(photoUrl!), fit: BoxFit.cover)
-            : null,
       ),
-      child: !hasPhoto
-          ? ClipOval(
-              child: Image.asset(
-                'images/default image.png',
-                width: size,
-                height: size,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.child_care,
-                    color: _kPrimary),
+      child: ClipOval(
+        child: Image.network(
+          photoUrl!,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            color: _kPrimary.withValues(alpha: 0.12),
+            alignment: Alignment.center,
+            child: Text(
+              _firstLetter,
+              style: TextStyle(
+                fontFamily: _kFont,
+                fontSize: size * 0.4,
+                fontWeight: FontWeight.w700,
+                color: _kPrimary,
               ),
-            )
-          : null,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

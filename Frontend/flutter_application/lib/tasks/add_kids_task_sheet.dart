@@ -16,6 +16,8 @@ import 'package:dio/dio.dart';
 import 'package:Ajial/api/auth_service.dart';
 import 'package:Ajial/providers/family_provider.dart';
 import 'package:Ajial/family/models/child_model.dart';
+import 'package:Ajial/tasks/models/child_task_model.dart';
+import 'package:Ajial/tasks/repositories/child_task_repository.dart';
 
 const Color _kPrimary = Color(0xFFBF092F);
 const String _kFont = 'IBM Plex Sans Arabic';
@@ -91,20 +93,33 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
   // Submit state
   bool _isSubmitting = false;
 
-  late List<ChildModel> _children;
+  // Eligible children loaded from ChildTaskRepository
+  // (childTasksLocked == false AND isAccountActive == true)
+  List<ChildTaskModel> _eligibleChildren = [];
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Pre-select the preselected child immediately
+    if (widget.preselectedChild != null) {
+      _selectedChildIds.add(widget.preselectedChild!.childId);
+    }
+    // Load eligible children from the task-specific endpoint
+    _loadEligibleChildren();
+  }
+
+  Future<void> _loadEligibleChildren() async {
+    try {
+      final all = await ChildTaskRepository().fetchChildren();
       if (!mounted) return;
-      final fam = context.read<FamilyProvider>();
-      if (fam.status == FamilyStatus.initial) fam.loadChildren();
-      // Pre-select preselected child
-      if (widget.preselectedChild != null) {
-        setState(() => _selectedChildIds.add(widget.preselectedChild!.childId));
-      }
-    });
+      setState(() {
+        // Only children where tasks are unlocked AND account is active
+        _eligibleChildren =
+            all.where((c) => !c.childTasksLocked && c.isAccountActive).toList();
+      });
+    } catch (_) {
+      // Silently ignore — list stays empty, user sees the empty state text
+    }
   }
 
   @override
@@ -159,34 +174,55 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
 
   // ── Audio recording ──────────────────────────────────────────────────────────
 
+  // Guard to prevent double-tap race conditions
+  bool _recordingBusy = false;
+
   Future<void> _startRecording() async {
-    final hasPermission = await _recorder.hasPermission();
-    if (!hasPermission) return;
+    if (_recordingBusy || _isRecording) return;
+    _recordingBusy = true;
+    try {
+      final hasPermission = await _recorder.hasPermission();
+      if (!hasPermission || !mounted) return;
 
-    final dir = await getTemporaryDirectory();
-    final path = '${dir.path}/task_recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/task_recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
-    await _recorder.start(const RecordConfig(), path: path);
-    _recordingPath = path;
-
-    setState(() {
-      _isRecording = true;
-      _recordingDuration = Duration.zero;
-    });
-
-    _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      await _recorder.start(const RecordConfig(), path: path);
       if (!mounted) return;
-      setState(() => _recordingDuration += const Duration(seconds: 1));
-    });
+
+      _recordingPath = path;
+      setState(() {
+        _isRecording = true;
+        _recordingDuration = Duration.zero;
+      });
+
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        setState(() => _recordingDuration += const Duration(seconds: 1));
+      });
+    } finally {
+      _recordingBusy = false;
+    }
   }
 
   Future<void> _stopRecording() async {
-    _recordTimer?.cancel();
-    await _recorder.stop();
-    setState(() {
-      _isRecording = false;
-      _hasRecording = _recordingDuration.inSeconds > 0;
-    });
+    if (_recordingBusy || !_isRecording) return;
+    _recordingBusy = true;
+    try {
+      _recordTimer?.cancel();
+      _recordTimer = null;
+      // Check if actually recording before calling stop
+      final isActuallyRecording = await _recorder.isRecording();
+      if (isActuallyRecording) await _recorder.stop();
+      if (!mounted) return;
+      setState(() {
+        _isRecording = false;
+        _hasRecording = _recordingDuration.inSeconds > 0;
+      });
+    } finally {
+      _recordingBusy = false;
+    }
   }
 
   void _confirmDeleteRecording() {
@@ -419,9 +455,7 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).viewInsets.bottom;
-    final fam = context.watch<FamilyProvider>();
-    // All eligible children (with accounts)
-    _children = fam.children.where((c) => c.hasAccount).toList();
+    // ignore FamilyProvider for the children list — we use _eligibleChildren instead
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -1037,11 +1071,11 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
     );
   }
 
-  /// Shows ALL eligible children; default-selects the preselected one.
-  /// Displays first name below each avatar.
+  /// Shows only eligible children (childTasksLocked == false, isAccountActive == true).
+  /// Default-selects the preselected one. Displays first name below each avatar.
   Widget _buildChildrenRow() {
-    if (_children.isEmpty) {
-      return const Text('لا يوجد أطفال بحسابات نشطة',
+    if (_eligibleChildren.isEmpty) {
+      return const Text('لا يوجد أطفال مؤهلون لإسناد المهام',
           style: TextStyle(
               fontFamily: _kFont, fontSize: 13, color: Color(0xFF888888)),
           textAlign: TextAlign.center);
@@ -1052,10 +1086,10 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         reverse: true, // RTL order
-        itemCount: _children.length,
+        itemCount: _eligibleChildren.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, i) {
-          final child = _children[i];
+          final child = _eligibleChildren[i];
           final isSelected = _selectedChildIds.contains(child.childId);
           return GestureDetector(
             onTap: () => setState(() {
@@ -1079,27 +1113,10 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
                                 color: const Color(0xFF01A449), width: 2.5)
                             : null,
                       ),
-                      child: CircleAvatar(
-                        radius: 34,
-                        backgroundColor: const Color(0xFFE0E0E0),
-                        backgroundImage: (child.photoUrl != null &&
-                                child.photoUrl!.isNotEmpty)
-                            ? NetworkImage(child.photoUrl!)
-                            : null,
-                        child: (child.photoUrl == null ||
-                                child.photoUrl!.isEmpty)
-                            ? ClipOval(
-                                child: Image.asset(
-                                  'images/default image.png',
-                                  width: 68,
-                                  height: 68,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Icon(
-                                      Icons.child_care,
-                                      color: _kPrimary),
-                                ),
-                              )
-                            : null,
+                      child: _ChildLetterAvatar(
+                        photoUrl: child.profileImageUrl,
+                        fullName: child.fullName,
+                        size: 68,
                       ),
                     ),
                     if (isSelected)
@@ -1179,6 +1196,82 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
                 color: Colors.black)),
+      ),
+    );
+  }
+}
+
+// ─────────────────── Child Letter Avatar ─────────────────────────────────────
+// Shows a real network photo when the URL is a genuine user upload.
+// Falls back to the first letter of the name when:
+//   • photoUrl is null / empty
+//   • photoUrl contains "/defaults/" (server-side placeholder)
+
+class _ChildLetterAvatar extends StatelessWidget {
+  final String? photoUrl;
+  final String fullName;
+  final double size;
+
+  const _ChildLetterAvatar({
+    required this.photoUrl,
+    required this.fullName,
+    required this.size,
+  });
+
+  /// Returns true when the URL is a default/placeholder image from the server.
+  bool get _isDefaultUrl {
+    if (photoUrl == null || photoUrl!.isEmpty) return true;
+    return photoUrl!.contains('/defaults/');
+  }
+
+  String get _firstLetter {
+    final name = fullName.trim();
+    return name.isNotEmpty ? name.substring(0, 1) : '؟';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isDefaultUrl) {
+      // Show coloured circle with the first letter
+      return CircleAvatar(
+        radius: size / 2,
+        backgroundColor: _kPrimary.withValues(alpha: 0.15),
+        child: Text(
+          _firstLetter,
+          style: TextStyle(
+            fontFamily: _kFont,
+            fontSize: size * 0.38,
+            fontWeight: FontWeight.w700,
+            color: _kPrimary,
+          ),
+        ),
+      );
+    }
+
+    // Real photo — load from network with a letter fallback on error
+    return CircleAvatar(
+      radius: size / 2,
+      backgroundColor: const Color(0xFFE0E0E0),
+      child: ClipOval(
+        child: Image.network(
+          photoUrl!,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => CircleAvatar(
+            radius: size / 2,
+            backgroundColor: _kPrimary.withValues(alpha: 0.15),
+            child: Text(
+              _firstLetter,
+              style: TextStyle(
+                fontFamily: _kFont,
+                fontSize: size * 0.38,
+                fontWeight: FontWeight.w700,
+                color: _kPrimary,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
