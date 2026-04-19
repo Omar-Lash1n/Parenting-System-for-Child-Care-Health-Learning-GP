@@ -171,7 +171,11 @@ public class ChildTaskService : IChildTaskService
                 var ageYears = ComputeAgeYears(child.BirthDate);
                 var ageMonths = ComputeAgeMonths(child.BirthDate);
                 var locked = ageYears < 4;
-                var hasAccount = !string.IsNullOrEmpty(child.ChildLoginId);
+                // HasAccount is true only when the child has BOTH a ChildLoginId AND a PasswordHash,
+                // meaning the child has actually registered their account from the child-side app.
+                // ChildLoginId alone can be set by the parent at child creation without the child
+                // ever logging in, so PasswordHash is the definitive indicator of a real child account.
+                var hasAccount = !string.IsNullOrEmpty(child.ChildLoginId) && !string.IsNullOrEmpty(child.PasswordHash);
                 var isActive = child.IsActive;
 
                 string childStatus; string? lockedReason = null;
