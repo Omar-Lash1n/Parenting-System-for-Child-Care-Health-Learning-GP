@@ -152,9 +152,8 @@ class _TasksMainPageState extends State<TasksMainPage> {
                   bottom: 148,
                   right: 16,
                   child: _GiftFab(
-                    onPressed: () {
-                      // TODO: Navigate to rewards / gift screen
-                    },
+                    onPressed: () =>
+                        Navigator.pushNamed(context, '/prizes'),
                   ),
                 ),
 
