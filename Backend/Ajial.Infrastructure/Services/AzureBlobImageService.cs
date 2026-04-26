@@ -352,6 +352,55 @@ public class AzureBlobImageService : IImageService
     }
 
     /// <summary>
+    /// Upload prize image to Azure Blob Storage (prize-images container)
+    /// Blob path: prize-images/{userId}/img-{guid}.{extension}
+    /// </summary>
+    public async Task<string> UploadPrizeImageAsync(IFormFile file, Guid userId)
+    {
+        try
+        {
+            const long maxSizeInBytes = 5 * 1024 * 1024;
+            if (file.Length > maxSizeInBytes)
+                throw new ArgumentException("حجم الصورة يجب ألا يتجاوز 5 ميجابايت");
+
+            var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
+            if (!allowedTypes.Contains(file.ContentType.ToLowerInvariant()))
+                throw new ArgumentException("نوع الملف غير مدعوم. يُسمح فقط بـ JPEG أو PNG أو WebP أو GIF");
+
+            var containerClient = _blobServiceClient.GetBlobContainerClient("prize-images");
+            await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (string.IsNullOrEmpty(extension)) extension = ".jpg";
+
+            var blobName = $"prize-images/{userId}/img-{Guid.NewGuid()}{extension}";
+            var blobClient = containerClient.GetBlobClient(blobName);
+
+            var blobHttpHeaders = new BlobHttpHeaders
+            {
+                ContentType = file.ContentType,
+                CacheControl = "public, max-age=31536000"
+            };
+
+            using var stream = file.OpenReadStream();
+            await blobClient.UploadAsync(stream, new BlobUploadOptions
+            {
+                HttpHeaders = blobHttpHeaders
+            });
+
+            return blobClient.Uri.ToString();
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"فشل في رفع صورة الجائزة: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
     /// Delete a blob by its full Azure URL — parses container name from URL path.
     /// Works cross-container unlike DeleteImageAsync (which uses only the default container).
     /// URL format: https://{account}.blob.core.windows.net/{container}/{blobPath}
@@ -382,4 +431,4 @@ public class AzureBlobImageService : IImageService
             return false;
         }
     }
-}
+}

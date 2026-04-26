@@ -29,6 +29,8 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<ChildTask> ChildTasks { get; private set; }                      // ✅ Child Tasks Feature
     public IRepository<ChildTaskAssignee> ChildTaskAssignees { get; private set; }     // ✅ Child Tasks Feature
     public IRepository<ChildTaskRecurrence> ChildTaskRecurrences { get; private set; } // ✅ Child Tasks Feature
+    public IRepository<Prize> Prizes { get; private set; }
+    public IRepository<PrizeTask> PrizeTasks { get; private set; }
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -52,6 +54,8 @@ public class UnitOfWork : IUnitOfWork
         ChildTasks = new Repository<ChildTask>(_context);                      // ✅ Child Tasks Feature
         ChildTaskAssignees = new Repository<ChildTaskAssignee>(_context);     // ✅ Child Tasks Feature
         ChildTaskRecurrences = new Repository<ChildTaskRecurrence>(_context); // ✅ Child Tasks Feature
+        Prizes = new Repository<Prize>(_context);
+        PrizeTasks = new Repository<PrizeTask>(_context);
     }
 
     public async Task<int> SaveChangesAsync()

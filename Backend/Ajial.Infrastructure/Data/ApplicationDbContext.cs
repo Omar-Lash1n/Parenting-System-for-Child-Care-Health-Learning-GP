@@ -28,6 +28,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChildTask> ChildTasks { get; set; } = null!;                      // ✅ Child Tasks Feature
     public DbSet<ChildTaskAssignee> ChildTaskAssignees { get; set; } = null!;     // ✅ Child Tasks Feature
     public DbSet<ChildTaskRecurrence> ChildTaskRecurrences { get; set; } = null!; // ✅ Child Tasks Feature
+    public DbSet<Prize> Prizes { get; set; } = null!;
+    public DbSet<PrizeTask> PrizeTasks { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -503,6 +505,61 @@ public class ApplicationDbContext : DbContext
                 .HasDefaultValue(false);
 
             entity.HasIndex(r => r.TaskId).IsUnique();
+        });
+
+        // Prizes Store Configuration
+        modelBuilder.Entity<Prize>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+
+            entity.Property(p => p.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(p => p.ImageUrl)
+                .HasMaxLength(2048);
+
+            entity.Property(p => p.RequiredStars)
+                .IsRequired();
+
+            entity.Property(p => p.Status)
+                .IsRequired()
+                .HasDefaultValue(PrizeStatus.Active);
+
+            entity.Property(p => p.CreatedAt)
+                .IsRequired();
+
+            entity.HasOne(p => p.Parent)
+                .WithMany()
+                .HasForeignKey(p => p.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(p => p.Child)
+                .WithMany()
+                .HasForeignKey(p => p.ChildId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(p => p.ParentId);
+            entity.HasIndex(p => p.ChildId);
+            entity.HasIndex(p => p.Status);
+        });
+
+        modelBuilder.Entity<PrizeTask>(entity =>
+        {
+            entity.HasKey(pt => new { pt.PrizeId, pt.TaskId });
+
+            entity.HasOne(pt => pt.Prize)
+                .WithMany(p => p.RequiredTasks)
+                .HasForeignKey(pt => pt.PrizeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(pt => pt.Task)
+                .WithMany()
+                .HasForeignKey(pt => pt.TaskId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(pt => pt.PrizeId);
+            entity.HasIndex(pt => pt.TaskId);
         });
 
         // ✅ HealthUnit Configuration
@@ -1017,4 +1074,4 @@ public class ApplicationDbContext : DbContext
         );
     }
 
-}
+}
