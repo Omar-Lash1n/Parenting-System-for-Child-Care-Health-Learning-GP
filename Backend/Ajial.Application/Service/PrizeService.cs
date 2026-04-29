@@ -31,15 +31,19 @@ public class PrizeService : IPrizeService
     private async Task<int> GetChildTotalStarsAsync(Guid childId)
     {
         var childAssignees = (await _unitOfWork.ChildTaskAssignees.FindAsync(a => a.ChildId == childId && a.IsCompleted)).ToList();
-        var totalStars = 0;
+        var earnedStars = 0;
 
         foreach (var assignee in childAssignees)
         {
             var task = await _unitOfWork.ChildTasks.GetByIdAsync(assignee.TaskId);
-            if (task != null) totalStars += task.Stars;
+            if (task != null) earnedStars += task.Stars;
         }
 
-        return totalStars;
+        // Subtract stars already redeemed through delivered prizes
+        var child = await _unitOfWork.Children.GetByIdAsync(childId);
+        var spentStars = child?.SpentStars ?? 0;
+
+        return Math.Max(0, earnedStars - spentStars);
     }
 
     private async Task<(int currentStars, int remainingStars, int completedTasksCount, int totalRequiredTasks, string status, bool canDeliver)>
@@ -476,7 +480,11 @@ public class PrizeService : IPrizeService
             prize.DeliveredAt = DateTime.Now;
             prize.UpdatedAt = DateTime.Now;
 
+            // Deduct the prize cost from the child's star balance
+            child.SpentStars += prize.RequiredStars;
+
             await _unitOfWork.Prizes.UpdateAsync(prize);
+            await _unitOfWork.Children.UpdateAsync(child);
             await _unitOfWork.SaveChangesAsync();
 
             return ApiResponse<PrizeDetailDto>.SuccessResponse(await BuildDetailDtoAsync(prize), "تم تسليم الجائزة بنجاح");

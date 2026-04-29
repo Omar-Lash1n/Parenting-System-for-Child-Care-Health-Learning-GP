@@ -1,4 +1,4 @@
-﻿namespace Ajial.Domain.Entities;
+namespace Ajial.Domain.Entities;
 
 public class Child
 {
@@ -58,4 +58,10 @@ public class Child
     /// سجل التطعيمات - Vaccination records for this child
     /// </summary>
     public ICollection<ChildVaccination> Vaccinations { get; set; } = new List<ChildVaccination>();
+
+    /// <summary>
+    /// النجوم المستهلكة — مجموع النجوم المخصومة عند تسليم الجوائز
+    /// Total stars spent/redeemed through delivered prizes.
+    /// </summary>
+    public int SpentStars { get; set; } = 0;
 }

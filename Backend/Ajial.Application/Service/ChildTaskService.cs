@@ -188,16 +188,19 @@ public class ChildTaskService : IChildTaskService
                 var childTaskIds = childAssignees.Select(a => a.TaskId).ToHashSet();
                 var childTasks = allTasks.Where(t => childTaskIds.Contains(t.Id)).ToList();
 
+                var earnedStars = childAssignees.Where(a => a.IsCompleted)
+                                                 .Join(allTasks, a => a.TaskId, t => t.Id, (a, t) => t.Stars)
+                                                 .Sum();
+                var netStars = Math.Max(0, earnedStars - child.SpentStars);
+
                 dtos.Add(new ChildForTasksDto
                 {
                     ChildId = child.Id, FullName = child.FullName, ProfileImageUrl = child.ProfileImageUrl,
                     BirthDate = child.BirthDate, AgeYears = ageYears, AgeMonths = ageMonths, Gender = child.Gender,
                     ChildTasksLocked = locked, LockedReason = lockedReason, HasAccount = hasAccount,
                     IsAccountActive = isActive, ChildStatus = childStatus,
-                    // Stars = sum of Stars for tasks completed by THIS child
-                    TotalStars = childAssignees.Where(a => a.IsCompleted)
-                                               .Join(allTasks, a => a.TaskId, t => t.Id, (a, t) => t.Stars)
-                                               .Sum(),
+                    // Stars = earned stars minus stars already redeemed via delivered prizes
+                    TotalStars = netStars,
                     PendingTasksCount = childAssignees.Count(a => !a.IsCompleted)
                 });
             }
@@ -340,11 +343,12 @@ public class ChildTaskService : IChildTaskService
                 else pending.Add(card);
             }
 
-            // Total stars = sum of Stars for tasks THIS child has specifically completed
-            var totalStars = assigneeRows
+            // Total stars = earned stars minus stars already redeemed via delivered prizes
+            var earnedStars = assigneeRows
                 .Where(a => a.IsCompleted)
                 .Join(allTasks, a => a.TaskId, t => t.Id, (a, t) => t.Stars)
                 .Sum();
+            var totalStars = Math.Max(0, earnedStars - child.SpentStars);
 
             return ApiResponse<GetChildTasksForChildResponseDto>.SuccessResponse(
                 new GetChildTasksForChildResponseDto
@@ -670,13 +674,16 @@ public class ChildTaskService : IChildTaskService
 
                 var childAssignees = allAssignees.Where(a => a.ChildId == childId).ToList();
 
+                var earnedStarsForChild = childAssignees
+                    .Where(a => a.IsCompleted)
+                    .Join(allTasks, a => a.TaskId, t => t.Id, (a, t) => t.Stars)
+                    .Sum();
+
                 perChild.Add(new ChildSummaryItemDto
                 {
                     ChildId = child.Id, FullName = child.FullName, ProfileImageUrl = child.ProfileImageUrl,
-                    TotalStars = childAssignees
-                        .Where(a => a.IsCompleted)
-                        .Join(allTasks, a => a.TaskId, t => t.Id, (a, t) => t.Stars)
-                        .Sum(),
+                    // Subtract stars already redeemed via delivered prizes
+                    TotalStars = Math.Max(0, earnedStarsForChild - child.SpentStars),
                     PendingTasksCount   = childAssignees.Count(a => !a.IsCompleted),
                     CompletedTasksCount = childAssignees.Count(a => a.IsCompleted)
                 });
