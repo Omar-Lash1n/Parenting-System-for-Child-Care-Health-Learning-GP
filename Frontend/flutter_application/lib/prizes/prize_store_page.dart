@@ -4,8 +4,11 @@
 // Empty state when there are no prizes, list of cards otherwise,
 // FAB to open Add Prize, onboarding overlay on first visit.
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:confetti/confetti.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
 import 'package:Ajial/prizes/prize_store_provider.dart';
 import 'package:Ajial/prizes/prize_onboarding_overlay.dart';
@@ -29,9 +32,18 @@ class PrizeStorePage extends StatefulWidget {
 class _PrizeStorePageState extends State<PrizeStorePage> {
   bool _onboardingTriggered = false;
 
+  late ConfettiController _confettiControllerTopRight;
+  late ConfettiController _confettiControllerBottomLeft;
+
   @override
   void initState() {
     super.initState();
+    _confettiControllerTopRight = ConfettiController(
+      duration: const Duration(milliseconds: 500),
+    );
+    _confettiControllerBottomLeft = ConfettiController(
+      duration: const Duration(milliseconds: 500),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await context.read<PrizeStoreProvider>().loadPrizes();
@@ -43,6 +55,33 @@ class _PrizeStorePageState extends State<PrizeStorePage> {
         }
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _confettiControllerTopRight.dispose();
+    _confettiControllerBottomLeft.dispose();
+    super.dispose();
+  }
+
+  void _playCelebration() {
+    _confettiControllerTopRight.play();
+    _confettiControllerBottomLeft.play();
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (mounted) {
+        _confettiControllerTopRight.play();
+        _confettiControllerBottomLeft.play();
+      }
+    });
+  }
+
+  Path _drawConfettiPath(Size size) {
+    var path = Path();
+    path.moveTo(0, size.height);
+    path.lineTo(size.width, size.height);
+    path.lineTo(size.width / 2, 0);
+    path.close();
+    return path;
   }
 
   Future<void> _openAdd() async {
@@ -93,7 +132,7 @@ class _PrizeStorePageState extends State<PrizeStorePage> {
     try {
       await context.read<PrizeStoreProvider>().deliverPrize(prize.prizeId);
       if (!mounted) return;
-      await showPrizeDeliveryCelebrationDialog(context);
+      _playCelebration();
     } catch (e) {
       if (!mounted) return;
       final raw = e.toString().replaceFirst('Exception: ', '').toLowerCase();
@@ -190,6 +229,47 @@ class _PrizeStorePageState extends State<PrizeStorePage> {
               left: 0,
               right: 0,
               child: AppBottomNavBar(currentIndex: 1),
+            ),
+            // Confetti celebration (plays on top of everything)
+            Align(
+              alignment: Alignment.topRight,
+              child: ConfettiWidget(
+                confettiController: _confettiControllerTopRight,
+                blastDirection: pi * 0.75,
+                maxBlastForce: 25,
+                minBlastForce: 10,
+                emissionFrequency: 0.03,
+                numberOfParticles: 30,
+                gravity: 0.2,
+                shouldLoop: false,
+                colors: const [
+                  Colors.red,
+                  Colors.orange,
+                  Colors.purple,
+                  _kPrimary,
+                ],
+                createParticlePath: _drawConfettiPath,
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomLeft,
+              child: ConfettiWidget(
+                confettiController: _confettiControllerBottomLeft,
+                blastDirection: -pi * 0.25,
+                maxBlastForce: 25,
+                minBlastForce: 10,
+                emissionFrequency: 0.03,
+                numberOfParticles: 30,
+                gravity: 0.2,
+                shouldLoop: false,
+                colors: const [
+                  Colors.green,
+                  Colors.blue,
+                  Colors.yellow,
+                  Color(0xFF01A449),
+                ],
+                createParticlePath: _drawConfettiPath,
+              ),
             ),
           ],
         ),
@@ -320,3 +400,4 @@ class _ErrorView extends StatelessWidget {
     );
   }
 }
+
