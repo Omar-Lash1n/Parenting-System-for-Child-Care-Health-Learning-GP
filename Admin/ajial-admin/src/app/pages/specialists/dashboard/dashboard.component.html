@@ -1,0 +1,174 @@
+<!-- Header -->
+<header class="page-header">
+    <div class="header-text">
+        <h1>إدارة المتخصصين</h1>
+        <p>مراجعة وإدارة طلبات تسجيل المتخصصين والأطباء</p>
+    </div>
+    <div class="header-actions">
+        <div class="stats-card pending">
+            <span class="stats-number">{{ pendingCount }}</span>
+            <span class="stats-label">قيد المراجعة</span>
+        </div>
+        <div class="stats-card approved">
+            <span class="stats-number">{{ approvedCount }}</span>
+            <span class="stats-label">مقبول</span>
+        </div>
+        <div class="stats-card rejected">
+            <span class="stats-number">{{ rejectedCount }}</span>
+            <span class="stats-label">مرفوض</span>
+        </div>
+    </div>
+</header>
+
+<!-- Filters -->
+<div class="filters-bar">
+    <div class="filter-tabs">
+        <button class="filter-tab" [class.active]="currentFilter === 'all'" (click)="filterByStatus('all')">الكل</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'Pending'" (click)="filterByStatus('Pending')">قيد المراجعة</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'Approved'" (click)="filterByStatus('Approved')">مقبول</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'Rejected'" (click)="filterByStatus('Rejected')">مرفوض</button>
+    </div>
+    <button class="btn btn-outline" (click)="fetchSpecialists()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        تحديث
+    </button>
+</div>
+
+<!-- Table -->
+<div class="table-container">
+    <div class="loading" *ngIf="isLoading">
+        <div class="spinner"></div>
+        <p>جارٍ التحميل...</p>
+    </div>
+    
+    <table class="data-table" *ngIf="!isLoading && filteredSpecialists.length > 0">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>الصورة</th>
+                <th>الاسم</th>
+                <th>التخصص</th>
+                <th>تاريخ التسجيل</th>
+                <th>الحالة</th>
+                <th>إجراء</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let s of filteredSpecialists; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td>
+                    <img *ngIf="s.personalPhotoUrl" class="table-avatar" [src]="s.personalPhotoUrl" [alt]="s.fullName" (error)="onImageError($event)">
+                    <div *ngIf="!s.personalPhotoUrl" class="table-avatar-placeholder">👤</div>
+                </td>
+                <td><span class="name-link" (click)="openDetail(s)">{{ s.fullName || '—' }}</span></td>
+                <td>{{ s.specialization || '—' }}</td>
+                <td>{{ formatDate(s.createdAt) }}</td>
+                <td><span class="status-badge" [ngClass]="getStatusData(s.status).cls">{{ getStatusData(s.status).label }}</span></td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn btn-sm btn-outline" (click)="openDetail(s)">عرض</button>
+                        <button *ngIf="s.status === 'Pending'" class="btn btn-sm btn-success" (click)="approveSpecialist(s.specialistId)">قبول</button>
+                        <button *ngIf="s.status === 'Pending'" class="btn btn-sm btn-danger" (click)="openRejectModal(s.specialistId)">رفض</button>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="empty-state" *ngIf="!isLoading && filteredSpecialists.length === 0">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="11" x2="23" y2="11"/></svg>
+        <p>لا توجد بيانات لعرضها</p>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" [class.active]="isDetailModalActive" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()" *ngIf="selectedSpecialist">
+        <div class="modal-header">
+            <h2>تفاصيل المتخصص</h2>
+            <button class="modal-close" (click)="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="detail-grid">
+                <div class="detail-field">
+                    <span class="detail-label">الاسم الكامل</span>
+                    <span class="detail-value">{{ selectedSpecialist.fullName || '—' }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">التخصص</span>
+                    <span class="detail-value">{{ selectedSpecialist.specialization || '—' }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">الحالة</span>
+                    <span class="detail-value">
+                        <span class="status-badge" [ngClass]="getStatusData(selectedSpecialist.status).cls">{{ getStatusData(selectedSpecialist.status).label }}</span>
+                    </span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">تاريخ التسجيل</span>
+                    <span class="detail-value">{{ formatDate(selectedSpecialist.createdAt) }}</span>
+                </div>
+            </div>
+
+            <div class="doc-images">
+                <div class="doc-card">
+                    <div class="doc-card-label">الصورة الشخصية</div>
+                    <img *ngIf="selectedSpecialist.personalPhotoUrl" [src]="selectedSpecialist.personalPhotoUrl" (click)="openDoc(selectedSpecialist.personalPhotoUrl)">
+                    <div *ngIf="!selectedSpecialist.personalPhotoUrl" class="doc-card-na">غير متوفر</div>
+                </div>
+                <div class="doc-card">
+                    <div class="doc-card-label">بطاقة الهوية (أمامي)</div>
+                    <img *ngIf="selectedSpecialist.idFrontImageUrl" [src]="selectedSpecialist.idFrontImageUrl" (click)="openDoc(selectedSpecialist.idFrontImageUrl)">
+                    <div *ngIf="!selectedSpecialist.idFrontImageUrl" class="doc-card-na">غير متوفر</div>
+                </div>
+                <div class="doc-card">
+                    <div class="doc-card-label">صورة الترخيص المهني</div>
+                    <img *ngIf="selectedSpecialist.practiceLicenseImageUrl" [src]="selectedSpecialist.practiceLicenseImageUrl" (click)="openDoc(selectedSpecialist.practiceLicenseImageUrl)">
+                    <div *ngIf="!selectedSpecialist.practiceLicenseImageUrl" class="doc-card-na">غير متوفر</div>
+                </div>
+                <div class="doc-card">
+                    <div class="doc-card-label">صورة شهادة التخصص</div>
+                    <img *ngIf="selectedSpecialist.specializationCertificateImageUrl" [src]="selectedSpecialist.specializationCertificateImageUrl" (click)="openDoc(selectedSpecialist.specializationCertificateImageUrl)">
+                    <div *ngIf="!selectedSpecialist.specializationCertificateImageUrl" class="doc-card-na">غير متوفر</div>
+                </div>
+                <div class="doc-card">
+                    <div class="doc-card-label">صورة كارنيه النقابة</div>
+                    <img *ngIf="selectedSpecialist.unionCardImageUrl" [src]="selectedSpecialist.unionCardImageUrl" (click)="openDoc(selectedSpecialist.unionCardImageUrl)">
+                    <div *ngIf="!selectedSpecialist.unionCardImageUrl" class="doc-card-na">غير متوفر</div>
+                </div>
+                <div class="doc-card">
+                    <div class="doc-card-label">بطاقة الهوية (خلفي)</div>
+                    <img *ngIf="selectedSpecialist.idBackImageUrl" [src]="selectedSpecialist.idBackImageUrl" (click)="openDoc(selectedSpecialist.idBackImageUrl)">
+                    <div *ngIf="!selectedSpecialist.idBackImageUrl" class="doc-card-na">غير متوفر</div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <ng-container *ngIf="selectedSpecialist.status === 'Pending'">
+                <button class="btn btn-success" (click)="approveSpecialist(selectedSpecialist.specialistId)">قبول الطلب</button>
+                <button class="btn btn-danger" (click)="openRejectModal(selectedSpecialist.specialistId)">رفض الطلب</button>
+            </ng-container>
+            <button class="btn btn-outline" (click)="closeModal()">إغلاق</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div class="modal-overlay" [class.active]="isRejectModalActive" (click)="closeRejectModal()">
+    <div class="modal modal-small" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>سبب الرفض</h2>
+            <button class="modal-close" (click)="closeRejectModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <textarea [(ngModel)]="rejectionReason" placeholder="اكتب سبب الرفض هنا..." rows="4"></textarea>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" (click)="closeRejectModal()">إلغاء</button>
+            <button class="btn btn-danger" (click)="confirmReject()">تأكيد الرفض</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" [ngClass]="toastType" [class.show]="isToastShow">{{ toastMessage }}</div>
