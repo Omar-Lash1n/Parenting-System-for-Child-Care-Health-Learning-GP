@@ -97,6 +97,7 @@ builder.Services.AddHostedService<TaskReminderBackgroundWorker>();              
 builder.Services.AddScoped<IHealthUnitService, HealthUnitService>();                    // ✅ Health Unit Search
 builder.Services.AddScoped<IChildTaskService, ChildTaskService>();                       // ✅ Child Tasks Feature
 builder.Services.AddScoped<IPrizeService, PrizeService>();
+builder.Services.AddScoped<IParentHomeService, ParentHomeService>();
 // ✅ Infrastructure Services
 builder.Services.AddScoped<IImageService, AzureBlobImageService>(); // ✅ NEW - Image Upload to Azure
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
