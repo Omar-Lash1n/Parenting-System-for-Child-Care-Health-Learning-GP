@@ -24,6 +24,7 @@ import 'package:Ajial/providers/continue_signup_provider.dart';
 import 'package:Ajial/providers/forgot_password_provider.dart';
 import 'package:Ajial/providers/verify_email_provider.dart';
 import 'package:Ajial/providers/home_provider.dart';
+import 'package:Ajial/homepage/providers/parent_home_provider.dart';
 import 'package:Ajial/providers/add_child_flow_provider.dart';
 import 'package:Ajial/providers/child_login_provider.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
@@ -182,6 +183,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ForgotPasswordProvider()),
         ChangeNotifierProvider(create: (_) => VerifyEmailProvider()),
         ChangeNotifierProvider(create: (_) => HomeProvider()),
+        ChangeNotifierProvider(create: (_) => ParentHomeProvider()),
         ChangeNotifierProvider(create: (_) => AddChildFlowProvider()),
         ChangeNotifierProvider(create: (_) => ChildLoginProvider()),
         ChangeNotifierProvider(create: (_) => ParentProfileProvider()),
@@ -224,6 +226,7 @@ class AjialApp extends StatelessWidget {
 
       theme: ThemeData(
         fontFamily: 'IBM Plex Sans Arabic', // (ممتاز، هذا صحيح)
+        primaryColor: const Color(0xFFBF092F),
         primarySwatch: Colors.red,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),

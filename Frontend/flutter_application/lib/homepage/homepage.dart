@@ -1,9 +1,17 @@
-// --- homepage.dart (Refactored with Provider Pattern) ---
-
-import 'package:Ajial/add-child/add-child-flow.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:Ajial/providers/home_provider.dart';
+import 'package:Ajial/homepage/providers/parent_home_provider.dart';
+import 'package:Ajial/homepage/widgets/children_section.dart';
+import 'package:Ajial/homepage/widgets/current_vaccinations_section.dart';
+import 'package:Ajial/homepage/widgets/daily_question_card.dart';
+import 'package:Ajial/homepage/widgets/home_header.dart';
+import 'package:Ajial/homepage/widgets/parenting_nutrition_section.dart';
+import 'package:Ajial/homepage/widgets/quick_actions_section.dart';
+import 'package:Ajial/homepage/widgets/upcoming_tasks_section.dart';
+import 'package:Ajial/providers/family_provider.dart';
+import 'package:Ajial/providers/nav_bar_provider.dart';
+import 'package:Ajial/providers/parent_profile_provider.dart';
+import 'package:Ajial/widgets/skeleton_loading.dart';
 
 const Color kPrimaryColor = Color(0xFFBF092F);
 const String kFontFamily = 'IBM Plex Sans Arabic';
@@ -23,203 +31,110 @@ class FadePageRoute<T> extends PageRouteBuilder<T> {
         );
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final homeProvider = context.read<ParentHomeProvider>();
+      final familyProvider = context.read<FamilyProvider>();
+      final profileProvider = context.read<ParentProfileProvider>();
+
+      if (homeProvider.vaccinationsStatus == HomeDataStatus.initial &&
+          homeProvider.tasksStatus == HomeDataStatus.initial) {
+        homeProvider.loadAll();
+      }
+      if (familyProvider.status == FamilyStatus.initial) {
+        familyProvider.loadChildren();
+      }
+      if (profileProvider.profileData == null && !profileProvider.isLoading) {
+        profileProvider.fetchProfile();
+      }
+    });
+  }
+
+  Future<void> _refresh() async {
+    await Future.wait([
+      context.read<ParentHomeProvider>().loadAll(),
+      context.read<FamilyProvider>().loadChildren(),
+      context.read<ParentProfileProvider>().fetchProfile(),
+    ]);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Consumer<HomeProvider>(
-          builder: (context, provider, _) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo
-                  Image.asset(
-                    'images/main-logo.png',
-                    width: 150,
-                    height: 150,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.home,
-                      size: 100,
-                      color: kPrimaryColor,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
+        body: SafeArea(
+          bottom: false,
+          child: Consumer3<ParentHomeProvider, FamilyProvider,
+              ParentProfileProvider>(
+            builder: (context, homeProvider, familyProvider, profileProvider, _) {
+              if (homeProvider.isInitialLoading &&
+                  familyProvider.status == FamilyStatus.initial) {
+                return const HomepageSkeleton();
+              }
 
-                  // Welcome Message
-                  const Text(
-                    'مرحباً بك في الصفحة الرئيسية!',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: kFontFamily,
-                    ),
+              return RefreshIndicator(
+                color: kPrimaryColor,
+                onRefresh: _refresh,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  child: Column(
+                    children: [
+                      HomeHeader(
+                        profileProvider: profileProvider,
+                        familyProvider: familyProvider,
+                      ),
+                      const SizedBox(height: 24),
+                      const DailyQuestionCard(),
+                      const SizedBox(height: 24),
+                      const QuickActionsSection(),
+                      const SizedBox(height: 24),
+                      ChildrenSection(
+                        children: familyProvider.children,
+                        onAddChildTap: () =>
+                            Navigator.pushNamed(context, '/add-child'),
+                        onShowAllTap: () =>
+                            Navigator.pushNamed(context, '/family'),
+                      ),
+                      const SizedBox(height: 24),
+                      const ParentingNutritionSection(),
+                      const SizedBox(height: 24),
+                      CurrentVaccinationsSection(
+                        status: homeProvider.vaccinationsStatus,
+                        vaccinations: homeProvider.vaccinations,
+                        error: homeProvider.vaccinationsError,
+                        onRetry: homeProvider.loadVaccinations,
+                        onShowAllTap: () =>
+                            Navigator.pushNamed(context, '/kids-vaccination-home'),
+                      ),
+                      const SizedBox(height: 24),
+                      UpcomingTasksSection(
+                        status: homeProvider.tasksStatus,
+                        tasks: homeProvider.tasks,
+                        error: homeProvider.tasksError,
+                        onRetry: homeProvider.loadTasks,
+                        onShowAllTap: () => Navigator.pushNamed(context, '/tasks'),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-
-                  const Text(
-                    'هذه صفحة مؤقتة، سيتم تطويرها لاحقاً',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                      fontFamily: kFontFamily,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // Profile Button
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: ElevatedButton.icon(
-                      onPressed: provider.isLoggingOut
-                          ? null
-                          : () {
-                              Navigator.pushNamed(context, '/profile');
-                            },
-                      icon: const Icon(Icons.person, color: Colors.white),
-                      label: const Text(
-                        'الملف الشخصي',
-                        style: TextStyle(
-                          fontFamily: kFontFamily,
-                          fontSize: 18,
-                          color: Colors.white,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kPrimaryColor,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Add Child Button
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: OutlinedButton.icon(
-                      onPressed: provider.isLoggingOut
-                          ? null
-                          : () {
-                              Navigator.push(
-                                context,
-                                FadePageRoute(child: const AddChildFlow()),
-                              );
-                            },
-                      icon: const Icon(Icons.child_care, color: kPrimaryColor),
-                      label: const Text(
-                        'أضف طفلاً جديداً',
-                        style: TextStyle(
-                          fontFamily: kFontFamily,
-                          fontSize: 18,
-                          color: kPrimaryColor,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: kPrimaryColor),
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Vaccination Home Button
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: OutlinedButton.icon(
-                      onPressed: provider.isLoggingOut
-                          ? null
-                          : () {
-                              Navigator.pushNamed(context, '/kids-vaccination-home');
-                            },
-                      icon: const Icon(Icons.vaccines_rounded, color: kPrimaryColor),
-                      label: const Text(
-                        'كراسة التطعيمات',
-                        style: TextStyle(
-                          fontFamily: kFontFamily,
-                          fontSize: 18,
-                          color: kPrimaryColor,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: kPrimaryColor),
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Tasks Of Parent and Childs
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: OutlinedButton.icon(
-                      onPressed: provider.isLoggingOut
-                          ? null
-                          : () {
-                              Navigator.pushNamed(context, '/tasks-welcome');
-                            },
-                      icon: const Icon(Icons.task, color: kPrimaryColor),
-                      label: const Text(
-                        'مهامي ومهام اطفالي',
-                        style: TextStyle(
-                          fontFamily: kFontFamily,
-                          fontSize: 18,
-                          color: kPrimaryColor,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: kPrimaryColor),
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Logout Button
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: provider.isLoggingOut
-                        ? const CircularProgressIndicator(color: kPrimaryColor)
-                        : OutlinedButton.icon(
-                            onPressed: () => provider.logout(context),
-                            icon:
-                                const Icon(Icons.logout, color: kPrimaryColor),
-                            label: const Text(
-                              'تسجيل الخروج',
-                              style: TextStyle(
-                                fontFamily: kFontFamily,
-                                fontSize: 18,
-                                color: kPrimaryColor,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: kPrimaryColor),
-                              minimumSize: const Size(double.infinity, 50),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
-                              ),
-                            ),
-                          ),
-                  ),
-                ],
-              ),
-            );
-          },
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
