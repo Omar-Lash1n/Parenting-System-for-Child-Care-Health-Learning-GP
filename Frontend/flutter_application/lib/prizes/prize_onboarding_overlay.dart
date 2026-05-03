@@ -20,7 +20,7 @@ class _Step {
 }
 
 const String _kImgBase =
-    'images/excited-with-closed-eyes-little-boy-wearing-blue-party-hat-holding-gift-boxes-with-bag-showing-yes-gesture-isolated-olive-green-wall 1';
+    'images/olive-green-wall 1';
 
 const List<_Step> _kSteps = [
   _Step(
