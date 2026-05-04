@@ -20,4 +20,9 @@ public class Specialist
     public SpecialistStatus Status { get; set; } = SpecialistStatus.Pending;
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public string? RejectionReason { get; set; }
+    public DateTime? SubmittedAt { get; set; }
+    public DateTime? ReviewedAt { get; set; }
+    public Guid? ReviewedByUserId { get; set; }
+    public ICollection<SpecialistStatusHistory> StatusHistories { get; set; } = new List<SpecialistStatusHistory>();
 }

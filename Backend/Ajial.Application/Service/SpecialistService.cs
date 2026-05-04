@@ -68,11 +68,11 @@ public class SpecialistService : ISpecialistService
             var newStatus = (SpecialistStatus)request.Status;
 
             // Only allow Approved or Rejected
-            if (newStatus == SpecialistStatus.Pending)
+            if (newStatus != SpecialistStatus.Approved && newStatus != SpecialistStatus.Rejected)
             {
                 return ApiResponse<SpecialistDto>.FailureResponse(
                     "حالة غير صحيحة",
-                    new List<string> { "لا يمكن تعيين الحالة إلى 'معلق' يدوياً" }
+                    new List<string> { "الحالة يجب أن تكون 2 (موافقة) أو 3 (رفض)" }
                 );
             }
 
@@ -86,9 +86,37 @@ public class SpecialistService : ISpecialistService
                 );
             }
 
+            if (newStatus == SpecialistStatus.Rejected && string.IsNullOrWhiteSpace(request.RejectionReason))
+            {
+                return ApiResponse<SpecialistDto>.FailureResponse(
+                    "سبب الرفض مطلوب",
+                    new List<string> { "سبب الرفض مطلوب" }
+                );
+            }
+
+            var fromStatus = specialist.Status;
+            var now = DateTime.UtcNow;
+
             // Update status
             specialist.Status = newStatus;
-            specialist.UpdatedAt = DateTime.UtcNow;
+            specialist.UpdatedAt = now;
+            specialist.ReviewedAt = now;
+            specialist.ReviewedByUserId = Guid.Empty;
+            specialist.RejectionReason = newStatus == SpecialistStatus.Rejected
+                ? request.RejectionReason?.Trim()
+                : null;
+
+            await _unitOfWork.SpecialistStatusHistories.AddAsync(new SpecialistStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                SpecialistId = specialist.Id,
+                FromStatus = fromStatus,
+                ToStatus = newStatus,
+                Reason = specialist.RejectionReason,
+                ChangedByUserId = Guid.Empty,
+                ChangedAt = now
+            });
+
             await _unitOfWork.Specialists.UpdateAsync(specialist);
             await _unitOfWork.SaveChangesAsync();
 

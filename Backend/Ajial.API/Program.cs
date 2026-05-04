@@ -86,6 +86,7 @@ builder.Services.AddScoped<IVoiceNoteService, VoiceNoteService>(); // ✅ Voice 
 builder.Services.AddScoped<IVaccinationService, VaccinationService>(); // ✅ Vaccination Feature
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISpecialistService, SpecialistService>();
+builder.Services.AddScoped<ISpecialistApplicationService, SpecialistApplicationService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IVaccinationReminderService, VaccinationReminderService>(); // ✅ Vaccination Reminder Page

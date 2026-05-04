@@ -30,6 +30,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChildTaskRecurrence> ChildTaskRecurrences { get; set; } = null!; // ✅ Child Tasks Feature
     public DbSet<Prize> Prizes { get; set; } = null!;
     public DbSet<PrizeTask> PrizeTasks { get; set; } = null!;
+    public DbSet<SpecialistStatusHistory> SpecialistStatusHistories { get; set; } = null!;
+    public DbSet<Specialty> Specialties { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -295,10 +297,49 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UnionCardImageUrl).IsRequired().HasMaxLength(500);
             entity.Property(e => e.PersonalPhotoUrl).IsRequired().HasMaxLength(500);
             entity.Property(e => e.Status).IsRequired();
+            entity.Property(e => e.RejectionReason).HasMaxLength(1000);
+            entity.Property(e => e.SubmittedAt);
+            entity.Property(e => e.ReviewedAt);
+            entity.Property(e => e.ReviewedByUserId);
 
             entity.HasIndex(e => e.UserId).IsUnique();
             entity.HasIndex(e => e.PracticeLicenseNumber).IsUnique();
         });
+
+        // Specialist Status History Configuration
+        modelBuilder.Entity<SpecialistStatusHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.Specialist)
+                  .WithMany(s => s.StatusHistories)
+                  .HasForeignKey(e => e.SpecialistId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.Reason).HasMaxLength(1000);
+            entity.Property(e => e.ChangedAt).IsRequired();
+            entity.Property(e => e.FromStatus).IsRequired();
+            entity.Property(e => e.ToStatus).IsRequired();
+
+            entity.HasIndex(e => e.SpecialistId);
+            entity.HasIndex(e => e.ChangedAt);
+        });
+
+        // Specialty Lookup Configuration
+        modelBuilder.Entity<Specialty>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.NameAr).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.NameEn).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
+        });
+
+        modelBuilder.Entity<Specialty>().HasData(
+            new Specialty { Id = 1, NameAr = "طبيب عام", NameEn = "General Practitioner", IsActive = true },
+            new Specialty { Id = 2, NameAr = "متخصص تربوي", NameEn = "Educational Specialist", IsActive = true },
+            new Specialty { Id = 3, NameAr = "طبيب أطفال", NameEn = "Pediatrician", IsActive = true },
+            new Specialty { Id = 4, NameAr = "أخصائي تغذية", NameEn = "Nutritionist", IsActive = true },
+            new Specialty { Id = 5, NameAr = "أخصائي نفسي", NameEn = "Psychologist", IsActive = true }
+        );
 
         // ✅ VaccinationAppointment Configuration
         modelBuilder.Entity<VaccinationAppointment>(entity =>

@@ -25,6 +25,8 @@ public interface IUnitOfWork : IDisposable
     IRepository<ChildTaskRecurrence> ChildTaskRecurrences { get; } // ✅ Child Tasks Feature
     IRepository<Prize> Prizes { get; }
     IRepository<PrizeTask> PrizeTasks { get; }
+    IRepository<SpecialistStatusHistory> SpecialistStatusHistories { get; }
+    IRepository<Specialty> Specialties { get; }
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

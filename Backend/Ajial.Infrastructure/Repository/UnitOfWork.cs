@@ -31,6 +31,8 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<ChildTaskRecurrence> ChildTaskRecurrences { get; private set; } // ✅ Child Tasks Feature
     public IRepository<Prize> Prizes { get; private set; }
     public IRepository<PrizeTask> PrizeTasks { get; private set; }
+    public IRepository<SpecialistStatusHistory> SpecialistStatusHistories { get; private set; }
+    public IRepository<Specialty> Specialties { get; private set; }
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -56,6 +58,8 @@ public class UnitOfWork : IUnitOfWork
         ChildTaskRecurrences = new Repository<ChildTaskRecurrence>(_context); // ✅ Child Tasks Feature
         Prizes = new Repository<Prize>(_context);
         PrizeTasks = new Repository<PrizeTask>(_context);
+        SpecialistStatusHistories = new Repository<SpecialistStatusHistory>(_context);
+        Specialties = new Repository<Specialty>(_context);
     }
 
     public async Task<int> SaveChangesAsync()

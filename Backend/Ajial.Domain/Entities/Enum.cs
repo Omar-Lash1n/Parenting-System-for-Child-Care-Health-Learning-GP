@@ -16,9 +16,21 @@ public enum ParentGender
 
 public enum SpecialistStatus
 {
+    Draft = 0,      // مسودة
     Pending = 1,    // في انتظار مراجعة الإدارة
     Approved = 2,   // تمت الموافقة
-    Rejected = 3    // مرفوض
+    Rejected = 3,   // مرفوض
+    Cancelled = 4   // تم الغاء الطلب
+}
+
+public enum SpecialistDocumentType
+{
+    NationalIdFront = 1,
+    NationalIdBack = 2,
+    PersonalPhoto = 3,
+    SpecializationCertificate = 4,
+    ProfessionalLicense = 5,
+    SyndicateCard = 6
 }
 
 public enum HealthUnitType

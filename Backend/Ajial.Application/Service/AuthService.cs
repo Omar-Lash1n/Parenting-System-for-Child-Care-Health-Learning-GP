@@ -928,7 +928,8 @@ public class AuthService : IAuthService
                 UnionCardImageUrl = unionCardUrl,
                 PersonalPhotoUrl = personalPhotoUrl,
                 Status = SpecialistStatus.Pending,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                SubmittedAt = DateTime.UtcNow
             };
 
             await _unitOfWork.Specialists.AddAsync(specialist);
