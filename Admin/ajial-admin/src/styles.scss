@@ -429,7 +429,7 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .data-table {
@@ -833,6 +833,21 @@ textarea:focus {
     margin-right: 0; 
     padding: 16px; 
     padding-bottom: 80px; 
+  }
+  
+  .page-header {
+    margin-bottom: 24px;
+    gap: 16px;
+  }
+  
+  .header-text h1 { font-size: 22px; }
+  .header-text p { font-size: 13px; }
+  
+  .filters-bar { margin-bottom: 16px; }
+  
+  .data-table th, .data-table td {
+    padding: 12px 16px;
+    font-size: 13px;
   }
   
   .header-actions { width: 100%; justify-content: space-between; }

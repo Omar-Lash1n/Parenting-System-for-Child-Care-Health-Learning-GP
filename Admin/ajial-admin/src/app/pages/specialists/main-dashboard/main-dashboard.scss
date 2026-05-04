@@ -1,0 +1,15 @@
+@media (max-width: 768px) {
+  .dashboard-placeholder {
+    padding: 16px !important;
+  }
+  .empty-state {
+    padding: 40px 16px !important;
+    
+    h2 {
+      font-size: 20px !important;
+    }
+    p {
+      font-size: 14px !important;
+    }
+  }
+}

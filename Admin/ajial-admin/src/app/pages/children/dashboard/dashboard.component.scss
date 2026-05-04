@@ -293,7 +293,58 @@
 }
 
 @media (max-width: 768px) {
-  .dashboard-container .charts-grid .chart-card {
-    grid-column: span 12;
+  .dashboard-container {
+    padding: 12px;
+
+    .page-header {
+      margin-bottom: 24px;
+      .header-text h1 {
+        font-size: 24px;
+      }
+    }
+
+    .stats-grid {
+      gap: 16px;
+      .stat-card {
+        padding: 16px;
+        gap: 16px;
+        .stat-icon {
+          width: 48px;
+          height: 48px;
+        }
+        .stat-info .stat-value {
+          font-size: 24px;
+        }
+      }
+    }
+
+    .charts-grid {
+      gap: 16px;
+      .chart-card {
+        grid-column: span 12;
+        padding: 16px;
+        h3 {
+          font-size: 14px;
+          margin-bottom: 16px;
+          padding-bottom: 12px;
+        }
+        .chart-container {
+          height: 250px;
+        }
+      }
+    }
+
+    .table-container {
+      .table-header {
+        padding: 16px;
+        h2 { font-size: 16px; }
+      }
+      .table-responsive .data-table {
+        th, td {
+          padding: 12px 16px;
+          font-size: 13px;
+        }
+      }
+    }
   }
 }
