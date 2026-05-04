@@ -37,3 +37,5 @@ The Ajial Admin Dashboard is built with Angular. Follow these steps to run the a
 
 4. **Access the application:**
    Open your browser and navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+   OR 
+   Deployed Website : https://ajial-admin.netlify.app/
