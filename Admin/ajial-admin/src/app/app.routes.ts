@@ -9,14 +9,14 @@ import { ParentsLayoutComponent } from './pages/parents/parents-layout/parents-l
 import { DashboardComponent as ParentsDashboardComponent } from './pages/parents/dashboard/dashboard.component';
 
 export const routes: Routes = [
-    { path: '', component: HomeComponent },
+    { path: '', component: HomeComponent, title: 'أجيال | الرئيسية' },
     { 
         path: 'specialists', 
         component: SpecialistsLayoutComponent,
         children: [
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-            { path: 'dashboard', component: SpecialistsMainDashboardComponent },
-            { path: 'requests', component: SpecialistsDashboardComponent }
+            { path: 'dashboard', component: SpecialistsMainDashboardComponent, title: 'أجيال | المتخصصين - إحصائيات' },
+            { path: 'requests', component: SpecialistsDashboardComponent, title: 'أجيال | المتخصصين - طلبات' }
         ]
     },
     { 
@@ -24,7 +24,7 @@ export const routes: Routes = [
         component: ChildrenLayoutComponent,
         children: [
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-            { path: 'dashboard', component: ChildrenDashboardComponent }
+            { path: 'dashboard', component: ChildrenDashboardComponent, title: 'أجيال | الأطفال - إحصائيات' }
         ]
     },
     { 
@@ -32,7 +32,7 @@ export const routes: Routes = [
         component: ParentsLayoutComponent,
         children: [
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-            { path: 'dashboard', component: ParentsDashboardComponent }
+            { path: 'dashboard', component: ParentsDashboardComponent, title: 'أجيال | الوالدين - إحصائيات' }
         ]
     },
     { path: '**', redirectTo: '' }
