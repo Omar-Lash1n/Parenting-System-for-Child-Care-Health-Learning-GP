@@ -1,4 +1,5 @@
 using System.Text;
+using Ajial.Application.DTOs.Common;
 using Ajial.Application.Interfaces;
 using Ajial.Application.Service;
 using Ajial.Application.Services;
@@ -7,6 +8,7 @@ using Ajial.Infrastructure.Repository;
 using Ajial.Infrastructure.Services;
 using Ajlal.Application.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -18,6 +20,18 @@ builder.Logging.AddAzureWebAppDiagnostics();
 
 // Add services to the container.
 builder.Services.AddControllers();
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState.Values
+            .SelectMany(v => v.Errors)
+            .Select(e => e.ErrorMessage)
+            .ToList();
+
+        return new BadRequestObjectResult(ApiResponse<object>.FailureResponse("بيانات غير صحيحة", errors));
+    };
+});
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(c =>
@@ -99,6 +113,7 @@ builder.Services.AddScoped<IHealthUnitService, HealthUnitService>();            
 builder.Services.AddScoped<IChildTaskService, ChildTaskService>();                       // ✅ Child Tasks Feature
 builder.Services.AddScoped<IPrizeService, PrizeService>();
 builder.Services.AddScoped<IParentHomeService, ParentHomeService>();
+builder.Services.AddScoped<IDailyQuestionService, DailyQuestionService>();
 // ✅ Infrastructure Services
 builder.Services.AddScoped<IImageService, AzureBlobImageService>(); // ✅ NEW - Image Upload to Azure
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();

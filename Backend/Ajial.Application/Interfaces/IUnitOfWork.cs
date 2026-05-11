@@ -25,11 +25,15 @@ public interface IUnitOfWork : IDisposable
     IRepository<ChildTaskRecurrence> ChildTaskRecurrences { get; } // ✅ Child Tasks Feature
     IRepository<Prize> Prizes { get; }
     IRepository<PrizeTask> PrizeTasks { get; }
+    IRepository<DailyQuestion> DailyQuestions { get; }
+    IRepository<DailyQuestionOption> DailyQuestionOptions { get; }
+    IRepository<DailyQuestionAnswer> DailyQuestionAnswers { get; }
     IRepository<SpecialistStatusHistory> SpecialistStatusHistories { get; }
     IRepository<Specialty> Specialties { get; }
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();
     Task RollbackTransactionAsync();
+    Task ExecuteInTransactionAsync(Func<Task> operation);
     Task<int> SaveAsync();
 }

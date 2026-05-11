@@ -2,6 +2,7 @@ using Ajial.Application.Interfaces;
 using Ajial.Domain.Entities;
 using Ajial.Infrastructure.Data;
 using Ajlal.Application.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Ajial.Infrastructure.Repository;
@@ -31,6 +32,9 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<ChildTaskRecurrence> ChildTaskRecurrences { get; private set; } // ✅ Child Tasks Feature
     public IRepository<Prize> Prizes { get; private set; }
     public IRepository<PrizeTask> PrizeTasks { get; private set; }
+    public IRepository<DailyQuestion> DailyQuestions { get; private set; }
+    public IRepository<DailyQuestionOption> DailyQuestionOptions { get; private set; }
+    public IRepository<DailyQuestionAnswer> DailyQuestionAnswers { get; private set; }
     public IRepository<SpecialistStatusHistory> SpecialistStatusHistories { get; private set; }
     public IRepository<Specialty> Specialties { get; private set; }
 
@@ -58,6 +62,9 @@ public class UnitOfWork : IUnitOfWork
         ChildTaskRecurrences = new Repository<ChildTaskRecurrence>(_context); // ✅ Child Tasks Feature
         Prizes = new Repository<Prize>(_context);
         PrizeTasks = new Repository<PrizeTask>(_context);
+        DailyQuestions = new Repository<DailyQuestion>(_context);
+        DailyQuestionOptions = new Repository<DailyQuestionOption>(_context);
+        DailyQuestionAnswers = new Repository<DailyQuestionAnswer>(_context);
         SpecialistStatusHistories = new Repository<SpecialistStatusHistory>(_context);
         Specialties = new Repository<Specialty>(_context);
     }
@@ -110,6 +117,27 @@ public class UnitOfWork : IUnitOfWork
             await _transaction.DisposeAsync();
             _transaction = null;
         }
+    }
+
+    public async Task ExecuteInTransactionAsync(Func<Task> operation)
+    {
+        var strategy = _context.Database.CreateExecutionStrategy();
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                await operation();
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
     }
 
     public void Dispose()

@@ -30,6 +30,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChildTaskRecurrence> ChildTaskRecurrences { get; set; } = null!; // ✅ Child Tasks Feature
     public DbSet<Prize> Prizes { get; set; } = null!;
     public DbSet<PrizeTask> PrizeTasks { get; set; } = null!;
+    public DbSet<DailyQuestion> DailyQuestions { get; set; } = null!;
+    public DbSet<DailyQuestionOption> DailyQuestionOptions { get; set; } = null!;
+    public DbSet<DailyQuestionAnswer> DailyQuestionAnswers { get; set; } = null!;
     public DbSet<SpecialistStatusHistory> SpecialistStatusHistories { get; set; } = null!;
     public DbSet<Specialty> Specialties { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -94,6 +97,10 @@ public class ApplicationDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.CityId)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Property(e => e.StarsBalance)
+                .IsRequired()
+                .HasDefaultValue(0);
         });
 
         // City Configuration
@@ -604,6 +611,105 @@ public class ApplicationDbContext : DbContext
         });
 
         // ✅ HealthUnit Configuration
+        modelBuilder.Entity<DailyQuestion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("newid()");
+
+            entity.Property(e => e.QuestionText)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.StarsReward)
+                .IsRequired();
+
+            entity.Property(e => e.IsActive)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.HasOne(e => e.CreatedByAdmin)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByAdminId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Options)
+                .WithOne(e => e.DailyQuestion)
+                .HasForeignKey(e => e.DailyQuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Answers)
+                .WithOne(e => e.DailyQuestion)
+                .HasForeignKey(e => e.DailyQuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => e.IsActive)
+                .HasFilter("[IsActive] = 1")
+                .IsUnique();
+
+            entity.HasIndex(e => e.CreatedByAdminId);
+        });
+
+        modelBuilder.Entity<DailyQuestionOption>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("newid()");
+
+            entity.Property(e => e.OptionText)
+                .IsRequired()
+                .HasMaxLength(300);
+
+            entity.Property(e => e.IsCorrect)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.OrderIndex)
+                .IsRequired();
+
+            entity.HasIndex(e => e.DailyQuestionId);
+        });
+
+        modelBuilder.Entity<DailyQuestionAnswer>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("newid()");
+
+            entity.Property(e => e.IsCorrect)
+                .IsRequired();
+
+            entity.Property(e => e.StarsEarned)
+                .IsRequired();
+
+            entity.Property(e => e.AnsweredAt)
+                .IsRequired()
+                .HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.HasOne(e => e.Parent)
+                .WithMany()
+                .HasForeignKey(e => e.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.SelectedOption)
+                .WithMany()
+                .HasForeignKey(e => e.SelectedOptionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new { e.ParentId, e.DailyQuestionId })
+                .IsUnique();
+
+            entity.HasIndex(e => e.DailyQuestionId);
+            entity.HasIndex(e => e.SelectedOptionId);
+        });
+
         modelBuilder.Entity<HealthUnit>(entity =>
         {
             entity.HasKey(hu => hu.Id);

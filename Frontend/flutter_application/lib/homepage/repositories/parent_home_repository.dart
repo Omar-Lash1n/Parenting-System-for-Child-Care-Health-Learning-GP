@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:Ajial/homepage/models/current_vaccination_model.dart';
+import 'package:Ajial/homepage/models/daily_question_model.dart';
 import 'package:Ajial/homepage/models/upcoming_task_model.dart';
 
 class ParentHomeRepository {
@@ -68,6 +69,58 @@ class ParentHomeRepository {
     }
   }
 
+  Future<ActiveDailyQuestion?> fetchActiveDailyQuestion() async {
+    final token = await _getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('لا يوجد رمز مصادقة. يرجى تسجيل الدخول مجددًا.');
+    }
+
+    try {
+      final response = await _dio.get(
+        '/parent/daily-question/active',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      final body = _extractBody(response.data);
+      final data = body['data'];
+      if (data == null) return null;
+      if (data is Map) {
+        return ActiveDailyQuestion.fromJson(Map<String, dynamic>.from(data));
+      }
+      return null;
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  Future<DailyQuestionAnswerResult> submitDailyQuestionAnswer({
+    required String questionId,
+    required String selectedOptionId,
+  }) async {
+    final token = await _getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('لا يوجد رمز مصادقة. يرجى تسجيل الدخول مجددًا.');
+    }
+
+    try {
+      final response = await _dio.post(
+        '/parent/daily-question/$questionId/answer',
+        data: {'selectedOptionId': selectedOptionId},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      final body = _extractBody(response.data);
+      final data = body['data'];
+      if (data is! Map) {
+        throw Exception(body['message']?.toString() ?? 'تعذر إرسال الإجابة');
+      }
+      return DailyQuestionAnswerResult.fromJson(
+        Map<String, dynamic>.from(data),
+        message: body['message']?.toString() ?? '',
+      );
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenKey);
@@ -88,6 +141,16 @@ class ParentHomeRepository {
     if (data is List) return data;
     if (response[key] is List) return response[key] as List;
     return [];
+  }
+
+  Map<String, dynamic> _extractBody(dynamic response) {
+    if (response is! Map<String, dynamic>) {
+      throw Exception('استجابة غير صحيحة من الخادم');
+    }
+    if (response['success'] == false) {
+      throw Exception(response['message']?.toString() ?? 'فشل تحميل البيانات');
+    }
+    return response;
   }
 
   Exception _handleDioError(DioException e) {

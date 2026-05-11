@@ -1,4 +1,5 @@
 import 'package:Ajial/add-child/add-child-flow.dart';
+import 'package:Ajial/homepage/daily_question_page.dart';
 import 'package:Ajial/homepage/homepage.dart';
 import 'package:Ajial/signup-login-pages/login.dart';
 import 'package:flutter/material.dart';
@@ -241,6 +242,7 @@ class AjialApp extends StatelessWidget {
         '/child-login': (context) => const ChildLoginScreen(),
         '/child-home': (context) => const ChildHomePage(),
         '/home': (context) => HomeScreen(),
+        '/daily-question': (context) => const DailyQuestionPage(),
         '/add-child': (context) => const AddChildFlow(),
         '/profile': (context) => const ParentProfilePage(),
         '/settings': (context) => const SettingsPage(),
