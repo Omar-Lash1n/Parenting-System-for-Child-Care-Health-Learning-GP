@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:Ajial/child-app/home/child_home_provider.dart';
 import 'package:Ajial/child-app/child-sign-in.dart';
 import 'package:Ajial/child-app/recordings/child_recordings_page.dart';
+import 'package:Ajial/child-app/tasks/child_tasks_page.dart';
+import 'package:Ajial/child-app/rewards/child_rewards_page.dart';
 
 // --- Constants ---
 const String kFontFamily = 'IBM Plex Sans Arabic';
@@ -359,7 +361,28 @@ class _ChildHomePageState extends State<ChildHomePage>
         ),
         SizedBox(height: cardSpacing),
 
-        // Row 2: "ارسم" and "ارقام"
+        // Row 2: "تحدي جديد" full width card
+        SizedBox(
+          height: middleCardHeight, // Or maybe a bit larger, let's use the same height as microphone but a bit smaller, or just full width
+          width: double.infinity,
+          child: _buildActivityCard(
+            title: 'تحدي جديد',
+            gradientColors: [kOrangeCardStart, kOrangeCardEnd], // #FEA400 to #FD5E00
+            imagePath: 'images/target.png',
+            imageSize: 70,
+            fontSize: 26,
+            onTap: () {
+              provider.playClick();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ChildTasksPage()),
+              );
+            },
+          ),
+        ),
+        SizedBox(height: cardSpacing),
+
+        // Row 3: "ارسم" and "ارقام"
         SizedBox(
           height: middleCardHeight,
           child: Row(
@@ -390,17 +413,23 @@ class _ChildHomePageState extends State<ChildHomePage>
         ),
         SizedBox(height: cardSpacing),
 
-        // Row 3: Full width "جوائز" card
+        // Row 4: Full width "جوائز" card
         SizedBox(
           height: bottomCardHeight,
           width: double.infinity,
           child: _buildActivityCard(
             title: 'جوائز',
-            gradientColors: [kOrangeCardStart, kOrangeCardEnd],
+            gradientColors: [kBlueCardStart, kBlueCardEnd], // 0x80008CFF to 0xFF008CFF
             imagePath: 'images/prize.png',
             imageSize: 70,
             fontSize: 24,
-            onTap: () => provider.playClick(),
+            onTap: () {
+              provider.playClick();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ChildRewardsPage()),
+              );
+            },
           ),
         ),
       ],
