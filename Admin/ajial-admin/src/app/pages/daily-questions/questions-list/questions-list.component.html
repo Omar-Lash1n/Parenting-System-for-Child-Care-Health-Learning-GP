@@ -1,0 +1,101 @@
+<section class="daily-page">
+  <header class="page-header">
+    <div class="header-text">
+      <h1>إدارة الأسئلة اليومية</h1>
+      <p>إنشاء وتفعيل الأسئلة التي تظهر للأهل في تجربة السؤال اليومي.</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn btn-outline" (click)="confirmResetAll()" [disabled]="resetting || loading">
+        @if (resetting) {
+          <app-loading-spinner size="sm"></app-loading-spinner>
+        }
+        إلغاء تفعيل الكل
+      </button>
+      <a routerLink="/daily-questions/create" class="btn btn-primary">
+        <span aria-hidden="true">+</span>
+        سؤال جديد
+      </a>
+    </div>
+  </header>
+
+  <div class="filters-bar">
+    <div class="filter-tabs" aria-label="تصفية الأسئلة">
+      <button type="button" class="filter-tab" [class.active]="filterActive === null" (click)="setFilter(null)">الكل</button>
+      <button type="button" class="filter-tab" [class.active]="filterActive === true" (click)="setFilter(true)">النشطة</button>
+      <button type="button" class="filter-tab" [class.active]="filterActive === false" (click)="setFilter(false)">غير النشطة</button>
+    </div>
+  </div>
+
+  @if (error) {
+    <div class="alert error">{{ error }}</div>
+  }
+
+  @if (loading) {
+    <app-loading-spinner size="lg" [overlay]="true"></app-loading-spinner>
+  } @else if (questions.length === 0) {
+    <div class="empty-state">
+      <h2>لا توجد أسئلة يومية</h2>
+      <p>ابدأ بإضافة سؤال يدوي يمكن تفعيله لاحقا.</p>
+      <a routerLink="/daily-questions/create" class="btn btn-primary">إضافة سؤال</a>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>السؤال</th>
+            <th>النجوم</th>
+            <th>الحالة</th>
+            <th>الإجابات</th>
+            <th>الصحيحة</th>
+            <th>تاريخ الإنشاء</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let question of questions; trackBy: trackByQuestionId">
+            <td class="question-cell" [title]="question.questionText">{{ question.questionText }}</td>
+            <td><span class="reward">★ {{ question.starsReward }}</span></td>
+            <td><app-status-badge [isActive]="question.isActive"></app-status-badge></td>
+            <td>{{ question.totalAnswers }}</td>
+            <td>{{ question.correctAnswers }} <span class="muted">({{ correctPercentage(question) }}%)</span></td>
+            <td>{{ question.createdAt | date:'mediumDate' }}</td>
+            <td>
+              <div class="table-actions">
+                <a class="btn btn-outline btn-sm" [routerLink]="['/daily-questions/edit', question.id]">تعديل</a>
+                @if (question.isActive) {
+                  <button type="button" class="btn btn-outline btn-sm" (click)="confirmDeactivate(question)" [disabled]="actionLoading[question.id]">
+                    @if (actionLoading[question.id]) { <app-loading-spinner size="sm"></app-loading-spinner> }
+                    إلغاء التفعيل
+                  </button>
+                } @else {
+                  <button type="button" class="btn btn-primary btn-sm" (click)="confirmActivate(question)" [disabled]="actionLoading[question.id]">
+                    @if (actionLoading[question.id]) { <app-loading-spinner size="sm"></app-loading-spinner> }
+                    تفعيل
+                  </button>
+                }
+                <button type="button" class="btn btn-danger btn-sm" (click)="confirmDelete(question)" [disabled]="actionLoading[question.id]">
+                  حذف
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (dialogConfig) {
+    <app-confirm-dialog
+      [title]="dialogConfig.title"
+      [message]="dialogConfig.message"
+      [confirmText]="dialogConfig.confirmText"
+      [type]="dialogConfig.type"
+      (closed)="handleDialogClose($event)"
+    ></app-confirm-dialog>
+  }
+
+  @if (toast) {
+    <div class="toast show" [ngClass]="toast.type">{{ toast.message }}</div>
+  }
+</section>

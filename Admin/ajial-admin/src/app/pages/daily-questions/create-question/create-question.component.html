@@ -1,0 +1,81 @@
+<section class="question-form-page">
+  <header class="page-header">
+    <div class="header-text">
+      <h1>إنشاء سؤال يومي جديد</h1>
+      <p>أدخل نص السؤال والخيارات وحدد الإجابة الصحيحة قبل الحفظ.</p>
+    </div>
+    <a routerLink="/daily-questions" class="btn btn-outline">رجوع</a>
+  </header>
+
+  @if (error) {
+    <div class="alert error">{{ error }}</div>
+  }
+
+  <form class="question-form" [formGroup]="form" (ngSubmit)="submitForm()">
+    <div class="ai-placeholder" aria-hidden="true"></div>
+
+    <div class="form-grid">
+      <label class="form-field full">
+        <span>نص السؤال</span>
+        <textarea rows="5" formControlName="questionText" maxlength="500" placeholder="اكتب السؤال هنا"></textarea>
+        @if (fieldInvalid('questionText')) {
+          <small>نص السؤال مطلوب وبحد أقصى 500 حرف.</small>
+        }
+      </label>
+
+      <label class="form-field">
+        <span>مكافأة النجوم</span>
+        <input type="number" min="1" formControlName="starsReward">
+        @if (fieldInvalid('starsReward')) {
+          <small>أدخل رقما صحيحا أكبر من صفر.</small>
+        }
+      </label>
+
+      <label class="switch-field">
+        <input type="checkbox" formControlName="isActive">
+        <span>تفعيل السؤال بعد الإنشاء</span>
+      </label>
+    </div>
+
+    <section class="options-section" formArrayName="options">
+      <div class="section-header">
+        <div>
+          <h2>الخيارات</h2>
+          <p>يجب إضافة خيارين على الأقل وتحديد إجابة صحيحة واحدة على الأقل.</p>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" (click)="addOption()">إضافة خيار</button>
+      </div>
+
+      <div class="options-list">
+        <div class="option-row" *ngFor="let option of options.controls; let i = index" [formGroupName]="i">
+          <label class="correct-choice">
+            <input type="checkbox" formControlName="isCorrect">
+            صحيح
+          </label>
+          <label class="option-input">
+            <span>الخيار {{ i + 1 }}</span>
+            <input type="text" formControlName="optionText" maxlength="300" placeholder="نص الخيار">
+            @if (optionTextInvalid(i)) {
+              <small>نص الخيار مطلوب وبحد أقصى 300 حرف.</small>
+            }
+          </label>
+          <button type="button" class="btn btn-outline btn-sm" (click)="removeOption(i)" [disabled]="options.length <= 2">حذف</button>
+        </div>
+      </div>
+
+      @if (options.touched && options.hasError('noCorrectOption')) {
+        <small class="array-error">حدد إجابة صحيحة واحدة على الأقل.</small>
+      }
+    </section>
+
+    <footer class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="submitting">
+        @if (submitting) {
+          <app-loading-spinner size="sm"></app-loading-spinner>
+        }
+        إنشاء السؤال
+      </button>
+      <a routerLink="/daily-questions" class="btn btn-outline">إلغاء</a>
+    </footer>
+  </form>
+</section>

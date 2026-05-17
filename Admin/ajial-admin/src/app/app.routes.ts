@@ -7,6 +7,10 @@ import { ChildrenLayoutComponent } from './pages/children/children-layout/childr
 import { DashboardComponent as ChildrenDashboardComponent } from './pages/children/dashboard/dashboard.component';
 import { ParentsLayoutComponent } from './pages/parents/parents-layout/parents-layout.component';
 import { DashboardComponent as ParentsDashboardComponent } from './pages/parents/dashboard/dashboard.component';
+import { DailyQuestionsLayoutComponent } from './pages/daily-questions/daily-questions-layout/daily-questions-layout.component';
+import { QuestionsListComponent } from './pages/daily-questions/questions-list/questions-list.component';
+import { CreateQuestionComponent } from './pages/daily-questions/create-question/create-question.component';
+import { EditQuestionComponent } from './pages/daily-questions/edit-question/edit-question.component';
 
 export const routes: Routes = [
     { path: '', component: HomeComponent, title: 'أجيال | الرئيسية' },
@@ -33,6 +37,15 @@ export const routes: Routes = [
         children: [
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
             { path: 'dashboard', component: ParentsDashboardComponent, title: 'أجيال | الوالدين - إحصائيات' }
+        ]
+    },
+    {
+        path: 'daily-questions',
+        component: DailyQuestionsLayoutComponent,
+        children: [
+            { path: '', component: QuestionsListComponent, title: 'أجيال | إدارة الأسئلة اليومية' },
+            { path: 'create', component: CreateQuestionComponent, title: 'أجيال | إنشاء سؤال يومي' },
+            { path: 'edit/:id', component: EditQuestionComponent, title: 'أجيال | تعديل سؤال يومي' }
         ]
     },
     { path: '**', redirectTo: '' }

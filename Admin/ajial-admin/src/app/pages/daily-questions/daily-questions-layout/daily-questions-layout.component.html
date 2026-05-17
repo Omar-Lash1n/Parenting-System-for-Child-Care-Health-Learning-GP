@@ -1,0 +1,23 @@
+<div class="app-container">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <a routerLink="/" class="nav-item back-btn-top" title="رجوع للرئيسية">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <span class="logo-text">مرحبا Admin</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a routerLink="/daily-questions" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-item">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 1 1 5.8 1c-.8 1.2-2.1 1.7-2.6 2.8"/><path d="M12 17h.01"/></svg>
+        <span>الأسئلة اليومية</span>
+      </a>
+      <a routerLink="/daily-questions/create" routerLinkActive="active" class="nav-item">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        <span>إضافة سؤال</span>
+      </a>
+    </nav>
+  </aside>
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

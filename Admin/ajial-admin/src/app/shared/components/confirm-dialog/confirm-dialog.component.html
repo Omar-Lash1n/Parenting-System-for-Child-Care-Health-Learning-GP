@@ -1,0 +1,30 @@
+<div class="dialog-backdrop" (click)="closed.emit(false)">
+  <section class="dialog" [ngClass]="type" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+    <header class="dialog-header">
+      <div class="dialog-icon">
+        @if (type === 'danger') {
+          !
+        } @else if (type === 'warning') {
+          !
+        } @else {
+          i
+        }
+      </div>
+      <h2>{{ title }}</h2>
+    </header>
+
+    <p>{{ message }}</p>
+
+    <footer class="dialog-actions">
+      <button type="button" class="btn btn-outline" (click)="closed.emit(false)">{{ cancelText }}</button>
+      <button
+        type="button"
+        class="btn"
+        [ngClass]="type === 'danger' ? 'btn-danger' : 'btn-primary'"
+        (click)="closed.emit(true)"
+      >
+        {{ confirmText }}
+      </button>
+    </footer>
+  </section>
+</div>

@@ -33,6 +33,10 @@
   --parent-color-light: #e11d4820;
   --parent-color-hover: #be123c;
 
+  --daily-question-color: #0ea5e9;
+  --daily-question-color-light: #0ea5e920;
+  --daily-question-color-hover: #0284c7;
+
   --primary: var(--specialist-color);
   --primary-light: var(--specialist-color-light);
   --primary-hover: var(--specialist-color-hover);
@@ -67,6 +71,12 @@ body.theme-parents {
   --primary: var(--parent-color);
   --primary-light: var(--parent-color-light);
   --primary-hover: var(--parent-color-hover);
+}
+
+body.theme-daily-questions {
+  --primary: var(--daily-question-color);
+  --primary-light: var(--daily-question-color-light);
+  --primary-hover: var(--daily-question-color-hover);
 }
 
 * {
