@@ -1,0 +1,152 @@
+.categories-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+button[disabled],
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.alert {
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.alert.error {
+  color: var(--danger);
+  background: var(--danger-light);
+  border: 1px solid rgba(231, 76, 95, 0.3);
+}
+
+.create-form-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 28px;
+
+  h2 {
+    font-size: 16px;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+  }
+}
+
+.create-form-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 160px;
+
+  span {
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+  }
+}
+
+.form-field-sm {
+  max-width: 120px;
+  min-width: 80px;
+  flex: 0 0 100px;
+}
+
+input[type='text'],
+input[type='number'] {
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font);
+  outline: none;
+  width: 100%;
+
+  &:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+  }
+}
+
+small {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.edit-row-form {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  padding: 12px 0;
+}
+
+.switch-field-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 4px;
+}
+
+.name-cell {
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.table-actions {
+  flex-wrap: wrap;
+}
+
+.empty-state {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 64px 24px;
+
+  h2 {
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    font-size: 22px;
+  }
+
+  p {
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .create-form-row,
+  .edit-row-form {
+    flex-direction: column;
+  }
+
+  .form-field-sm {
+    max-width: 100%;
+  }
+}

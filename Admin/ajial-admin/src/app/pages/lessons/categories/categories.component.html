@@ -1,0 +1,128 @@
+<section class="categories-page">
+  <header class="page-header">
+    <div class="header-text">
+      <h1>إدارة التصنيفات</h1>
+      <p>أضف وعدل تصنيفات الدروس التربوية.</p>
+    </div>
+  </header>
+
+  <div class="create-form-card">
+    <h2>إضافة تصنيف جديد</h2>
+    <form [formGroup]="createForm" (ngSubmit)="submitCreate()">
+      <div class="create-form-row">
+        <label class="form-field">
+          <span>الاسم (عربي)</span>
+          <input type="text" formControlName="nameAr" placeholder="اسم التصنيف بالعربية">
+          @if (createFormFieldInvalid('nameAr')) {
+            <small>الاسم العربي مطلوب.</small>
+          }
+        </label>
+        <label class="form-field">
+          <span>الاسم (إنجليزي)</span>
+          <input type="text" formControlName="nameEn" placeholder="اختياري">
+        </label>
+        <label class="form-field form-field-sm">
+          <span>الترتيب</span>
+          <input type="number" min="1" formControlName="orderIndex">
+          @if (createFormFieldInvalid('orderIndex')) {
+            <small>الترتيب مطلوب.</small>
+          }
+        </label>
+        <button type="submit" class="btn btn-primary" [disabled]="creating">
+          @if (creating) { <app-loading-spinner size="sm"></app-loading-spinner> }
+          إضافة
+        </button>
+      </div>
+    </form>
+  </div>
+
+  @if (error) {
+    <div class="alert error">{{ error }}</div>
+  }
+
+  @if (loading) {
+    <app-loading-spinner size="lg" [overlay]="true"></app-loading-spinner>
+  } @else if (categories.length === 0) {
+    <div class="empty-state">
+      <h2>لا توجد تصنيفات</h2>
+      <p>ابدأ بإضافة تصنيف جديد من النموذج أعلاه.</p>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>الاسم (عربي)</th>
+            <th>الاسم (إنجليزي)</th>
+            <th>الترتيب</th>
+            <th>الحالة</th>
+            <th>عدد الدروس</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let category of categories; trackBy: trackById">
+            @if (editingId === category.id) {
+              <td colspan="6">
+                <form [formGroup]="editForm" (ngSubmit)="submitEdit()" class="edit-row-form">
+                  <label class="form-field">
+                    <span>الاسم (عربي)</span>
+                    <input type="text" formControlName="nameAr">
+                    @if (editFormFieldInvalid('nameAr')) {
+                      <small>الاسم مطلوب.</small>
+                    }
+                  </label>
+                  <label class="form-field">
+                    <span>الاسم (إنجليزي)</span>
+                    <input type="text" formControlName="nameEn">
+                  </label>
+                  <label class="form-field form-field-sm">
+                    <span>الترتيب</span>
+                    <input type="number" min="1" formControlName="orderIndex">
+                  </label>
+                  <label class="switch-field-inline">
+                    <input type="checkbox" formControlName="isActive">
+                    <span>نشط</span>
+                  </label>
+                  <div class="edit-actions">
+                    <button type="submit" class="btn btn-primary btn-sm" [disabled]="editSaving">
+                      @if (editSaving) { <app-loading-spinner size="sm"></app-loading-spinner> }
+                      حفظ
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" (click)="cancelEdit()">إلغاء</button>
+                  </div>
+                </form>
+              </td>
+            } @else {
+              <td class="name-cell">{{ category.nameAr }}</td>
+              <td class="muted">{{ category.nameEn || '—' }}</td>
+              <td>{{ category.orderIndex }}</td>
+              <td><app-status-badge [isActive]="category.isActive"></app-status-badge></td>
+              <td>{{ category.lessonCount }}</td>
+              <td>
+                <div class="table-actions">
+                  <button type="button" class="btn btn-outline btn-sm" (click)="startEdit(category)">تعديل</button>
+                  <button type="button" class="btn btn-danger btn-sm" (click)="confirmDelete(category)">حذف</button>
+                </div>
+              </td>
+            }
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (dialogConfig) {
+    <app-confirm-dialog
+      [title]="dialogConfig.title"
+      [message]="dialogConfig.message"
+      [confirmText]="dialogConfig.confirmText"
+      [type]="dialogConfig.type"
+      (closed)="handleDialogClose($event)"
+    ></app-confirm-dialog>
+  }
+
+  @if (toast) {
+    <div class="toast show" [ngClass]="toast.type">{{ toast.message }}</div>
+  }
+</section>

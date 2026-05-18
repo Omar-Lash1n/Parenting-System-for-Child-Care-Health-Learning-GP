@@ -1,0 +1,103 @@
+<section class="lessons-page">
+  <header class="page-header">
+    <div class="header-text">
+      <h1>التغذية التربوية</h1>
+      <p>إنشاء وإدارة الدروس التربوية التفاعلية للوالدين.</p>
+    </div>
+    <a routerLink="/lessons/create" class="btn btn-primary">
+      <span aria-hidden="true">+</span>
+      درس جديد
+    </a>
+  </header>
+
+  <div class="filters-bar">
+    <div class="filter-tabs" aria-label="تصفية الدروس">
+      <button type="button" class="filter-tab" [class.active]="filterActive === null" (click)="setFilter(null)">الكل</button>
+      <button type="button" class="filter-tab" [class.active]="filterActive === true" (click)="setFilter(true)">النشطة</button>
+      <button type="button" class="filter-tab" [class.active]="filterActive === false" (click)="setFilter(false)">غير النشطة</button>
+    </div>
+    <select class="filter-select" (change)="onCategoryChange($event)">
+      <option value="">كل التصنيفات</option>
+      <option *ngFor="let cat of categories; trackBy: trackById" [value]="cat.id" [selected]="filterCategoryId === cat.id">
+        {{ cat.nameAr }}
+      </option>
+    </select>
+  </div>
+
+  @if (error) {
+    <div class="alert error">{{ error }}</div>
+  }
+
+  @if (loading) {
+    <app-loading-spinner size="lg" [overlay]="true"></app-loading-spinner>
+  } @else if (lessons.length === 0) {
+    <div class="empty-state">
+      <h2>لا توجد دروس</h2>
+      <p>ابدأ بإضافة درس تربوي جديد.</p>
+      <a routerLink="/lessons/create" class="btn btn-primary">إضافة درس</a>
+    </div>
+  } @else {
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>العنوان</th>
+            <th>التصنيف</th>
+            <th>الحالة</th>
+            <th>الأسئلة</th>
+            <th>مجموع النجوم</th>
+            <th>القراءات</th>
+            <th>الإكمال</th>
+            <th>تاريخ الإنشاء</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let lesson of lessons; trackBy: trackById">
+            <td class="title-cell" [title]="lesson.titleAr">{{ lesson.titleAr }}</td>
+            <td>{{ lesson.categoryNameAr }}</td>
+            <td><app-status-badge [isActive]="lesson.isActive"></app-status-badge></td>
+            <td>{{ lesson.questionsCount }}</td>
+            <td><span class="reward">★ {{ lesson.totalStarsReward }}</span></td>
+            <td>{{ lesson.totalReads }}</td>
+            <td>{{ lesson.totalCompletions }}</td>
+            <td>{{ lesson.createdAt | date:'mediumDate' }}</td>
+            <td>
+              <div class="table-actions">
+                <a class="btn btn-outline btn-sm" [routerLink]="['/lessons/edit', lesson.id]">تعديل</a>
+                @if (lesson.isActive) {
+                  <button type="button" class="btn btn-outline btn-sm" (click)="confirmDeactivate(lesson)" [disabled]="actionLoading[lesson.id]">
+                    @if (actionLoading[lesson.id]) { <app-loading-spinner size="sm"></app-loading-spinner> }
+                    إلغاء التفعيل
+                  </button>
+                } @else {
+                  <button type="button" class="btn btn-primary btn-sm" (click)="confirmActivate(lesson)" [disabled]="actionLoading[lesson.id]">
+                    @if (actionLoading[lesson.id]) { <app-loading-spinner size="sm"></app-loading-spinner> }
+                    تفعيل
+                  </button>
+                }
+                <button type="button" class="btn btn-danger btn-sm" (click)="confirmDelete(lesson)" [disabled]="actionLoading[lesson.id]">
+                  حذف
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (dialogConfig) {
+    <app-confirm-dialog
+      [title]="dialogConfig.title"
+      [message]="dialogConfig.message"
+      [confirmText]="dialogConfig.confirmText"
+      [type]="dialogConfig.type"
+      (closed)="handleDialogClose($event)"
+    ></app-confirm-dialog>
+  }
+
+  @if (toast) {
+    <div class="toast show" [ngClass]="toast.type">{{ toast.message }}</div>
+  }
+</section>

@@ -1,0 +1,27 @@
+<div class="app-container">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <a routerLink="/" class="nav-item back-btn-top" title="رجوع للرئيسية">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <span class="logo-text">مرحبا Admin</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a routerLink="/lessons" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-item">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span>قائمة الدروس</span>
+      </a>
+      <a routerLink="/lessons/create" routerLinkActive="active" class="nav-item">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        <span>إضافة درس</span>
+      </a>
+      <a routerLink="/lessons/categories" routerLinkActive="active" class="nav-item">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>التصنيفات</span>
+      </a>
+    </nav>
+  </aside>
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

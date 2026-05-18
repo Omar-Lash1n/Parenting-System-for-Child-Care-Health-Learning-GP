@@ -1,0 +1,160 @@
+<section class="lesson-form-page">
+  <header class="page-header">
+    <div class="header-text">
+      <h1>إنشاء درس تربوي جديد</h1>
+      <p>أدخل محتوى الدرس والأسئلة قبل الحفظ.</p>
+    </div>
+    <a routerLink="/lessons" class="btn btn-outline">رجوع</a>
+  </header>
+
+  @if (error) {
+    <div class="alert error">{{ error }}</div>
+  }
+
+  <form class="lesson-form" [formGroup]="form" (ngSubmit)="submitForm()">
+    <div class="ai-toolbar">
+      <div class="ai-info">
+        <span class="ai-label">توليد بالذكاء الاصطناعي</span>
+        <p class="ai-desc">أنشئ درساً كاملاً مع أسئلته تلقائياً باستخدام الذكاء الاصطناعي. يمكنك تعديل المحتوى.</p>
+      </div>
+      <button type="button" class="btn btn-ai" (click)="generateWithAi()" [disabled]="aiGenerating || submitting">
+        @if (aiGenerating) {
+          <app-loading-spinner size="sm"></app-loading-spinner>
+          جارٍ التوليد...
+        } @else {
+          توليد تلقائي
+        }
+      </button>
+    </div>
+
+    @if (aiError) {
+      <div class="alert error ai-alert">{{ aiError }}</div>
+    }
+
+    <div class="form-grid">
+      <label class="form-field full">
+        <span>التصنيف</span>
+        <select formControlName="categoryId">
+          <option value="">اختر التصنيف</option>
+          <option *ngFor="let cat of categories" [value]="cat.id">{{ cat.nameAr }}</option>
+        </select>
+        @if (fieldInvalid('categoryId')) {
+          <small>التصنيف مطلوب.</small>
+        }
+      </label>
+
+      <label class="form-field full">
+        <span>العنوان</span>
+        <input type="text" formControlName="titleAr" maxlength="200" placeholder="عنوان الدرس">
+        @if (fieldInvalid('titleAr')) {
+          <small>العنوان مطلوب وبحد أقصى 200 حرف.</small>
+        }
+      </label>
+
+      <label class="form-field full">
+        <span>المحتوى</span>
+        <textarea rows="8" formControlName="contentAr" maxlength="10000" placeholder="محتوى الدرس التفصيلي"></textarea>
+        @if (fieldInvalid('contentAr')) {
+          <small>المحتوى مطلوب وبحد أقصى 10000 حرف.</small>
+        }
+      </label>
+
+      <label class="form-field">
+        <span>رابط الصورة</span>
+        <input type="text" formControlName="imageUrl" placeholder="اختياري">
+      </label>
+
+      <label class="form-field">
+        <span>رابط الفيديو</span>
+        <input type="text" formControlName="videoUrl" placeholder="اختياري (يوتيوب أو مشابه)">
+      </label>
+
+      <label class="switch-field">
+        <input type="checkbox" formControlName="isActive">
+        <span>تفعيل الدرس بعد الإنشاء</span>
+      </label>
+    </div>
+
+    <section class="questions-section" formArrayName="questions">
+      <div class="section-header">
+        <div>
+          <h2>الأسئلة</h2>
+          <p>أضف سؤالاً واحداً على الأقل. كل سؤال يجب أن يحتوي على إجابة صحيحة واحدة فقط.</p>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" (click)="addQuestion()">إضافة سؤال</button>
+      </div>
+
+      @if (questions.length === 0 && questions.touched) {
+        <small class="array-error">يجب إضافة سؤال واحد على الأقل.</small>
+      }
+
+      <div class="questions-list">
+        <div class="question-card" *ngFor="let q of questions.controls; let qi = index" [formGroupName]="qi">
+          <div class="question-card-header">
+            <span class="question-number">سؤال {{ qi + 1 }}</span>
+            <button type="button" class="btn btn-danger btn-sm" (click)="removeQuestion(qi)">حذف السؤال</button>
+          </div>
+
+          <div class="form-grid">
+            <label class="form-field full">
+              <span>نص السؤال</span>
+              <textarea rows="3" formControlName="questionText" maxlength="500" placeholder="اكتب السؤال هنا"></textarea>
+              @if (questionFieldInvalid(qi, 'questionText')) {
+                <small>نص السؤال مطلوب وبحد أقصى 500 حرف.</small>
+              }
+            </label>
+
+            <label class="form-field">
+              <span>مكافأة النجوم</span>
+              <input type="number" min="1" max="5" formControlName="starsReward">
+              @if (questionFieldInvalid(qi, 'starsReward')) {
+                <small>أدخل رقماً بين 1 و5.</small>
+              }
+            </label>
+          </div>
+
+          <section class="options-section" formArrayName="options">
+            <div class="section-header">
+              <div>
+                <h3>الخيارات</h3>
+                <p>خيارين على الأقل. حدد الإجابة الصحيحة الواحدة.</p>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm" (click)="addOption(qi)">إضافة خيار</button>
+            </div>
+
+            <div class="options-list">
+              <div class="option-row" *ngFor="let opt of getOptions(qi).controls; let oi = index" [formGroupName]="oi">
+                <label class="correct-choice">
+                  <input type="checkbox" formControlName="isCorrect" (change)="onOptionCorrectChange(qi, oi, $event)">
+                  صحيح
+                </label>
+                <label class="option-input">
+                  <span>الخيار {{ oi + 1 }}</span>
+                  <input type="text" formControlName="optionText" maxlength="300" placeholder="نص الخيار">
+                  @if (optionFieldInvalid(qi, oi)) {
+                    <small>نص الخيار مطلوب.</small>
+                  }
+                </label>
+                <button type="button" class="btn btn-outline btn-sm" (click)="removeOption(qi, oi)" [disabled]="getOptions(qi).length <= 2">حذف الخيار</button>
+              </div>
+            </div>
+
+            @if (getOptions(qi).touched && getOptions(qi).hasError('notExactlyOneCorrect')) {
+              <small class="array-error">يجب تحديد إجابة صحيحة واحدة فقط.</small>
+            }
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <footer class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="submitting">
+        @if (submitting) {
+          <app-loading-spinner size="sm"></app-loading-spinner>
+        }
+        إنشاء الدرس
+      </button>
+      <a routerLink="/lessons" class="btn btn-outline">إلغاء</a>
+    </footer>
+  </form>
+</section>

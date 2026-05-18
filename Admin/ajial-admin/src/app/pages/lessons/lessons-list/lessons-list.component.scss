@@ -1,0 +1,92 @@
+.lessons-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+button[disabled],
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.alert {
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.alert.error {
+  color: var(--danger);
+  background: var(--danger-light);
+  border: 1px solid rgba(231, 76, 95, 0.3);
+}
+
+.filters-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 14px;
+  min-width: 180px;
+  outline: none;
+
+  &:focus {
+    border-color: var(--primary);
+  }
+}
+
+.title-cell {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.reward {
+  color: var(--warning);
+  font-weight: 700;
+}
+
+.table-actions {
+  flex-wrap: wrap;
+}
+
+.empty-state {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 64px 24px;
+
+  h2 {
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    font-size: 22px;
+  }
+
+  p {
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .title-cell {
+    min-width: 200px;
+  }
+
+  .filters-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

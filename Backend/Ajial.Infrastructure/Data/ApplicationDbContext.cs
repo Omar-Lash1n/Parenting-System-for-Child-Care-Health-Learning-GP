@@ -35,6 +35,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<DailyQuestionAnswer> DailyQuestionAnswers { get; set; } = null!;
     public DbSet<SpecialistStatusHistory> SpecialistStatusHistories { get; set; } = null!;
     public DbSet<Specialty> Specialties { get; set; } = null!;
+    public DbSet<LessonCategory> LessonCategories { get; set; } = null!;         // ✅ Lesson Feature
+    public DbSet<Lesson> Lessons { get; set; } = null!;                          // ✅ Lesson Feature
+    public DbSet<LessonQuestion> LessonQuestions { get; set; } = null!;          // ✅ Lesson Feature
+    public DbSet<LessonQuestionOption> LessonQuestionOptions { get; set; } = null!; // ✅ Lesson Feature
+    public DbSet<LessonProgress> LessonProgresses { get; set; } = null!;         // ✅ Lesson Feature
+    public DbSet<LessonQuestionAnswer> LessonQuestionAnswers { get; set; } = null!; // ✅ Lesson Feature
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -772,6 +778,117 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(hu => hu.IsActive);
             entity.HasIndex(hu => new { hu.Latitude, hu.Longitude });
             entity.HasIndex(hu => hu.NameAr);
+        });
+
+        // ✅ Lesson Feature Configurations
+        modelBuilder.Entity<LessonCategory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.NameAr).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.NameEn).HasMaxLength(100);
+            entity.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasIndex(e => e.IsActive);
+        });
+
+        modelBuilder.Entity<Lesson>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TitleAr).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ContentAr).IsRequired().HasMaxLength(10000);
+            entity.Property(e => e.ImageUrl).HasMaxLength(500);
+            entity.Property(e => e.VideoUrl).HasMaxLength(500);
+            entity.Property(e => e.IsActive).IsRequired().HasDefaultValue(false);
+            entity.Property(e => e.CreatedAt).IsRequired();
+
+            entity.HasOne(e => e.Category)
+                .WithMany(c => c.Lessons)
+                .HasForeignKey(e => e.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.CreatedByAdmin)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByAdminId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Questions)
+                .WithOne(q => q.Lesson)
+                .HasForeignKey(q => q.LessonId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Progresses)
+                .WithOne(p => p.Lesson)
+                .HasForeignKey(p => p.LessonId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.CategoryId);
+            entity.HasIndex(e => e.IsActive);
+        });
+
+        modelBuilder.Entity<LessonQuestion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.QuestionText).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.StarsReward).IsRequired();
+            entity.Property(e => e.OrderIndex).IsRequired();
+
+            entity.HasMany(e => e.Options)
+                .WithOne(o => o.LessonQuestion)
+                .HasForeignKey(o => o.LessonQuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Answers)
+                .WithOne(a => a.LessonQuestion)
+                .HasForeignKey(a => a.LessonQuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => e.LessonId);
+        });
+
+        modelBuilder.Entity<LessonQuestionOption>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.OptionText).IsRequired().HasMaxLength(300);
+            entity.Property(e => e.IsCorrect).IsRequired().HasDefaultValue(false);
+            entity.Property(e => e.OrderIndex).IsRequired();
+            entity.HasIndex(e => e.LessonQuestionId);
+        });
+
+        modelBuilder.Entity<LessonProgress>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.IsRead).IsRequired().HasDefaultValue(false);
+            entity.Property(e => e.IsQuizCompleted).IsRequired().HasDefaultValue(false);
+            entity.Property(e => e.TotalStarsEarned).IsRequired().HasDefaultValue(0);
+
+            entity.HasOne(e => e.Parent)
+                .WithMany()
+                .HasForeignKey(e => e.ParentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.ParentId, e.LessonId }).IsUnique();
+            entity.HasIndex(e => e.LessonId);
+        });
+
+        modelBuilder.Entity<LessonQuestionAnswer>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.IsCorrect).IsRequired();
+            entity.Property(e => e.StarsEarned).IsRequired();
+            entity.Property(e => e.AnsweredAt).IsRequired().HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.HasOne(e => e.Parent)
+                .WithMany()
+                .HasForeignKey(e => e.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.SelectedOption)
+                .WithMany()
+                .HasForeignKey(e => e.SelectedOptionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new { e.ParentId, e.LessonQuestionId }).IsUnique();
+            entity.HasIndex(e => e.LessonQuestionId);
         });
 
         // Seed data

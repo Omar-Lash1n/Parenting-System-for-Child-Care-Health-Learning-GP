@@ -4,7 +4,9 @@
       "WebFetch(domain:www.figma.com)",
       "Bash(python -c ' *)",
       "Bash(python -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
-      "mcp__claude_ai_Figma__get_screenshot"
+      "mcp__claude_ai_Figma__get_screenshot",
+      "Bash(Get-ChildItem -Path \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Frontend\\\\flutter_application\" -Force)",
+      "Bash(Select-Object FullName)"
     ]
   }
 }

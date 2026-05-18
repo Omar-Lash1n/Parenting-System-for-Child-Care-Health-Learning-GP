@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(dotnet build *)",
-      "Bash(python -c \"import docx; print\\('python-docx ok'\\)\")"
+      "Bash(python -c \"import docx; print\\('python-docx ok'\\)\")",
+      "Bash(dotnet ef *)",
+      "Bash(Get-ChildItem -Recurse -File \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Backend\\\\Ajial.API\\\\Controllers\")",
+      "Bash(Select-Object Name)"
     ]
   }
 }

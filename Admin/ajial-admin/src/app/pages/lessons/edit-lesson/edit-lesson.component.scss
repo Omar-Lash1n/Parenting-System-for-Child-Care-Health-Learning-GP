@@ -1,0 +1,13 @@
+@use '../create-lesson/create-lesson.component.scss';
+
+.stats-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.stats-card {
+  flex: 1;
+  min-width: 160px;
+}

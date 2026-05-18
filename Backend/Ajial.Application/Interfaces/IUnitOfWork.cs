@@ -30,6 +30,12 @@ public interface IUnitOfWork : IDisposable
     IRepository<DailyQuestionAnswer> DailyQuestionAnswers { get; }
     IRepository<SpecialistStatusHistory> SpecialistStatusHistories { get; }
     IRepository<Specialty> Specialties { get; }
+    IRepository<LessonCategory> LessonCategories { get; }         // ✅ Lesson Feature
+    IRepository<Lesson> Lessons { get; }                          // ✅ Lesson Feature
+    IRepository<LessonQuestion> LessonQuestions { get; }          // ✅ Lesson Feature
+    IRepository<LessonQuestionOption> LessonQuestionOptions { get; } // ✅ Lesson Feature
+    IRepository<LessonProgress> LessonProgresses { get; }         // ✅ Lesson Feature
+    IRepository<LessonQuestionAnswer> LessonQuestionAnswers { get; } // ✅ Lesson Feature
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

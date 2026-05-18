@@ -37,6 +37,12 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<DailyQuestionAnswer> DailyQuestionAnswers { get; private set; }
     public IRepository<SpecialistStatusHistory> SpecialistStatusHistories { get; private set; }
     public IRepository<Specialty> Specialties { get; private set; }
+    public IRepository<LessonCategory> LessonCategories { get; private set; }         // ✅ Lesson Feature
+    public IRepository<Lesson> Lessons { get; private set; }                          // ✅ Lesson Feature
+    public IRepository<LessonQuestion> LessonQuestions { get; private set; }          // ✅ Lesson Feature
+    public IRepository<LessonQuestionOption> LessonQuestionOptions { get; private set; } // ✅ Lesson Feature
+    public IRepository<LessonProgress> LessonProgresses { get; private set; }         // ✅ Lesson Feature
+    public IRepository<LessonQuestionAnswer> LessonQuestionAnswers { get; private set; } // ✅ Lesson Feature
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -67,6 +73,12 @@ public class UnitOfWork : IUnitOfWork
         DailyQuestionAnswers = new Repository<DailyQuestionAnswer>(_context);
         SpecialistStatusHistories = new Repository<SpecialistStatusHistory>(_context);
         Specialties = new Repository<Specialty>(_context);
+        LessonCategories = new Repository<LessonCategory>(_context);         // ✅ Lesson Feature
+        Lessons = new Repository<Lesson>(_context);                          // ✅ Lesson Feature
+        LessonQuestions = new Repository<LessonQuestion>(_context);          // ✅ Lesson Feature
+        LessonQuestionOptions = new Repository<LessonQuestionOption>(_context); // ✅ Lesson Feature
+        LessonProgresses = new Repository<LessonProgress>(_context);         // ✅ Lesson Feature
+        LessonQuestionAnswers = new Repository<LessonQuestionAnswer>(_context); // ✅ Lesson Feature
     }
 
     public async Task<int> SaveChangesAsync()

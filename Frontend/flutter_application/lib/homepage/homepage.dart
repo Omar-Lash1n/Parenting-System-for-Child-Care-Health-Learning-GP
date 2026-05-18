@@ -8,6 +8,7 @@ import 'package:Ajial/homepage/widgets/home_header.dart';
 import 'package:Ajial/homepage/widgets/parenting_nutrition_section.dart';
 import 'package:Ajial/homepage/widgets/quick_actions_section.dart';
 import 'package:Ajial/homepage/widgets/upcoming_tasks_section.dart';
+import 'package:Ajial/lessons/providers/lesson_provider.dart';
 import 'package:Ajial/providers/family_provider.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
@@ -47,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final homeProvider = context.read<ParentHomeProvider>();
       final familyProvider = context.read<FamilyProvider>();
       final profileProvider = context.read<ParentProfileProvider>();
+      final lessonProvider = context.read<LessonProvider>();
 
       if (homeProvider.vaccinationsStatus == HomeDataStatus.initial &&
           homeProvider.tasksStatus == HomeDataStatus.initial) {
@@ -58,6 +60,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (profileProvider.profileData == null && !profileProvider.isLoading) {
         profileProvider.fetchProfile();
       }
+      if (lessonProvider.lessonsStatus == LessonsStatus.initial) {
+        lessonProvider.loadLessons(pageSize: 3);
+      }
     });
   }
 
@@ -66,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context.read<ParentHomeProvider>().loadAll(),
       context.read<FamilyProvider>().loadChildren(),
       context.read<ParentProfileProvider>().fetchProfile(),
+      context.read<LessonProvider>().loadLessons(pageSize: 3),
     ]);
   }
 
@@ -111,7 +117,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             Navigator.pushNamed(context, '/family'),
                       ),
                       const SizedBox(height: 24),
-                      const ParentingNutritionSection(),
+                      Consumer<LessonProvider>(
+                        builder: (_, lessonProvider, __) =>
+                            ParentingNutritionSection(
+                          lessons: lessonProvider.lessons,
+                          isLoading: lessonProvider.lessonsStatus ==
+                              LessonsStatus.loading,
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       CurrentVaccinationsSection(
                         status: homeProvider.vaccinationsStatus,
