@@ -16,6 +16,9 @@ import { LessonsListComponent } from './pages/lessons/lessons-list/lessons-list.
 import { CreateLessonComponent } from './pages/lessons/create-lesson/create-lesson.component';
 import { EditLessonComponent } from './pages/lessons/edit-lesson/edit-lesson.component';
 import { LessonCategoriesComponent } from './pages/lessons/categories/categories.component';
+import { RankingLayoutComponent } from './pages/ranking/ranking-layout/ranking-layout.component';
+import { RankingCurrentComponent } from './pages/ranking/ranking-current/ranking-current.component';
+import { RankingHistoryComponent } from './pages/ranking/ranking-history/ranking-history.component';
 
 export const routes: Routes = [
     { path: '', component: HomeComponent, title: 'أجيال | الرئيسية' },
@@ -61,6 +64,14 @@ export const routes: Routes = [
             { path: 'create', component: CreateLessonComponent, title: 'أجيال | إنشاء درس' },
             { path: 'edit/:id', component: EditLessonComponent, title: 'أجيال | تعديل درس' },
             { path: 'categories', component: LessonCategoriesComponent, title: 'أجيال | إدارة التصنيفات' }
+        ]
+    },
+    {
+        path: 'ranking',
+        component: RankingLayoutComponent,
+        children: [
+            { path: '', component: RankingCurrentComponent, title: 'أجيال | الترتيب الحالي' },
+            { path: 'history', component: RankingHistoryComponent, title: 'أجيال | سجل المواسم' }
         ]
     },
     { path: '**', redirectTo: '' }

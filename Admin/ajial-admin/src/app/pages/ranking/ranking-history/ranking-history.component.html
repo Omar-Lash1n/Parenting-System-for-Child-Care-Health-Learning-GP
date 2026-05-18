@@ -1,0 +1,73 @@
+<section class="history-page">
+  <header class="page-header">
+    <div class="header-text">
+      <h1>سجل المواسم</h1>
+      <p>المواسم المنشورة وترتيباتها السابقة.</p>
+    </div>
+    <a routerLink="/ranking" class="btn btn-outline">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      الترتيب الحالي
+    </a>
+  </header>
+
+  @if (error) {
+    <div class="alert error">{{ error }}</div>
+  }
+
+  @if (loading) {
+    <app-loading-spinner size="lg" [overlay]="true"></app-loading-spinner>
+  } @else if (cycles.length === 0) {
+    <div class="empty-state">
+      <h2>لا توجد مواسم منشورة</h2>
+      <p>لم يتم نشر أي موسم حتى الآن.</p>
+      <a routerLink="/ranking" class="btn btn-primary">نشر الترتيب</a>
+    </div>
+  } @else {
+    <div class="cycles-grid">
+      @for (cycle of cycles; track trackByCycleId($index, cycle)) {
+        <div class="cycle-card">
+          <div class="cycle-header">
+            <div class="cycle-title">
+              <span class="season-icon">🏆</span>
+              <h2>{{ cycle.seasonName }}</h2>
+            </div>
+            <span class="participants-badge">{{ cycle.totalParents }} مشارك</span>
+          </div>
+
+          <div class="cycle-dates">
+            <div class="date-item">
+              <span class="date-label">تاريخ النشر</span>
+              <span class="date-value">{{ cycle.publishedAt | date:'mediumDate' }}</span>
+            </div>
+            <div class="date-item">
+              <span class="date-label">النشر القادم</span>
+              <span class="date-value">{{ cycle.nextPublishAt | date:'mediumDate' }}</span>
+            </div>
+          </div>
+
+          @if (cycle.topThree && cycle.topThree.length > 0) {
+            <div class="winners-section">
+              <p class="winners-label">أفضل المشاركين</p>
+              <div class="winners-list">
+                @for (entry of cycle.topThree; track entry.rank) {
+                  <div class="winner-item">
+                    <span class="winner-medal">{{ rankMedal(entry.rank) }}</span>
+                    <div class="winner-info">
+                      <span class="winner-name">{{ entry.fullName }}</span>
+                      <span class="winner-stars">★ {{ entry.stars }}</span>
+                    </div>
+                    @if (entry.badge) {
+                      <span class="badge-chip" [ngClass]="badgeClass(entry.badge)">
+                        {{ badgeLabel(entry.badge) }}
+                      </span>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</section>

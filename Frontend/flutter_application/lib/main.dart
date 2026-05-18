@@ -66,6 +66,8 @@ import 'package:Ajial/lessons/providers/lesson_provider.dart';
 import 'package:Ajial/lessons/screens/lessons_list_screen.dart';
 import 'package:Ajial/lessons/screens/lesson_detail_screen.dart';
 import 'package:Ajial/lessons/screens/lesson_quiz_screen.dart';
+import 'package:Ajial/ranking/providers/ranking_provider.dart';
+import 'package:Ajial/ranking/ranking_page.dart';
 
 // Background handler is only supported on mobile (Android/iOS), not on web.
 @pragma('vm:entry-point')
@@ -208,6 +210,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PrizeStoreProvider()),
         ChangeNotifierProvider(create: (_) => SpecialistApplicationProvider()),
         ChangeNotifierProvider(create: (_) => LessonProvider()),
+        ChangeNotifierProvider(create: (_) => RankingProvider()),
       ],
       child: const AjialApp(),
     ),
@@ -273,6 +276,7 @@ class AjialApp extends StatelessWidget {
         '/lessons': (context) => const LessonsListScreen(),
         '/lesson-detail': (context) => const LessonDetailScreen(),
         '/lesson-quiz': (context) => const LessonQuizScreen(),
+        '/ranking': (context) => const RankingPage(),
       },
     );
   }

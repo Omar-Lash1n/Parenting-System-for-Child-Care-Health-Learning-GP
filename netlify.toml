@@ -1,6 +1,6 @@
 [build]
   base = "Admin/ajial-admin"
-  command = "npm run build"
+  command = "mkdir -p src/environments && echo \"export const environment = { production: true, groqApiKey: '${GROQ_API_KEY}' };\" > src/environments/environment.prod.ts && echo \"export const environment = { production: false, groqApiKey: '${GROQ_API_KEY}' };\" > src/environments/environment.ts && npm run build"
   publish = "dist/ajial-admin/browser"
 
 [[redirects]]

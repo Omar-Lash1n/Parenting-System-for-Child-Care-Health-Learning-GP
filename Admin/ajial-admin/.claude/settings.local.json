@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx ng *)",
+      "Bash(Get-ChildItem -Path \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Mobile\" -Directory)",
+      "Bash(Select-Object Name)"
+    ]
+  }
+}

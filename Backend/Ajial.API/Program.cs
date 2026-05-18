@@ -116,6 +116,7 @@ builder.Services.AddScoped<IChildHomeService, ChildHomeService>();              
 builder.Services.AddScoped<IParentHomeService, ParentHomeService>();
 builder.Services.AddScoped<IDailyQuestionService, DailyQuestionService>();
 builder.Services.AddScoped<ILessonService, LessonService>();                  // ✅ Lesson Feature (التغذية التربوية)
+builder.Services.AddScoped<IRankingService, RankingService>();                 // ✅ Ranking Feature (لوحة التكريم)
 // ✅ Infrastructure Services
 builder.Services.AddScoped<IImageService, AzureBlobImageService>(); // ✅ NEW - Image Upload to Azure
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
