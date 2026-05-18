@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "Bash(python -c \"import docx; print\\('python-docx ok'\\)\")"
+    ]
+  }
+}

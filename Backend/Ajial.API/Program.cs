@@ -112,6 +112,7 @@ builder.Services.AddHostedService<TaskReminderBackgroundWorker>();              
 builder.Services.AddScoped<IHealthUnitService, HealthUnitService>();                    // ✅ Health Unit Search
 builder.Services.AddScoped<IChildTaskService, ChildTaskService>();                       // ✅ Child Tasks Feature
 builder.Services.AddScoped<IPrizeService, PrizeService>();
+builder.Services.AddScoped<IChildHomeService, ChildHomeService>();                      // ✅ Child Home Feature
 builder.Services.AddScoped<IParentHomeService, ParentHomeService>();
 builder.Services.AddScoped<IDailyQuestionService, DailyQuestionService>();
 // ✅ Infrastructure Services
