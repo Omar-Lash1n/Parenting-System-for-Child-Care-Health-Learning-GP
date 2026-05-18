@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { CreateDailyQuestionRequest, DailyQuestionOptionRequest } from '../../../models/daily-question.model';
 import { DailyQuestionsService } from '../../../services/daily-questions.service';
+import { AiGenerationService } from '../../../services/ai-generation.service';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
@@ -17,11 +18,14 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 export class CreateQuestionComponent {
   private fb = inject(UntypedFormBuilder);
   private service = inject(DailyQuestionsService);
+  private aiService = inject(AiGenerationService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
 
   submitting = false;
   error: string | null = null;
+  aiGenerating = false;
+  aiError: string | null = null;
 
   form = this.fb.group({
     questionText: ['', [Validators.required, Validators.maxLength(500)]],
@@ -41,6 +45,31 @@ export class CreateQuestionComponent {
     return this.fb.group({
       optionText: [option?.optionText ?? '', [Validators.required, Validators.maxLength(300)]],
       isCorrect: [option?.isCorrect ?? false]
+    });
+  }
+
+  generateWithAi(): void {
+    this.aiError = null;
+    this.aiGenerating = true;
+
+    this.aiService.generate().pipe(
+      finalize(() => {
+        this.aiGenerating = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: (result) => {
+        while (this.options.length) {
+          this.options.removeAt(0);
+        }
+        result.options.forEach((o) => this.options.push(this.createOptionGroup(o)));
+        this.options.updateValueAndValidity();
+        this.form.patchValue({ questionText: result.questionText, starsReward: result.starsReward });
+        this.cdr.detectChanges();
+      },
+      error: (err: Error) => {
+        this.aiError = err.message || 'حدث خطأ أثناء التوليد. حاول مرة أخرى.';
+      }
     });
   }
 
