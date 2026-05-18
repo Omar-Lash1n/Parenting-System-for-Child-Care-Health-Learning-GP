@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:Ajial/child-app/home/child_home_provider.dart';
-import 'package:Ajial/tasks/models/task_model.dart';
+import 'package:Ajial/child-app/tasks/child_home_task_repository.dart';
 import 'package:Ajial/child-app/tasks/child_task_details_page.dart';
 import 'dart:math';
 
@@ -14,7 +14,10 @@ class ChildTasksPage extends StatefulWidget {
 }
 
 class _ChildTasksPageState extends State<ChildTasksPage> {
-  late List<TaskModel> _tasks;
+  final _repo = ChildHomeTaskRepository();
+  List<ChildHomeTaskItem> _tasks = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -24,78 +27,7 @@ class _ChildTasksPageState extends State<ChildTasksPage> {
       DeviceOrientation.landscapeRight,
       DeviceOrientation.landscapeLeft,
     ]);
-
-    // Mock Tasks to demonstrate the logic
-    final now = DateTime.now();
-    _tasks = [
-      // Past: Completed (Green)
-      TaskModel(
-        id: '1',
-        title: 'مهمة 1',
-        category: 'تنظيف',
-        assignees: [],
-        color: Colors.blue,
-        date: now.subtract(const Duration(days: 2)),
-        isCompleted: true,
-      ),
-      // Past: Not Completed (Red)
-      TaskModel(
-        id: '2',
-        title: 'مهمة 2',
-        category: 'دراسة',
-        assignees: [],
-        color: Colors.orange,
-        date: now.subtract(const Duration(days: 1)),
-        isCompleted: false,
-      ),
-      // Today: 3 Tasks (First uncompleted = Play, others = Numbered/Active)
-      TaskModel(
-        id: '3',
-        title: 'مهمة 3',
-        category: 'لعب',
-        assignees: [],
-        color: Colors.blue,
-        date: now,
-        isCompleted: true, // Today completed
-      ),
-      TaskModel(
-        id: '4',
-        title: 'مهمة 4',
-        category: 'قراءة',
-        assignees: [],
-        color: Colors.orange,
-        date: now,
-        isCompleted: false, // Today active (Play Button)
-      ),
-      TaskModel(
-        id: '5',
-        title: 'مهمة 5',
-        category: 'صلاة',
-        assignees: [],
-        color: Colors.purple,
-        date: now,
-        isCompleted: false, // Today active (Next)
-      ),
-      // Future: 2 Tasks (Grey with Lock)
-      TaskModel(
-        id: '6',
-        title: 'مهمة 6',
-        category: 'نوم',
-        assignees: [],
-        color: Colors.cyan,
-        date: now.add(const Duration(days: 1)),
-        isCompleted: false,
-      ),
-      TaskModel(
-        id: '7',
-        title: 'مهمة 7',
-        category: 'ترتيب',
-        assignees: [],
-        color: Colors.teal,
-        date: now.add(const Duration(days: 2)),
-        isCompleted: false,
-      ),
-    ];
+    _loadTasks();
   }
 
   @override
@@ -108,30 +40,99 @@ class _ChildTasksPageState extends State<ChildTasksPage> {
     super.dispose();
   }
 
+  Future<void> _loadTasks() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final response = await _repo.fetchTasks();
+      if (!mounted) return;
+      setState(() {
+        _tasks = response.allTasks;
+        _isLoading = false;
+      });
+      // Sync stars with provider so all pages see the latest value
+      // ignore: use_build_context_synchronously
+      context.read<ChildHomeProvider>().setStars(response.totalStars);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Determine if the screen is in portrait mode
     final size = MediaQuery.of(context).size;
     final isPortrait = size.height > size.width;
 
-    // Sort tasks by date
-    _tasks.sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
-
-    // Find the LAST available task (the furthest task unlocked up to today)
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    
-    TaskModel? lastAvailableTask;
-    for (var task in _tasks) {
-      if (task.date != null) {
-        final taskDay = DateTime(task.date!.year, task.date!.month, task.date!.day);
-        if (!taskDay.isAfter(today)) {
-          lastAvailableTask = task;
-        }
-      }
-    }
-
     final provider = context.watch<ChildHomeProvider>();
+
+    // Build content based on state
+    Widget body;
+    if (_isLoading) {
+      body = const Center(
+        child: CircularProgressIndicator(color: Color(0xFFFF8F00)),
+      );
+    } else if (_errorMessage != null) {
+      body = Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontSize: 16,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadTasks,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF8F00),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+              child: const Text(
+                'إعادة المحاولة',
+                style: TextStyle(
+                  fontFamily: 'IBM Plex Sans Arabic',
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (_tasks.isEmpty) {
+      body = const Center(
+        child: Text(
+          'لا توجد مهام حالياً',
+          style: TextStyle(
+            fontFamily: 'IBM Plex Sans Arabic',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      );
+    } else {
+      // Sort tasks by dueDate
+      _tasks.sort((a, b) =>
+          (a.dueDate ?? DateTime.now()).compareTo(b.dueDate ?? DateTime.now()));
+
+      body = _buildTasksContent(provider);
+    }
 
     // The main content of the landscape page
     Widget content = Directionality(
@@ -148,27 +149,8 @@ class _ChildTasksPageState extends State<ChildTasksPage> {
         ),
         child: Stack(
           children: [
-            // --- The Path and Nodes ---
-            Positioned.fill(
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 100),
-                itemCount: _tasks.length,
-                itemBuilder: (context, index) {
-                  final task = _tasks[index];
-                  // Create a simple oscillating vertical offset for the path curve
-                  final double yOffset = sin(index * pi / 2) * 0.4;
-                  
-                  return SizedBox(
-                    width: 140, // Spacing between nodes
-                    child: Align(
-                      alignment: Alignment(0, yOffset + 0.2), // slightly lower
-                      child: _buildTaskNode(task, index + 1, task == lastAvailableTask, today),
-                    ),
-                  );
-                },
-              ),
-            ),
+            // --- Body (loading / error / tasks) ---
+            Positioned.fill(child: body),
 
             // --- Top UI Elements ---
             SafeArea(
@@ -182,7 +164,8 @@ class _ChildTasksPageState extends State<ChildTasksPage> {
                     children: [
                       // Child Points (Stars) - Top Right (in RTL, this is Top Left visually)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFF8F00),
                           borderRadius: BorderRadius.circular(30),
@@ -208,11 +191,12 @@ class _ChildTasksPageState extends State<ChildTasksPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Icon(Icons.star, color: Colors.yellow, size: 28),
+                            const Icon(Icons.star,
+                                color: Colors.yellow, size: 28),
                           ],
                         ),
                       ),
-                      
+
                       // Back Button - Top Left (in RTL, this is Top Right visually)
                       Container(
                         decoration: BoxDecoration(
@@ -220,7 +204,7 @@ class _ChildTasksPageState extends State<ChildTasksPage> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: Colors.black.withValues(alpha: 0.2),
                               offset: const Offset(2, 2),
                               blurRadius: 4,
                             ),
@@ -260,28 +244,50 @@ class _ChildTasksPageState extends State<ChildTasksPage> {
     );
   }
 
-  Widget _buildTaskNode(TaskModel task, int level, bool isLastAvailable, DateTime today) {
-    bool isPast = false;
-    bool isToday = false;
-    bool isFuture = false;
+  Widget _buildTasksContent(ChildHomeProvider provider) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
-    if (task.date != null) {
-      final taskDay = DateTime(task.date!.year, task.date!.month, task.date!.day);
+    return ListView.builder(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 100),
+      itemCount: _tasks.length,
+      itemBuilder: (context, index) {
+        final task = _tasks[index];
+        // Create a simple oscillating vertical offset for the path curve
+        final double yOffset = sin(index * pi / 2) * 0.4;
+
+        return SizedBox(
+          width: 140, // Spacing between nodes
+          child: Align(
+            alignment: Alignment(0, yOffset + 0.2), // slightly lower
+            child: _buildTaskNode(task, index + 1, today),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTaskNode(ChildHomeTaskItem task, int level, DateTime today) {
+    bool isDueToday = false;
+    bool isPast = false;
+
+    if (task.dueDate != null) {
+      final taskDay =
+          DateTime(task.dueDate!.year, task.dueDate!.month, task.dueDate!.day);
       if (taskDay.isBefore(today)) {
         isPast = true;
       } else if (taskDay.isAtSameMomentAs(today)) {
-        isToday = true;
-      } else {
-        isFuture = true;
+        isDueToday = true;
       }
     } else {
-      isToday = true; // Fallback
+      isDueToday = true; // Fallback: treat as today
     }
 
     Widget nodeContent;
     Color mainColor;
     Color darkColor;
-    double size = 85.0; // Slightly larger to accommodate 3D effect
+    double size = 85.0;
 
     // Default content is the level number
     nodeContent = Text(
@@ -290,54 +296,65 @@ class _ChildTasksPageState extends State<ChildTasksPage> {
         fontFamily: 'IBM Plex Sans Arabic',
         fontSize: 34,
         fontWeight: FontWeight.w800,
-        color: Color(0xFFEEEEEE), // Slightly off-white like the image
+        color: Color(0xFFEEEEEE),
       ),
     );
 
-    if (isFuture) {
-      // Future tasks are locked (Grey)
-      mainColor = const Color(0xFFBDBDBD);
-      darkColor = const Color(0xFF9E9E9E);
-      nodeContent = const Icon(Icons.lock, color: Colors.white, size: 36);
-    } else if (isLastAvailable) {
-      // The LAST available task gets the Play icon
-      size = 110.0;
-      mainColor = const Color(0xFF00C853); // Bright Green
-      darkColor = const Color(0xFF009624); // Darker Green
-      nodeContent = const Icon(Icons.play_arrow, color: Colors.white, size: 60);
-    } else if (isPast) {
-      // Past tasks (Done = Green, Missed = Red) - shows number
-      if (task.isCompleted) {
-        mainColor = const Color(0xFF4CAF50); // Green
-        darkColor = const Color(0xFF388E3C);
-      } else {
-        mainColor = const Color(0xFFE53935); // Red
-        darkColor = const Color(0xFFC62828);
-      }
-    } else {
-      // Today tasks (that are not the last available) - Purple
-      mainColor = const Color(0xFF9C27B0); // Purple
+    // Color logic:
+    // - isCompleted == true → GREEN
+    // - isCompleted == false && dueDate is today → PURPLE  
+    // - isCompleted == false (past or no specific date logic) → RED
+    if (task.isCompleted) {
+      // ✅ Completed → Green
+      mainColor = const Color(0xFF4CAF50);
+      darkColor = const Color(0xFF388E3C);
+      nodeContent = Stack(
+        alignment: Alignment.center,
+        children: [
+          Text(
+            '$level',
+            style: const TextStyle(
+              fontFamily: 'IBM Plex Sans Arabic',
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFFEEEEEE),
+            ),
+          ),
+        ],
+      );
+    } else if (isDueToday) {
+      // 🟣 Today & not completed → Purple (active, playable)
+      size = 100.0;
+      mainColor = const Color(0xFF9C27B0);
       darkColor = const Color(0xFF7B1FA2);
+      nodeContent = const Icon(Icons.play_arrow, color: Colors.white, size: 50);
+    } else if (isPast) {
+      // 🔴 Past & not completed → Red (missed)
+      mainColor = const Color(0xFFE53935);
+      darkColor = const Color(0xFFC62828);
+    } else {
+      // 🔴 Future & not completed → Red
+      mainColor = const Color(0xFFE53935);
+      darkColor = const Color(0xFFC62828);
     }
 
     return GestureDetector(
       onTap: () {
-        if (!isFuture) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChildTaskDetailsPage(
-                task: task,
-                rewardStars: 20, // Mock reward
-                onTaskCompleted: () {
-                  setState(() {
-                    task.isCompleted = true;
-                  });
-                },
-              ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChildTaskDetailsPage(
+              taskId: task.taskId,
+              taskTitle: task.title,
+              rewardStars: task.stars,
+              isCompleted: task.isCompleted,
+              onTaskCompleted: () {
+                // Reload tasks after completion
+                _loadTasks();
+              },
             ),
-          );
-        }
+          ),
+        );
       },
       child: Container(
         width: size,
@@ -355,7 +372,7 @@ class _ChildTasksPageState extends State<ChildTasksPage> {
             ),
             // The drop shadow underneath the coin
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               offset: const Offset(4, 8),
               blurRadius: 6,
               spreadRadius: 0,

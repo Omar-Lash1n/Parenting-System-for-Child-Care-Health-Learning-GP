@@ -65,6 +65,9 @@ class _ChildHomePageState extends State<ChildHomePage>
         isFirstLogin: widget.isFirstLogin,
       );
 
+      // Fetch latest star count from the API
+      provider.refreshStarsFromApi();
+
       // Start first-time experience after a short delay
       if (widget.isFirstLogin) {
         Future.delayed(const Duration(milliseconds: 800), () {

@@ -505,9 +505,11 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
                     // تسجيل وصف المهمة
                     _label('تسجيل وصف المهمة'),
                     const SizedBox(height: 8),
-                    (_hasRecording || _isRecording)
-                        ? _buildRecordingResult()
-                        : _buildVoiceRow(),
+                    _isRecording
+                        ? _buildRecordingInProgress()
+                        : _hasRecording
+                            ? _buildRecordingResult()
+                            : _buildVoiceRow(),
                     const SizedBox(height: 16),
 
                     // عدد نجوم المهمة
@@ -756,6 +758,91 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
             ),
           ),
           const SizedBox(width: 12),
+        ],
+      ),
+    );
+  }
+
+  /// Recording in-progress row: shows live timer + stop/confirm button + cancel
+  Widget _buildRecordingInProgress() {
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: _kPrimary.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: Row(
+        textDirection: TextDirection.ltr, // LTR so buttons stay on actual left
+        children: [
+          // "تأكيد" (Confirm/Stop) button — actual left side
+          GestureDetector(
+            onTap: _stopRecording,
+            child: Container(
+              margin: const EdgeInsets.all(6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2E7D32), // Green for confirm
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check, size: 16, color: Colors.white),
+                  SizedBox(width: 4),
+                  Text(
+                    'تأكيد',
+                    style: TextStyle(
+                        fontFamily: _kFont,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          // Cancel button
+          GestureDetector(
+            onTap: _deleteRecording,
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: const Icon(Icons.close, size: 16, color: Colors.black54),
+            ),
+          ),
+          // Timer + recording indicator — right side
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  _formatDuration(_recordingDuration),
+                  style: const TextStyle(
+                      fontFamily: _kFont,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black),
+                ),
+                const SizedBox(width: 8),
+                // Pulsing red dot
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE53935),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+            ),
+          ),
         ],
       ),
     );

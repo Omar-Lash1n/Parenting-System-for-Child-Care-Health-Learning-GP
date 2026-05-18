@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:Ajial/child-app/tasks/child_home_task_repository.dart';
 
 /// ChildHomeProvider - Handles child home screen state and gamification logic
 class ChildHomeProvider extends ChangeNotifier {
@@ -179,6 +180,25 @@ class ChildHomeProvider extends ChangeNotifier {
   /// Add stars (for future use - completing activities)
   void addStars(int amount) {
     _currentStars += amount;
+    notifyListeners();
+  }
+
+  /// Refresh stars count from the API (GET /api/ChildHome/tasks)
+  /// Call this whenever you need the latest totalStars from the server.
+  Future<void> refreshStarsFromApi() async {
+    try {
+      final repo = ChildHomeTaskRepository();
+      final response = await repo.fetchTasks();
+      _currentStars = response.totalStars;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to refresh stars from API: $e');
+    }
+  }
+
+  /// Set stars directly (used when loading from API)
+  void setStars(int stars) {
+    _currentStars = stars;
     notifyListeners();
   }
 
