@@ -1,2 +1,6 @@
 # Local Netlify folder
 .netlify
+
+# Angular environment files — contain API keys, never commit these
+Admin/ajial-admin/src/environments/environment.ts
+Admin/ajial-admin/src/environments/environment.prod.ts

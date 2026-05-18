@@ -2,13 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { HttpBackend, HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, map, catchError, throwError } from 'rxjs';
 import { AiGeneratedQuestion } from '../models/daily-question.model';
+import { environment } from '../../environments/environment';
 
-// ⚠️ IMPORTANT: Never commit real API keys. Store this in environment variables.
-// For local dev, create src/environments/environment.ts with your key.
-const OPENAI_API_KEY = (typeof window !== 'undefined' && (window as any).__GROQ_API_KEY__)
-  ? (window as any).__GROQ_API_KEY__
-  : 'YOUR_GROQ_API_KEY_HERE';
+const OPENAI_API_KEY = environment.groqApiKey;
 const OPENAI_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+
 
 const SYSTEM_PROMPT = `أنت خبير في تربية الأطفال ورعايتهم. مهمتك إنشاء أسئلة تفاعلية باللغة العربية للوالدين في تطبيق رعاية الأطفال "أجيال".
 
