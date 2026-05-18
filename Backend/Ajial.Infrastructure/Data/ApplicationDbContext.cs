@@ -41,6 +41,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<LessonQuestionOption> LessonQuestionOptions { get; set; } = null!; // ✅ Lesson Feature
     public DbSet<LessonProgress> LessonProgresses { get; set; } = null!;         // ✅ Lesson Feature
     public DbSet<LessonQuestionAnswer> LessonQuestionAnswers { get; set; } = null!; // ✅ Lesson Feature
+    public DbSet<RankingCycle> RankingCycles { get; set; } = null!;                // ✅ Ranking Feature
+    public DbSet<RankingEntry> RankingEntries { get; set; } = null!;               // ✅ Ranking Feature
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -889,6 +891,37 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => new { e.ParentId, e.LessonQuestionId }).IsUnique();
             entity.HasIndex(e => e.LessonQuestionId);
+        });
+
+        // RankingCycle Configuration
+        modelBuilder.Entity<RankingCycle>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SeasonName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.PublishedAt).IsRequired();
+            entity.Property(e => e.NextPublishAt).IsRequired();
+        });
+
+        // RankingEntry Configuration
+        modelBuilder.Entity<RankingEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Stars).IsRequired();
+            entity.Property(e => e.Rank).IsRequired();
+            entity.Property(e => e.Badge).IsRequired(false);
+
+            entity.HasOne(e => e.RankingCycle)
+                .WithMany(c => c.Entries)
+                .HasForeignKey(e => e.RankingCycleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Parent)
+                .WithMany()
+                .HasForeignKey(e => e.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => e.RankingCycleId);
+            entity.HasIndex(e => new { e.RankingCycleId, e.ParentId }).IsUnique();
         });
 
         // Seed data

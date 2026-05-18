@@ -37,6 +37,10 @@
   --daily-question-color-light: #0ea5e920;
   --daily-question-color-hover: #0284c7;
 
+  --ranking-color: #f59e0b;
+  --ranking-color-light: #f59e0b20;
+  --ranking-color-hover: #d97706;
+
   --primary: var(--specialist-color);
   --primary-light: var(--specialist-color-light);
   --primary-hover: var(--specialist-color-hover);
@@ -77,6 +81,12 @@ body.theme-daily-questions {
   --primary: var(--daily-question-color);
   --primary-light: var(--daily-question-color-light);
   --primary-hover: var(--daily-question-color-hover);
+}
+
+body.theme-ranking {
+  --primary: var(--ranking-color);
+  --primary-light: var(--ranking-color-light);
+  --primary-hover: var(--ranking-color-hover);
 }
 
 * {

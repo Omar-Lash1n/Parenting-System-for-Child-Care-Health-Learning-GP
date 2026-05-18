@@ -6,7 +6,11 @@
       "Bash(python -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
       "mcp__claude_ai_Figma__get_screenshot",
       "Bash(Get-ChildItem -Path \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Frontend\\\\flutter_application\" -Force)",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Bash(New-Item -ItemType Directory -Force \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Frontend\\\\flutter_application\\\\lib\\\\ranking\\\\models\")",
+      "Bash(New-Item -ItemType Directory -Force \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Frontend\\\\flutter_application\\\\lib\\\\ranking\\\\repositories\")",
+      "Bash(New-Item -ItemType Directory -Force \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Frontend\\\\flutter_application\\\\lib\\\\ranking\\\\providers\")",
+      "Bash(flutter analyze *)"
     ]
   }
 }
