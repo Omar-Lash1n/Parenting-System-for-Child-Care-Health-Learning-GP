@@ -14,9 +14,11 @@ import 'package:Ajial/profile/my_child_profile.dart';
 import 'package:Ajial/add-child/add-child-flow.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
 import 'package:Ajial/providers/tasks_provider.dart';
+import 'package:Ajial/providers/nav_bar_provider.dart';
 import 'package:Ajial/widgets/skeleton_loading.dart';
 import 'package:Ajial/ranking/providers/ranking_provider.dart';
 import 'package:Ajial/ranking/models/ranking_models.dart';
+import 'package:Ajial/role_selection.dart';
 
 // --- CONSTANTS ---
 const Color kPrimaryColor = Color(0xFFBF092F);
@@ -115,6 +117,7 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
         if (provider.isLoading) {
           return const Scaffold(
             backgroundColor: Colors.white,
+            bottomNavigationBar: AppBottomNavBar(currentIndex: 4),
             body: SafeArea(
               child: ParentProfileSkeleton(),
             ),
@@ -123,6 +126,7 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
 
         return Scaffold(
           backgroundColor: Colors.white,
+          bottomNavigationBar: const AppBottomNavBar(currentIndex: 4),
           body: SafeArea(
             child: Directionality(
               textDirection: TextDirection.ltr,
@@ -1163,8 +1167,12 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
               if (!context.mounted) return;
               // Clear stale in-memory category state so re-login fetches fresh data
               context.read<TasksProvider>().reset();
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/login', (route) => false);
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const RoleSelectionScreen()),
+                (route) => false,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: kRedDelete,

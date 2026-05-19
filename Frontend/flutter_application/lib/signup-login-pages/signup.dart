@@ -215,7 +215,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     textDirection: TextDirection.rtl,
                                     textAlign: TextAlign.right,
                                     decoration: _buildInputDecoration(
-                                      hintText: 'اكتب اسمك هنا...',
+                                      hintText: 'اكتب اسمك الكامل (الأول والأخير)...',
                                       suffixIcon:
                                           _nameController.text.isNotEmpty
                                               ? IconButton(
@@ -235,11 +235,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     ),
                                     keyboardType: TextInputType.name,
                                     validator: (value) {
-                                      if (value == null || value.isEmpty) {
+                                      if (value == null || value.trim().isEmpty) {
                                         return 'الاسم الكامل مطلوب';
                                       }
+                                      if (value.trim().length < 4) {
+                                        return 'الاسم يجب أن يكون 4 أحرف على الأقل';
+                                      }
+                                      if (RegExp(r'[0-9]').hasMatch(value)) {
+                                        return 'الاسم يجب ألا يحتوي على أرقام';
+                                      }
                                       if (!provider.validateName(value)) {
-                                        return 'يرجى ادخال اسم صحيح لا يحتوي على رموز';
+                                        return 'يرجى ادخال الاسم الأول والأخير بدون رموز';
                                       }
                                       return null;
                                     },
@@ -251,11 +257,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _usernameController,
-                                    textDirection: TextDirection.rtl,
+                                    textDirection: TextDirection.ltr,
                                     textAlign: TextAlign.right,
                                     decoration: _buildInputDecoration(
                                       hintText:
-                                          'اكتب اسم المستخدم بدون مسافات...',
+                                          'اكتب اسم المستخدم (3-20 حرف)...',
                                       suffixIcon: _usernameController
                                               .text.isNotEmpty
                                           ? IconButton(
@@ -281,8 +287,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       if (value.contains(' ')) {
                                         return 'يجب ألا يحتوي على مسافات';
                                       }
+                                      if (value.length < 3) {
+                                        return 'يجب أن يكون 3 أحرف على الأقل';
+                                      }
+                                      if (value.length > 20) {
+                                        return 'يجب ألا يتجاوز 20 حرف';
+                                      }
                                       if (!provider.validateUsername(value)) {
-                                        return 'يجب أن يكون أكثر من 4 حروف';
+                                        return 'يجب أن يبدأ بحرف ويحتوي فقط على أحرف وأرقام';
                                       }
                                       return null;
                                     },
@@ -355,12 +367,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       ),
                                     ),
                                     onChanged: provider.updatePasswordStrength,
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'كلمة المرور مطلوبة';
-                                      }
-                                      return null;
-                                    },
+                                    validator: provider.validatePassword,
                                   ),
                                   const SizedBox(height: 12),
 
@@ -375,27 +382,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                             value: provider.passwordStrength,
                                             backgroundColor: Colors.grey[300],
                                             color: provider.passwordStrength <=
-                                                    0.33
+                                                    0.25
                                                 ? kPrimaryColor
                                                 : provider.passwordStrength <=
-                                                        0.66
-                                                    ? Colors.yellow[700]
-                                                    : Colors.green,
+                                                        0.5
+                                                    ? Colors.orange
+                                                    : provider.passwordStrength <=
+                                                            0.75
+                                                        ? Colors.yellow[700]
+                                                        : Colors.green,
                                             minHeight: 6,
                                           ),
                                         ),
                                         const SizedBox(height: 12),
                                         _buildStrengthCheck(
-                                            text: 'يحتوي على 8 احرف',
+                                            text: 'يحتوي على 8 أحرف على الأقل',
                                             met: provider.has8Chars),
                                         const SizedBox(height: 4),
                                         _buildStrengthCheck(
-                                            text: 'يحتوي على رموز &*/',
-                                            met: provider.hasSymbol),
+                                            text: 'يحتوي على حرف كبير (A-Z)',
+                                            met: provider.hasUppercase),
                                         const SizedBox(height: 4),
                                         _buildStrengthCheck(
-                                            text: 'يحتوي على ارقام',
+                                            text: 'يحتوي على أرقام (0-9)',
                                             met: provider.hasNumber),
+                                        const SizedBox(height: 4),
+                                        _buildStrengthCheck(
+                                            text: 'يحتوي على رموز خاصة',
+                                            met: provider.hasSymbol),
                                       ],
                                     ),
                                 ],
