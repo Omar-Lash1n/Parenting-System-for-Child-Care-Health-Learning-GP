@@ -45,7 +45,7 @@ class AppBottomNavBar extends StatelessWidget {
       icon: Icons.workspace_premium_outlined,
       activeIcon: Icons.workspace_premium,
       label: 'التكريم',
-      route: '/prizes',
+      route: '/ranking',
     ),
     _NavItemData(
       icon: Icons.account_circle_outlined,

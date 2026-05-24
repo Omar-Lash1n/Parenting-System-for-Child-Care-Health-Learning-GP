@@ -63,6 +63,13 @@ import 'package:Ajial/prizes/prize_store_page.dart';
 import 'package:Ajial/specialist-app/application-tracking/providers/specialist_application_provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/screens/specialist_application_tracking_page.dart';
 
+import 'package:Ajial/lessons/providers/lesson_provider.dart';
+import 'package:Ajial/lessons/screens/lessons_list_screen.dart';
+import 'package:Ajial/lessons/screens/lesson_detail_screen.dart';
+import 'package:Ajial/lessons/screens/lesson_quiz_screen.dart';
+import 'package:Ajial/ranking/providers/ranking_provider.dart';
+import 'package:Ajial/ranking/ranking_page.dart';
+
 // Background handler is only supported on mobile (Android/iOS), not on web.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -203,6 +210,11 @@ void main() async {
         ChangeNotifierProvider(create: (_) => HealthUnitProvider()),
         ChangeNotifierProvider(create: (_) => PrizeStoreProvider()),
         ChangeNotifierProvider(create: (_) => SpecialistApplicationProvider()),
+<<<<<<< HEAD
+=======
+        ChangeNotifierProvider(create: (_) => LessonProvider()),
+        ChangeNotifierProvider(create: (_) => RankingProvider()),
+>>>>>>> 2f8b274335ac333c14d17c12b71a33d076759618
       ],
       child: const AjialApp(),
     ),
@@ -265,6 +277,13 @@ class AjialApp extends StatelessWidget {
         '/prizes': (context) => const PrizeStorePage(),
         '/specialist-application': (context) =>
             const SpecialistApplicationTrackingPage(),
+<<<<<<< HEAD
+=======
+        '/lessons': (context) => const LessonsListScreen(),
+        '/lesson-detail': (context) => const LessonDetailScreen(),
+        '/lesson-quiz': (context) => const LessonQuizScreen(),
+        '/ranking': (context) => const RankingPage(),
+>>>>>>> 2f8b274335ac333c14d17c12b71a33d076759618
       },
     );
   }

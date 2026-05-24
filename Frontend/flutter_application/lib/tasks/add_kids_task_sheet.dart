@@ -358,6 +358,10 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
       _showSnack('اختر طفلاً على الأقل', isError: true);
       return;
     }
+    if (!_hasRecording || _recordingPath == null) {
+      _showSnack('تسجيل وصف المهمة مطلوب', isError: true);
+      return;
+    }
 
     setState(() => _isSubmitting = true);
 
@@ -502,8 +506,8 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
                     _buildTitleField(),
                     const SizedBox(height: 16),
 
-                    // تسجيل وصف المهمة
-                    _label('تسجيل وصف المهمة'),
+                    // تسجيل وصف المهمة (مطلوب)
+                    _requiredLabel('تسجيل وصف المهمة'),
                     const SizedBox(height: 8),
                     _isRecording
                         ? _buildRecordingInProgress()
@@ -674,6 +678,28 @@ class _AddKidsTaskSheetState extends State<_AddKidsTaskSheet> {
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: Colors.black)),
+      );
+
+  Widget _requiredLabel(String text) => Align(
+        alignment: Alignment.centerRight,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(text,
+                style: const TextStyle(
+                    fontFamily: _kFont,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black)),
+            const SizedBox(width: 4),
+            const Text('*',
+                style: TextStyle(
+                    fontFamily: _kFont,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _kPrimary)),
+          ],
+        ),
       );
 
   Widget _buildTitleField() {

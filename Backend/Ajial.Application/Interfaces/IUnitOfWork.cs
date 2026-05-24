@@ -36,6 +36,8 @@ public interface IUnitOfWork : IDisposable
     IRepository<LessonQuestionOption> LessonQuestionOptions { get; } // ✅ Lesson Feature
     IRepository<LessonProgress> LessonProgresses { get; }         // ✅ Lesson Feature
     IRepository<LessonQuestionAnswer> LessonQuestionAnswers { get; } // ✅ Lesson Feature
+    IRepository<RankingCycle> RankingCycles { get; }                // ✅ Ranking Feature
+    IRepository<RankingEntry> RankingEntries { get; }               // ✅ Ranking Feature
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

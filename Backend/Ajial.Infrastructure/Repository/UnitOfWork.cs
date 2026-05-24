@@ -43,6 +43,8 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<LessonQuestionOption> LessonQuestionOptions { get; private set; } // ✅ Lesson Feature
     public IRepository<LessonProgress> LessonProgresses { get; private set; }         // ✅ Lesson Feature
     public IRepository<LessonQuestionAnswer> LessonQuestionAnswers { get; private set; } // ✅ Lesson Feature
+    public IRepository<RankingCycle> RankingCycles { get; private set; }                // ✅ Ranking Feature
+    public IRepository<RankingEntry> RankingEntries { get; private set; }               // ✅ Ranking Feature
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -79,6 +81,8 @@ public class UnitOfWork : IUnitOfWork
         LessonQuestionOptions = new Repository<LessonQuestionOption>(_context); // ✅ Lesson Feature
         LessonProgresses = new Repository<LessonProgress>(_context);         // ✅ Lesson Feature
         LessonQuestionAnswers = new Repository<LessonQuestionAnswer>(_context); // ✅ Lesson Feature
+        RankingCycles = new Repository<RankingCycle>(_context);                // ✅ Ranking Feature
+        RankingEntries = new Repository<RankingEntry>(_context);               // ✅ Ranking Feature
     }
 
     public async Task<int> SaveChangesAsync()

@@ -14,7 +14,11 @@ import 'package:Ajial/profile/my_child_profile.dart';
 import 'package:Ajial/add-child/add-child-flow.dart';
 import 'package:Ajial/providers/parent_profile_provider.dart';
 import 'package:Ajial/providers/tasks_provider.dart';
+import 'package:Ajial/providers/nav_bar_provider.dart';
 import 'package:Ajial/widgets/skeleton_loading.dart';
+import 'package:Ajial/ranking/providers/ranking_provider.dart';
+import 'package:Ajial/ranking/models/ranking_models.dart';
+import 'package:Ajial/role_selection.dart';
 
 // --- CONSTANTS ---
 const Color kPrimaryColor = Color(0xFFBF092F);
@@ -32,19 +36,12 @@ class ParentProfilePage extends StatefulWidget {
 }
 
 class _ParentProfilePageState extends State<ParentProfilePage> {
-  List<Map<String, dynamic>> mockRewards = [
-    {'name': 'اسم الوسام', 'icon': Icons.star, 'color': Colors.amber},
-    {'name': 'اسم الوسام', 'icon': Icons.star, 'color': Colors.amber},
-    {'name': 'اسم الوسام', 'icon': Icons.star, 'color': Colors.amber},
-    {'name': 'اسم الوسام', 'icon': Icons.star, 'color': Colors.amber},
-  ];
-
   @override
   void initState() {
     super.initState();
-    // Fetch profile data on init
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ParentProfileProvider>().fetchProfile();
+      context.read<RankingProvider>().loadMyBadges();
     });
   }
 
@@ -120,6 +117,7 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
         if (provider.isLoading) {
           return const Scaffold(
             backgroundColor: Colors.white,
+            bottomNavigationBar: AppBottomNavBar(currentIndex: 4),
             body: SafeArea(
               child: ParentProfileSkeleton(),
             ),
@@ -128,6 +126,7 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
 
         return Scaffold(
           backgroundColor: Colors.white,
+          bottomNavigationBar: const AppBottomNavBar(currentIndex: 4),
           body: SafeArea(
             child: Directionality(
               textDirection: TextDirection.ltr,
@@ -143,7 +142,7 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
                       const SizedBox(height: 24),
                       _buildEmailVerificationBanner(provider),
                       const SizedBox(height: 34),
-                      _buildRewardsSection(),
+                      _buildBadgesSection(context),
                       const SizedBox(height: 34),
                       _buildChildrenSection(provider),
                       const SizedBox(height: 34),
@@ -292,7 +291,10 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
           children: [
             _buildStatCard('نقطة', '0', kPrimaryColor),
             const SizedBox(width: 16),
-            _buildStatCard('وسم', '0', kGreen),
+            Consumer<RankingProvider>(
+              builder: (_, rp, __) =>
+                  _buildStatCard('وسم', '${rp.myBadges.length}', kGreen),
+            ),
             const SizedBox(width: 16),
             _buildStatCard(
                 'طفل', '${provider.numberOfChildren}', const Color(0xFFFEA400)),
@@ -584,52 +586,130 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
     );
   }
 
-  // --- Rewards Section ---
-  Widget _buildRewardsSection() {
-    return Column(
-      children: [
-        _buildSectionHeader('المكافئات', true),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 99,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            reverse: true,
-            itemCount: mockRewards.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
-            itemBuilder: (context, index) {
-              final reward = mockRewards[index];
-              return Column(
-                children: [
-                  Container(
-                    width: 74,
-                    height: 74,
-                    decoration: BoxDecoration(
-                      color: (reward['color'] as Color).withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      reward['icon'] as IconData,
-                      color: reward['color'] as Color,
-                      size: 35,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    reward['name'],
-                    style: const TextStyle(
-                      fontFamily: kFontFamily,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      ],
+  // --- Badges Section ---
+  Widget _buildBadgesSection(BuildContext context) {
+    return Consumer<RankingProvider>(
+      builder: (context, rp, _) {
+        if (rp.isBadgesLoading) {
+          return Column(
+            children: [
+              _buildSectionHeader('المكافآت', true),
+              const SizedBox(height: 14),
+              const SizedBox(
+                  height: 80,
+                  child: Center(
+                      child: CircularProgressIndicator(
+                          color: kPrimaryColor, strokeWidth: 2))),
+            ],
+          );
+        }
+        if (rp.myBadges.isEmpty) return const SizedBox.shrink();
+        return Column(
+          children: [
+            _buildSectionHeader('المكافآت', true),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 100,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                reverse: true,
+                itemCount: rp.myBadges.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: _buildBadgeCard(rp.myBadges[index]),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  Widget _buildBadgeCard(ParentBadge badge) {
+    return SizedBox(
+      width: 80,
+      child: Column(
+        children: [
+          SizedBox(
+            width: 60,
+            height: 75,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _badgeBgColor(badge.badge),
+                  ),
+                  child: Icon(Icons.star,
+                      color: _badgeIconColor(badge.badge), size: 32),
+                ),
+                Positioned(
+                  bottom: 0,
+                  left: 10,
+                  right: 10,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [_ribbonTail(), _ribbonTail()],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            badge.seasonName,
+            style: const TextStyle(
+              fontFamily: kFontFamily,
+              fontSize: 11,
+            ),
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ribbonTail() => Container(
+        width: 8,
+        height: 14,
+        decoration: BoxDecoration(
+          color: kPrimaryColor,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      );
+
+  Color _badgeBgColor(String badge) {
+    switch (badge) {
+      case 'Gold':
+        return const Color(0xFFFFF3C4);
+      case 'Silver':
+        return const Color(0xFFF0F0F0);
+      case 'Bronze':
+        return const Color(0xFFF5E6D3);
+      default:
+        return const Color(0xFFFFF3C4);
+    }
+  }
+
+  Color _badgeIconColor(String badge) {
+    switch (badge) {
+      case 'Gold':
+        return const Color(0xFFFFC107);
+      case 'Silver':
+        return const Color(0xFF9E9E9E);
+      case 'Bronze':
+        return const Color(0xFFCD7F32);
+      default:
+        return const Color(0xFFFFC107);
+    }
   }
 
   // --- Children Section ---
@@ -1087,8 +1167,12 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
               if (!context.mounted) return;
               // Clear stale in-memory category state so re-login fetches fresh data
               context.read<TasksProvider>().reset();
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/login', (route) => false);
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const RoleSelectionScreen()),
+                (route) => false,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: kRedDelete,

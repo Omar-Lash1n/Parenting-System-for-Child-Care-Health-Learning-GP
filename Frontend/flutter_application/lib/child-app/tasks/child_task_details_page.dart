@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:Ajial/child-app/home/child_home_provider.dart';
 import 'package:Ajial/child-app/tasks/child_home_task_repository.dart';
 
@@ -32,6 +33,10 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
   String? _errorMessage;
   late bool _isCompleted;
 
+  // Audio player for recording playback
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isPlaying = false;
+
   @override
   void initState() {
     super.initState();
@@ -42,12 +47,24 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
       DeviceOrientation.landscapeLeft,
     ]);
     _loadDetail();
+
+    // Listen to player state changes
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (!mounted) return;
+      setState(() {
+        _isPlaying = state == PlayerState.playing;
+      });
+    });
+    // Reset icon when audio completes
+    _audioPlayer.onPlayerComplete.listen((_) {
+      if (!mounted) return;
+      setState(() => _isPlaying = false);
+    });
   }
 
   @override
   void dispose() {
-    // Note: If going back to another landscape page, the previous page's
-    // orientation settings will apply.
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -65,6 +82,27 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _togglePlayback() async {
+    final url = _detail?.recordingUrl;
+    if (url == null || url.isEmpty) return;
+
+    try {
+      if (_isPlaying) {
+        await _audioPlayer.pause();
+      } else {
+        // If player is stopped/completed, set the source again
+        if (_audioPlayer.state == PlayerState.completed ||
+            _audioPlayer.state == PlayerState.stopped) {
+          await _audioPlayer.setSourceUrl(url);
+        }
+        await _audioPlayer.resume();
+      }
+    } catch (e) {
+      debugPrint('Audio playback error: $e');
+      _showSnack('تعذر تشغيل التسجيل');
     }
   }
 
@@ -111,6 +149,8 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
     final String title = _detail?.title ?? widget.taskTitle;
     final int stars = _detail?.stars ?? widget.rewardStars;
     final String? imageUrl = _detail?.taskImageUrl;
+    final bool hasRecording = _detail?.recordingUrl != null &&
+        _detail!.recordingUrl!.isNotEmpty;
 
     // Build body content
     Widget bodyContent;
@@ -264,23 +304,21 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Play Audio Button (show if there is a recording)
-                if (_detail?.recordingUrl != null &&
-                    _detail!.recordingUrl!.isNotEmpty)
+                // Play/Pause Audio Button (always show if there is a recording)
+                if (hasRecording)
                   _buildActionButton(
-                    color: const Color(0xFF008CFF), // Blue
-                    shadowColor: const Color(0xFF005CB2),
-                    icon: Icons.play_arrow,
+                    color: _isPlaying
+                        ? const Color(0xFFFF8F00) // Orange when playing
+                        : const Color(0xFF008CFF), // Blue when paused
+                    shadowColor: _isPlaying
+                        ? const Color(0xFFE65100)
+                        : const Color(0xFF005CB2),
+                    icon: _isPlaying ? Icons.pause : Icons.play_arrow,
                     iconColor: Colors.white,
-                    onTap: () {
-                      // Play audio logic
-                      debugPrint('Play audio: ${_detail?.recordingUrl}');
-                    },
+                    onTap: _togglePlayback,
                   ),
                 if (!_isCompleted) ...[
-                  if (_detail?.recordingUrl != null &&
-                      _detail!.recordingUrl!.isNotEmpty)
-                    const SizedBox(width: 30),
+                  if (hasRecording) const SizedBox(width: 30),
                   // Complete Task Button (✓)
                   _isCompleting
                       ? Container(
@@ -314,17 +352,17 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
                 ],
                 // Show completed badge if already completed
                 if (_isCompleted) ...[
-                  const SizedBox(width: 30),
+                  if (hasRecording) const SizedBox(width: 30),
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
                       color: const Color(0xFF4CAF50),
                       borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
+                      boxShadow: const [
                         BoxShadow(
-                          color: const Color(0xFF388E3C),
-                          offset: const Offset(2, 4),
+                          color: Color(0xFF388E3C),
+                          offset: Offset(2, 4),
                           blurRadius: 0,
                         ),
                       ],
@@ -429,11 +467,12 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
                       ),
                       child: IconButton(
                         icon: const Icon(
-                          Icons.arrow_forward, // Arrow forward in RTL points right
+                          Icons.arrow_forward,
                           color: Colors.black,
                           size: 28,
                         ),
                         onPressed: () {
+                          _audioPlayer.stop();
                           Navigator.pop(context);
                         },
                       ),
@@ -452,7 +491,7 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
       body: isPortrait
           ? Center(
               child: RotatedBox(
-                quarterTurns: 1, // Rotate 90 degrees
+                quarterTurns: 1,
                 child: content,
               ),
             )
@@ -462,13 +501,15 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
 
   void _showCompletionDialog(
       BuildContext context, ChildHomeProvider provider) {
+    // Stop any playing audio before showing the dialog
+    _audioPlayer.stop();
+
     final stars = _detail?.stars ?? widget.rewardStars;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
-        // Determine if screen is in portrait mode to rotate the dialog
         final size = MediaQuery.of(dialogContext).size;
         final isPortrait = size.height > size.width;
 
@@ -479,7 +520,6 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
             boxShadow: const [
-              // Thick orange bottom border/shadow to match the design
               BoxShadow(
                 color: Color(0xFFFF8F00),
                 offset: Offset(0, 10),
@@ -495,11 +535,10 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Stars Cluster (Larger version)
+              // Stars Cluster
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 4 Overlapping Stars
                   SizedBox(
                     width: 120,
                     height: 60,
@@ -528,7 +567,6 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
                       ],
                     ),
                   ),
-                  // Number Pill
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -555,28 +593,22 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
               ),
               const SizedBox(height: 40),
 
-              // Collect Button (اجمع النجوم)
+              // Collect Button
               GestureDetector(
                 onTap: () {
-                  // 1. Refresh stars from API to get the latest server value
                   provider.refreshStarsFromApi();
-                  // 2. Play success sound
                   provider.playSound('assets/sounds/collect_stars.mp3');
-                  // 3. Mark task completed in parent page
                   widget.onTaskCompleted();
-                  // 4. Close dialog
                   Navigator.pop(dialogContext);
-                  // 5. Close details page
                   Navigator.pop(context);
                 },
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF8F00), // Orange
+                    color: const Color(0xFFFF8F00),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: const [
-                      // Button thickness
                       BoxShadow(
                         color: Color(0xFFE65100),
                         offset: Offset(0, 6),
@@ -603,7 +635,7 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
 
         if (isPortrait) {
           dialogContent = RotatedBox(
-            quarterTurns: 1, // Rotate 90 degrees to simulate landscape
+            quarterTurns: 1,
             child: dialogContent,
           );
         }
@@ -636,14 +668,12 @@ class _ChildTaskDetailsPageState extends State<ChildTaskDetailsPage> {
               ? Border.all(color: Colors.black, width: 2)
               : null,
           boxShadow: [
-            // 3D Thickness
             BoxShadow(
               color: shadowColor,
               offset: const Offset(2, 4),
               blurRadius: 0,
               spreadRadius: 0,
             ),
-            // Drop Shadow
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.3),
               offset: const Offset(4, 6),
