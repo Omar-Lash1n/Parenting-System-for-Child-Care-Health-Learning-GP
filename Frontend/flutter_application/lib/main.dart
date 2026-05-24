@@ -210,11 +210,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => HealthUnitProvider()),
         ChangeNotifierProvider(create: (_) => PrizeStoreProvider()),
         ChangeNotifierProvider(create: (_) => SpecialistApplicationProvider()),
-<<<<<<< HEAD
-=======
         ChangeNotifierProvider(create: (_) => LessonProvider()),
         ChangeNotifierProvider(create: (_) => RankingProvider()),
->>>>>>> 2f8b274335ac333c14d17c12b71a33d076759618
       ],
       child: const AjialApp(),
     ),
@@ -277,13 +274,10 @@ class AjialApp extends StatelessWidget {
         '/prizes': (context) => const PrizeStorePage(),
         '/specialist-application': (context) =>
             const SpecialistApplicationTrackingPage(),
-<<<<<<< HEAD
-=======
         '/lessons': (context) => const LessonsListScreen(),
         '/lesson-detail': (context) => const LessonDetailScreen(),
         '/lesson-quiz': (context) => const LessonQuizScreen(),
         '/ranking': (context) => const RankingPage(),
->>>>>>> 2f8b274335ac333c14d17c12b71a33d076759618
       },
     );
   }
