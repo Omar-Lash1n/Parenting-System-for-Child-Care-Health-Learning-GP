@@ -112,11 +112,11 @@ class SpecialistHeaderWidget extends StatelessWidget {
       child: Row(
         textDirection: TextDirection.ltr,
         children: [
-          const Row(
+          Row(
             children: [
-              _HeaderIcon(icon: Icons.notifications_none_rounded),
-              SizedBox(width: 16),
-              _HeaderIcon(icon: Icons.mail_outline_rounded),
+              _HeaderIcon(assetPath: 'images/specialist_messages.png'),
+              const SizedBox(width: 16),
+              _HeaderIcon(assetPath: 'images/specialist_alarm.png'),
             ],
           ),
           const SizedBox(width: 12),
@@ -124,7 +124,7 @@ class SpecialistHeaderWidget extends StatelessWidget {
             child: Directionality(
               textDirection: TextDirection.rtl,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'مرحباً، $name',
@@ -181,9 +181,10 @@ class SpecialistHeaderWidget extends StatelessWidget {
 }
 
 class _HeaderIcon extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
+  final String? assetPath;
 
-  const _HeaderIcon({required this.icon});
+  const _HeaderIcon({this.icon, this.assetPath});
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +195,11 @@ class _HeaderIcon extends StatelessWidget {
         color: Color(0xFFF0FAF5),
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: specialistGreen, size: 26),
+      child: Center(
+        child: assetPath != null
+            ? Image.asset(assetPath!, width: 26, height: 26)
+            : Icon(icon, color: specialistGreen, size: 26),
+      ),
     );
   }
 }
@@ -614,10 +619,12 @@ class _SmallOutlinePill extends StatelessWidget {
 
 class SpecialistBottomNavBar extends StatelessWidget {
   final int currentIndex;
+  final ValueChanged<int>? onTap;
 
   const SpecialistBottomNavBar({
     super.key,
     required this.currentIndex,
+    this.onTap,
   });
 
   @override
@@ -637,20 +644,32 @@ class SpecialistBottomNavBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _SpecialistNavItem(
-            icon: Icons.person_outline_rounded,
-            label: 'الملف الشخصي',
-            active: currentIndex == 0,
+          GestureDetector(
+            onTap: () => onTap?.call(0),
+            behavior: HitTestBehavior.opaque,
+            child: _SpecialistNavItem(
+              icon: Icons.person_outline_rounded,
+              label: 'الملف الشخصي',
+              active: currentIndex == 0,
+            ),
           ),
-          _SpecialistNavItem(
-            icon: Icons.calendar_month_rounded,
-            label: 'طلب التقدم',
-            active: currentIndex == 1,
+          GestureDetector(
+            onTap: () => onTap?.call(1),
+            behavior: HitTestBehavior.opaque,
+            child: _SpecialistNavItem(
+              icon: Icons.calendar_month_rounded,
+              label: 'طلب التقدم',
+              active: currentIndex == 1,
+            ),
           ),
-          _SpecialistNavItem(
-            icon: Icons.home_outlined,
-            label: 'الرئيسية',
-            active: currentIndex == 2,
+          GestureDetector(
+            onTap: () => onTap?.call(2),
+            behavior: HitTestBehavior.opaque,
+            child: _SpecialistNavItem(
+              icon: Icons.home_outlined,
+              label: 'الرئيسية',
+              active: currentIndex == 2,
+            ),
           ),
         ],
       ),

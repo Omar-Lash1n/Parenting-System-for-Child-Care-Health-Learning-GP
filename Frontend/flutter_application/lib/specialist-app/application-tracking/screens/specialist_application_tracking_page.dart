@@ -7,7 +7,12 @@ import 'package:Ajial/specialist-app/application-tracking/screens/specialist_app
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
 
 class SpecialistApplicationTrackingPage extends StatefulWidget {
-  const SpecialistApplicationTrackingPage({super.key});
+  final bool showBottomNav;
+
+  const SpecialistApplicationTrackingPage({
+    super.key,
+    this.showBottomNav = true,
+  });
 
   @override
   State<SpecialistApplicationTrackingPage> createState() =>
@@ -30,7 +35,9 @@ class _SpecialistApplicationTrackingPageState
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.white,
-        bottomNavigationBar: const SpecialistBottomNavBar(currentIndex: 1),
+        bottomNavigationBar: widget.showBottomNav
+            ? const SpecialistBottomNavBar(currentIndex: 1)
+            : null,
         body: SafeArea(
           bottom: false,
           child: Consumer<SpecialistApplicationProvider>(
