@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
 import 'package:Ajial/specialist-app/dashboard/egypt_cities.dart';
 import 'package:Ajial/specialist-app/dashboard/widgets/clinic_stepper.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_add_clinic_step2_page.dart';
-import 'package:Ajial/specialist-app/dashboard/specialist_clinic_data_page.dart';
+import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
 
 class SpecialistAddClinicPage extends StatefulWidget {
-  const SpecialistAddClinicPage({super.key});
+  final String clinicId;
+
+  const SpecialistAddClinicPage({super.key, required this.clinicId});
 
   @override
   State<SpecialistAddClinicPage> createState() => _SpecialistAddClinicPageState();
@@ -22,21 +25,34 @@ class _SpecialistAddClinicPageState extends State<SpecialistAddClinicPage> {
   
   String? _selectedGov;
   String? _selectedCity;
+  bool _loaded = false;
 
   @override
   void initState() {
     super.initState();
-    if (globalDraftClinic != null) {
-      _nameController.text = globalDraftClinic!.name;
-      if (egyptianGovernorates.containsKey(globalDraftClinic!.city)) {
-        _selectedGov = globalDraftClinic!.city;
-        if (egyptianGovernorates[_selectedGov]!.contains(globalDraftClinic!.region)) {
-          _selectedCity = globalDraftClinic!.region;
-        }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final provider = context.read<ClinicRemoteProvider>();
+      await provider.loadClinicDetail(widget.clinicId);
+      final detail = provider.clinicDetail;
+      if (detail != null && mounted) {
+        setState(() {
+          _nameController.text = detail.name ?? '';
+          if (detail.governorateName != null &&
+              egyptianGovernorates.containsKey(detail.governorateName)) {
+            _selectedGov = detail.governorateName;
+            if (detail.districtName != null &&
+                egyptianGovernorates[_selectedGov]!.contains(detail.districtName)) {
+              _selectedCity = detail.districtName;
+            }
+          }
+          _addressController.text = detail.address ?? '';
+          _mobileController.text = detail.phone ?? '';
+          _loaded = true;
+        });
+      } else {
+        setState(() => _loaded = true);
       }
-      _addressController.text = globalDraftClinic!.address;
-      _mobileController.text = globalDraftClinic!.phone;
-    }
+    });
   }
 
   @override
@@ -47,37 +63,47 @@ class _SpecialistAddClinicPageState extends State<SpecialistAddClinicPage> {
     super.dispose();
   }
 
-  void _onNext() {
+  void _onNext() async {
     if (_formKey.currentState!.validate()) {
-      if (globalDraftClinic == null) {
-        globalDraftClinic = ClinicData(
-          name: _nameController.text,
-          city: _selectedGov ?? '',
-          region: _selectedCity ?? '',
-          address: _addressController.text,
-          phone: _mobileController.text,
-          schedule: '',
-          examinationPrice: '',
-          consultationPrice: '',
-          submissionDate: DateTime.now(),
-        );
-      } else {
-        globalDraftClinic!.name = _nameController.text;
-        globalDraftClinic!.city = _selectedGov ?? '';
-        globalDraftClinic!.region = _selectedCity ?? '';
-        globalDraftClinic!.address = _addressController.text;
-        globalDraftClinic!.phone = _mobileController.text;
-      }
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => const SpecialistAddClinicStep2Page(),
-        ),
+      final provider = context.read<ClinicRemoteProvider>();
+      
+      // Find governorate index (1-based) to send as governorateId
+      final govKeys = egyptianGovernorates.keys.toList();
+      final govIndex = govKeys.indexOf(_selectedGov ?? '');
+      final governorateId = govIndex >= 0 ? govIndex + 1 : null;
+
+      final success = await provider.updateClinicDetails(
+        widget.clinicId,
+        name: _nameController.text,
+        governorateId: governorateId,
+        districtName: _selectedCity ?? '',
+        address: _addressController.text,
+        phone: _mobileController.text,
       );
+
+      if (success && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SpecialistAddClinicStep2Page(
+              clinicId: widget.clinicId,
+            ),
+          ),
+        );
+      } else if (provider.errorMessage != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.errorMessage!, style: const TextStyle(fontFamily: specialistFont)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<ClinicRemoteProvider>();
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -128,110 +154,115 @@ class _SpecialistAddClinicPageState extends State<SpecialistAddClinicPage> {
               ),
 
               // Body
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Stepper UI
-                        const ClinicStepper(currentStep: 1),
-                        const SizedBox(height: 32),
-                        
-                        // Titles
-                        const Center(
-                          child: Text(
-                            'تفاصيل العيادة',
-                            style: TextStyle(
-                              fontFamily: specialistFont,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black,
+              if (!_loaded || provider.loadingClinicDetail)
+                const Expanded(
+                  child: Center(child: CircularProgressIndicator(color: specialistGreen)),
+                )
+              else
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Stepper UI
+                          const ClinicStepper(currentStep: 1),
+                          const SizedBox(height: 32),
+                          
+                          // Titles
+                          const Center(
+                            child: Text(
+                              'تفاصيل العيادة',
+                              style: TextStyle(
+                                fontFamily: specialistFont,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Center(
-                          child: Text(
-                            'نحتاج لمعلومات صحيحة لضمان أمان المنصة',
-                            style: TextStyle(
-                              fontFamily: specialistFont,
-                              fontSize: 14,
-                              color: Colors.black.withValues(alpha: 0.5),
+                          const SizedBox(height: 8),
+                          Center(
+                            child: Text(
+                              'نحتاج لمعلومات صحيحة لضمان أمان المنصة',
+                              style: TextStyle(
+                                fontFamily: specialistFont,
+                                fontSize: 14,
+                                color: Colors.black.withValues(alpha: 0.5),
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
                           ),
-                        ),
-                        const SizedBox(height: 32),
+                          const SizedBox(height: 32),
 
-                        // Form Fields
-                        _buildLabel('اسم العيادة*'),
-                        _buildTextField(
-                          controller: _nameController,
-                          hint: 'مثلاً: عيادة الأمل لطب الأطفال',
-                          validator: (v) => (v == null || v.isEmpty) ? 'مطلوب' : null,
-                        ),
-                        const SizedBox(height: 16),
+                          // Form Fields
+                          _buildLabel('اسم العيادة*'),
+                          _buildTextField(
+                            controller: _nameController,
+                            hint: 'مثلاً: عيادة الأمل لطب الأطفال',
+                            validator: (v) => (v == null || v.isEmpty) ? 'مطلوب' : null,
+                          ),
+                          const SizedBox(height: 16),
 
-                        _buildLabel('المحافظة*'),
-                        _buildDropdown(
-                          hint: 'اختر المحافظة',
-                          value: _selectedGov,
-                          items: egyptianGovernorates.keys.toList(),
-                          onChanged: (val) {
-                            setState(() {
-                              _selectedGov = val;
-                              _selectedCity = null; // reset city when gov changes
-                            });
-                          },
-                          validator: (v) => (v == null) ? 'مطلوب' : null,
-                        ),
-                        const SizedBox(height: 16),
+                          _buildLabel('المحافظة*'),
+                          _buildDropdown(
+                            hint: 'اختر المحافظة',
+                            value: _selectedGov,
+                            items: egyptianGovernorates.keys.toList(),
+                            onChanged: (val) {
+                              setState(() {
+                                _selectedGov = val;
+                                _selectedCity = null; // reset city when gov changes
+                              });
+                            },
+                            validator: (v) => (v == null) ? 'مطلوب' : null,
+                          ),
+                          const SizedBox(height: 16),
 
-                        _buildLabel('المدينة*'),
-                        _buildDropdown(
-                          hint: _selectedGov == null ? 'اختر المحافظة أولاً' : 'اختر المدينة',
-                          value: _selectedCity,
-                          items: _selectedGov != null ? egyptianGovernorates[_selectedGov]! : [],
-                          onChanged: _selectedGov == null
-                              ? null
-                              : (val) {
-                                  setState(() {
-                                    _selectedCity = val;
-                                  });
-                                },
-                          validator: (v) => (v == null) ? 'مطلوب' : null,
-                        ),
-                        const SizedBox(height: 16),
+                          _buildLabel('المدينة*'),
+                          _buildDropdown(
+                            hint: _selectedGov == null ? 'اختر المحافظة أولاً' : 'اختر المدينة',
+                            value: _selectedCity,
+                            items: _selectedGov != null ? egyptianGovernorates[_selectedGov]! : [],
+                            onChanged: _selectedGov == null
+                                ? null
+                                : (val) {
+                                    setState(() {
+                                      _selectedCity = val;
+                                    });
+                                  },
+                            validator: (v) => (v == null) ? 'مطلوب' : null,
+                          ),
+                          const SizedBox(height: 16),
 
-                        _buildLabel('العنوان التفصيلي*'),
-                        _buildTextField(
-                          controller: _addressController,
-                          hint: 'مثلاً: شارع الأمل تقاطع 2 بجوار ...',
-                          validator: (v) => (v == null || v.isEmpty) ? 'مطلوب' : null,
-                        ),
-                        const SizedBox(height: 16),
+                          _buildLabel('العنوان التفصيلي*'),
+                          _buildTextField(
+                            controller: _addressController,
+                            hint: 'مثلاً: شارع الأمل تقاطع 2 بجوار ...',
+                            validator: (v) => (v == null || v.isEmpty) ? 'مطلوب' : null,
+                          ),
+                          const SizedBox(height: 16),
 
-                        _buildLabel('رقم موبايل العيادة*'),
-                        _buildTextField(
-                          controller: _mobileController,
-                          hint: 'مثلاً: 0107845963',
-                          keyboardType: TextInputType.phone,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return 'مطلوب';
-                            if (v.length != 11) return 'رقم الموبايل يجب أن يكون 11 رقماً';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 40),
-                      ],
+                          _buildLabel('رقم موبايل العيادة*'),
+                          _buildTextField(
+                            controller: _mobileController,
+                            hint: 'مثلاً: 0107845963',
+                            keyboardType: TextInputType.phone,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'مطلوب';
+                              if (v.length != 11) return 'رقم الموبايل يجب أن يكون 11 رقماً';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 40),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
 
               // Bottom Button
               Padding(
@@ -240,7 +271,7 @@ class _SpecialistAddClinicPageState extends State<SpecialistAddClinicPage> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _onNext,
+                    onPressed: provider.submitting ? null : _onNext,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: specialistGreen,
                       shape: RoundedRectangleBorder(
@@ -248,15 +279,21 @@ class _SpecialistAddClinicPageState extends State<SpecialistAddClinicPage> {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      'التالي',
-                      style: TextStyle(
-                        fontFamily: specialistFont,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: provider.submitting
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text(
+                            'التالي',
+                            style: TextStyle(
+                              fontFamily: specialistFont,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ),

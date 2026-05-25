@@ -2,13 +2,17 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
 import 'package:Ajial/specialist-app/dashboard/widgets/clinic_stepper.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_add_clinic_success_page.dart';
-import 'package:Ajial/specialist-app/dashboard/specialist_clinic_data_page.dart';
+import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
+import 'package:Ajial/specialist-app/dashboard/models/clinic_remote_models.dart';
 
 class SpecialistAddClinicStep3Page extends StatefulWidget {
-  const SpecialistAddClinicStep3Page({super.key});
+  final String clinicId;
+
+  const SpecialistAddClinicStep3Page({super.key, required this.clinicId});
 
   @override
   State<SpecialistAddClinicStep3Page> createState() => _SpecialistAddClinicStep3PageState();
@@ -24,45 +28,51 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
     'interior': null,
   };
 
+  // Track which images already exist on the server
+  final Map<String, String?> _serverUrls = {};
+
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    if (globalDraftClinic != null) {
-      if (globalDraftClinic!.imagePaths.isNotEmpty) {
-        if (globalDraftClinic!.imagePaths['license'] != null) {
-          _uploadState['license'] = XFile(globalDraftClinic!.imagePaths['license']!);
-        }
-        if (globalDraftClinic!.imagePaths['syndicate'] != null) {
-          _uploadState['syndicate'] = XFile(globalDraftClinic!.imagePaths['syndicate']!);
-        }
-        if (globalDraftClinic!.imagePaths['waste'] != null) {
-          _uploadState['waste'] = XFile(globalDraftClinic!.imagePaths['waste']!);
-        }
-        if (globalDraftClinic!.imagePaths['exterior'] != null) {
-          _uploadState['exterior'] = XFile(globalDraftClinic!.imagePaths['exterior']!);
-        }
-        if (globalDraftClinic!.imagePaths['interior'] != null) {
-          _uploadState['interior'] = XFile(globalDraftClinic!.imagePaths['interior']!);
-        }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final detail = context.read<ClinicRemoteProvider>().clinicDetail;
+      if (detail != null && mounted) {
+        setState(() {
+          _serverUrls['license'] = detail.licenseImageUrl;
+          _serverUrls['syndicate'] = detail.syndicateRegistrationImageUrl;
+          _serverUrls['waste'] = detail.hazardousWasteImageUrl;
+          _serverUrls['exterior'] = detail.exteriorImageUrl;
+          _serverUrls['interior'] = detail.interiorImageUrl;
+        });
       }
+    });
+  }
+
+  ClinicDocumentType _keyToDocType(String key) {
+    switch (key) {
+      case 'license':
+        return ClinicDocumentType.licenseImage;
+      case 'syndicate':
+        return ClinicDocumentType.syndicateRegistrationImage;
+      case 'waste':
+        return ClinicDocumentType.hazardousWasteImage;
+      case 'exterior':
+        return ClinicDocumentType.exteriorImage;
+      case 'interior':
+        return ClinicDocumentType.interiorImage;
+      default:
+        return ClinicDocumentType.licenseImage;
     }
   }
 
   void _onNext() {
-    if (globalDraftClinic != null) {
-      globalDraftClinic!.imagePaths = {
-        'license': _uploadState['license']?.path,
-        'syndicate': _uploadState['syndicate']?.path,
-        'waste': _uploadState['waste']?.path,
-        'exterior': _uploadState['exterior']?.path,
-        'interior': _uploadState['interior']?.path,
-      };
-    }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const SpecialistAddClinicSuccessPage(),
+        builder: (_) => SpecialistAddClinicSuccessPage(
+          clinicId: widget.clinicId,
+        ),
       ),
     );
   }
@@ -71,13 +81,48 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
     Navigator.of(context).pop();
   }
 
-  Future<void> _pickImage(String key) async {
+  Future<void> _pickAndUpload(String key) async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
         setState(() {
           _uploadState[key] = image;
         });
+
+        final provider = context.read<ClinicRemoteProvider>();
+        final success = await provider.uploadClinicDocument(
+          widget.clinicId,
+          _keyToDocType(key),
+          image,
+        );
+
+        if (success && mounted) {
+          final updatedDetail = provider.clinicDetail;
+          if (updatedDetail != null) {
+            setState(() {
+              _serverUrls['license'] = updatedDetail.licenseImageUrl;
+              _serverUrls['syndicate'] = updatedDetail.syndicateRegistrationImageUrl;
+              _serverUrls['waste'] = updatedDetail.hazardousWasteImageUrl;
+              _serverUrls['exterior'] = updatedDetail.exteriorImageUrl;
+              _serverUrls['interior'] = updatedDetail.interiorImageUrl;
+            });
+          }
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('تم رفع الصورة بنجاح', style: TextStyle(fontFamily: specialistFont)),
+                backgroundColor: specialistGreen,
+              ),
+            );
+          }
+        } else if (provider.errorMessage != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(provider.errorMessage!, style: const TextStyle(fontFamily: specialistFont)),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
@@ -86,6 +131,8 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<ClinicRemoteProvider>();
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -173,15 +220,15 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
                       const SizedBox(height: 32),
 
                       // Upload Fields
-                      _buildUploadField('صورة ترخيص العيادة*', 'license'),
+                      _buildUploadField('صورة ترخيص العيادة*', 'license', provider),
                       const SizedBox(height: 16),
-                      _buildUploadField('صورة شهادة تسجيل العيادة بالنقابة*', 'syndicate'),
+                      _buildUploadField('صورة شهادة تسجيل العيادة بالنقابة*', 'syndicate', provider),
                       const SizedBox(height: 16),
-                      _buildUploadField('صورة إيصال سداد رسوم النفايات الخطرة*', 'waste'),
+                      _buildUploadField('صورة إيصال سداد رسوم النفايات الخطرة*', 'waste', provider),
                       const SizedBox(height: 16),
-                      _buildUploadField('صورة العيادة من الخارج*', 'exterior'),
+                      _buildUploadField('صورة العيادة من الخارج*', 'exterior', provider),
                       const SizedBox(height: 16),
-                      _buildUploadField('صورة العيادة من الداخل*', 'interior'),
+                      _buildUploadField('صورة العيادة من الداخل*', 'interior', provider),
                       
                       const SizedBox(height: 40),
                     ],
@@ -251,8 +298,9 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
     );
   }
 
-  Widget _buildUploadField(String label, String key) {
-    bool isUploaded = _uploadState[key] != null;
+  Widget _buildUploadField(String label, String key, ClinicRemoteProvider provider) {
+    bool isUploaded = _uploadState[key] != null || (_serverUrls[key] != null && _serverUrls[key]!.isNotEmpty);
+    bool isUploading = provider.uploadingDocuments.contains(_keyToDocType(key));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,20 +335,29 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
           ),
           child: Row(
             children: [
-              Text(
-                isUploaded ? 'تم تحميل الصورة' : 'اضغط تحميل الصورة',
-                style: TextStyle(
-                  fontFamily: specialistFont,
-                  fontSize: 14,
-                  color: Colors.black.withValues(alpha: 0.4),
+              if (isUploading)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: specialistGreen),
+                )
+              else
+                Text(
+                  isUploaded ? 'تم تحميل الصورة' : 'اضغط تحميل الصورة',
+                  style: TextStyle(
+                    fontFamily: specialistFont,
+                    fontSize: 14,
+                    color: isUploaded
+                        ? specialistGreen
+                        : Colors.black.withValues(alpha: 0.4),
+                  ),
                 ),
-              ),
               const Spacer(),
-              if (!isUploaded)
+              if (!isUploading && !isUploaded)
                 SizedBox(
                   height: 36,
                   child: OutlinedButton(
-                    onPressed: () => _pickImage(key),
+                    onPressed: () => _pickAndUpload(key),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: Colors.black.withValues(alpha: 0.4)),
                       shape: RoundedRectangleBorder(
@@ -319,13 +376,13 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
                     ),
                   ),
                 )
-              else
+              else if (!isUploading)
                 Row(
                   children: [
                     SizedBox(
                       height: 36,
                       child: ElevatedButton(
-                        onPressed: () => _pickImage(key), // Open picker again to edit
+                        onPressed: () => _pickAndUpload(key),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: specialistGreen,
                           shape: RoundedRectangleBorder(
@@ -350,8 +407,9 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
                       height: 36,
                       child: OutlinedButton(
                         onPressed: () {
-                          final file = _uploadState[key];
-                          if (file != null) {
+                          final imageUrl = _serverUrls[key];
+                          final localFile = _uploadState[key];
+                          if (imageUrl != null || localFile != null) {
                             showDialog(
                               context: context,
                               builder: (ctx) => Dialog(
@@ -373,15 +431,11 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
                                       ],
                                     ),
                                     Flexible(
-                                      child: kIsWeb 
-                                          ? Image.network(
-                                              file.path,
-                                              fit: BoxFit.contain,
-                                            )
-                                          : Image.file(
-                                              File(file.path),
-                                              fit: BoxFit.contain,
-                                            ),
+                                      child: imageUrl != null
+                                          ? Image.network(imageUrl, fit: BoxFit.contain)
+                                          : kIsWeb
+                                              ? Image.network(localFile!.path, fit: BoxFit.contain)
+                                              : Image.file(File(localFile!.path), fit: BoxFit.contain),
                                     ),
                                   ],
                                 ),

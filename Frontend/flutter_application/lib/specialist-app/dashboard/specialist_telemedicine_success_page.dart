@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
-import 'package:Ajial/specialist-app/dashboard/specialist_telemedicine_data_page.dart';
+import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
 
 class SpecialistTelemedicineSuccessPage extends StatelessWidget {
-  const SpecialistTelemedicineSuccessPage({super.key});
+  final String consultationId;
+
+  const SpecialistTelemedicineSuccessPage({super.key, required this.consultationId});
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<ClinicRemoteProvider>();
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -53,19 +58,35 @@ class SpecialistTelemedicineSuccessPage extends StatelessWidget {
                 ),
                 
                 const Spacer(flex: 3),
+
+                // Error message
+                if (provider.errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      provider.errorMessage!,
+                      style: const TextStyle(
+                        fontFamily: specialistFont,
+                        fontSize: 14,
+                        color: Colors.red,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 
-                // Continue Button
+                // Continue Button — calls submit API
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: () {
-                      if (globalDraftTelemedicine != null && !globalTelemedicineList.contains(globalDraftTelemedicine!)) {
-                        globalTelemedicineList.add(globalDraftTelemedicine!);
-                      }
-                      globalDraftTelemedicine = null;
-                      Navigator.of(context).popUntil((route) => route.isFirst);
-                    },
+                    onPressed: provider.submitting
+                        ? null
+                        : () async {
+                            final success = await provider.submitRemoteConsultation(consultationId);
+                            if (success && context.mounted) {
+                              Navigator.of(context).popUntil((route) => route.isFirst);
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: specialistGreen,
                       shape: RoundedRectangleBorder(
@@ -73,15 +94,21 @@ class SpecialistTelemedicineSuccessPage extends StatelessWidget {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      'استمرار',
-                      style: TextStyle(
-                        fontFamily: specialistFont,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: provider.submitting
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text(
+                            'ارسال للمراجعة',
+                            style: TextStyle(
+                              fontFamily: specialistFont,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 24),

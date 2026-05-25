@@ -1,12 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
 import 'package:Ajial/specialist-app/dashboard/widgets/clinic_stepper.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_add_clinic_step3_page.dart';
-import 'package:Ajial/specialist-app/dashboard/specialist_clinic_data_page.dart';
+import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
 
 class SpecialistAddClinicStep2Page extends StatefulWidget {
-  const SpecialistAddClinicStep2Page({super.key});
+  final String clinicId;
+
+  const SpecialistAddClinicStep2Page({super.key, required this.clinicId});
 
   @override
   State<SpecialistAddClinicStep2Page> createState() =>
@@ -28,11 +32,28 @@ class _SpecialistAddClinicStep2PageState
   @override
   void initState() {
     super.initState();
-    if (globalDraftClinic != null) {
-      _scheduleController.text = globalDraftClinic!.schedule;
-      _examinationPriceController.text = globalDraftClinic!.examinationPrice;
-      _consultationPriceController.text = globalDraftClinic!.consultationPrice;
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final detail = context.read<ClinicRemoteProvider>().clinicDetail;
+      if (detail != null) {
+        _examinationPriceController.text = detail.examinationPrice?.toStringAsFixed(0) ?? '';
+        _consultationPriceController.text = detail.consultationPrice?.toStringAsFixed(0) ?? '';
+        if (detail.workingHoursJson != null && detail.workingHoursJson!.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(detail.workingHoursJson!);
+            if (decoded is Map && decoded['type'] == 'fixed') {
+              _scheduleController.text = 'يوميا من ${decoded['from']} الى ${decoded['to']}';
+            } else if (decoded is Map && decoded['type'] == 'specific') {
+              final periods = decoded['periods'] as List? ?? [];
+              _confirmedPeriods = periods.map((p) => Map<String, String>.from(p as Map)).toList();
+              _scheduleController.text = _confirmedPeriods.isNotEmpty ? 'مواعيد مخصصة' : '';
+            }
+          } catch (_) {
+            _scheduleController.text = detail.workingHoursJson!;
+          }
+        }
+        if (mounted) setState(() {});
+      }
+    });
   }
 
   @override
@@ -43,19 +64,47 @@ class _SpecialistAddClinicStep2PageState
     super.dispose();
   }
 
-  void _onNext() {
+  void _onNext() async {
     if (_formKey.currentState!.validate()) {
-      if (globalDraftClinic != null) {
-        globalDraftClinic!.schedule = _scheduleController.text;
-        globalDraftClinic!.examinationPrice = _examinationPriceController.text;
-        globalDraftClinic!.consultationPrice =
-            _consultationPriceController.text;
+      final provider = context.read<ClinicRemoteProvider>();
+
+      // Build working hours JSON
+      String? workingHoursJson;
+      if (_scheduleController.text.startsWith('يوميا من')) {
+        // Fixed schedule
+        final parts = _scheduleController.text
+            .replaceFirst('يوميا من ', '')
+            .split(' الى ');
+        if (parts.length == 2) {
+          workingHoursJson = jsonEncode({'type': 'fixed', 'from': parts[0], 'to': parts[1]});
+        }
+      } else if (_confirmedPeriods.isNotEmpty) {
+        workingHoursJson = jsonEncode({'type': 'specific', 'periods': _confirmedPeriods});
       }
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => const SpecialistAddClinicStep3Page(),
-        ),
+
+      final success = await provider.updateClinicHours(
+        widget.clinicId,
+        workingHoursJson: workingHoursJson,
+        examinationPrice: double.tryParse(_examinationPriceController.text),
+        consultationPrice: double.tryParse(_consultationPriceController.text),
       );
+
+      if (success && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SpecialistAddClinicStep3Page(
+              clinicId: widget.clinicId,
+            ),
+          ),
+        );
+      } else if (provider.errorMessage != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.errorMessage!, style: const TextStyle(fontFamily: specialistFont)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_add_clinic_page.dart';
+import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
 
 class SpecialistClinicBookingsPage extends StatelessWidget {
   const SpecialistClinicBookingsPage({super.key});
@@ -98,12 +100,18 @@ class SpecialistClinicBookingsPage extends StatelessWidget {
                   width: double.infinity,
                   height: 56,
                   child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const SpecialistAddClinicPage(),
-                        ),
-                      );
+                    onPressed: () async {
+                      final provider = context.read<ClinicRemoteProvider>();
+                      final clinicId = await provider.createClinic();
+                      if (clinicId != null && context.mounted) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => SpecialistAddClinicPage(
+                              clinicId: clinicId,
+                            ),
+                          ),
+                        );
+                      }
                     },
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: Colors.black.withValues(alpha: 0.2)),

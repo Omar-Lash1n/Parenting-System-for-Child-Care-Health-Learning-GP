@@ -7,6 +7,7 @@ class ClinicStatusCard extends StatelessWidget {
   final String status;
   final String? rejectionReason;
   final Widget? actionArea;
+  final Color? statusColor;
 
   const ClinicStatusCard({
     super.key,
@@ -15,28 +16,34 @@ class ClinicStatusCard extends StatelessWidget {
     required this.status,
     this.rejectionReason,
     this.actionArea,
+    this.statusColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    Color statusColor;
+    Color effectiveStatusColor;
     Color statusBgColor;
 
-    switch (status) {
-      case 'مقبول':
-        statusColor = specialistGreen;
-        statusBgColor = specialistGreen.withValues(alpha: 0.1);
-        break;
-      case 'مرفوض':
-      case 'لم يتم القبول':
-        statusColor = Colors.red;
-        statusBgColor = Colors.red.withValues(alpha: 0.1);
-        break;
-      case 'جاري المراجعة':
-      default:
-        statusColor = Colors.orange;
-        statusBgColor = Colors.orange.withValues(alpha: 0.1);
-        break;
+    if (statusColor != null) {
+      effectiveStatusColor = statusColor!;
+      statusBgColor = statusColor!.withValues(alpha: 0.1);
+    } else {
+      switch (status) {
+        case 'مقبول':
+          effectiveStatusColor = specialistGreen;
+          statusBgColor = specialistGreen.withValues(alpha: 0.1);
+          break;
+        case 'مرفوض':
+        case 'لم يتم القبول':
+          effectiveStatusColor = Colors.red;
+          statusBgColor = Colors.red.withValues(alpha: 0.1);
+          break;
+        case 'جاري المراجعة':
+        default:
+          effectiveStatusColor = Colors.orange;
+          statusBgColor = Colors.orange.withValues(alpha: 0.1);
+          break;
+      }
     }
 
     return Container(
@@ -108,7 +115,7 @@ class ClinicStatusCard extends StatelessWidget {
                     fontFamily: specialistFont,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: statusColor,
+                    color: effectiveStatusColor,
                   ),
                 ),
               ),

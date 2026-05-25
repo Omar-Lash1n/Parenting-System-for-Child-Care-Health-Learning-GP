@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_add_telemedicine_page.dart';
+import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
 
 class SpecialistTelemedicineBookingsPage extends StatelessWidget {
   const SpecialistTelemedicineBookingsPage({super.key});
@@ -88,12 +90,18 @@ class SpecialistTelemedicineBookingsPage extends StatelessWidget {
                   width: double.infinity,
                   height: 56,
                   child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const SpecialistAddTelemedicinePage(),
-                        ),
-                      );
+                    onPressed: () async {
+                      final provider = context.read<ClinicRemoteProvider>();
+                      final id = await provider.createRemoteConsultation();
+                      if (id != null && context.mounted) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => SpecialistAddTelemedicinePage(
+                              consultationId: id,
+                            ),
+                          ),
+                        );
+                      }
                     },
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: Colors.black.withValues(alpha: 0.8)),

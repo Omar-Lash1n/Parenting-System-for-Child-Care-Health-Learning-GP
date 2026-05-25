@@ -1,29 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
 import 'package:Ajial/specialist-app/application-tracking/providers/specialist_application_provider.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_add_telemedicine_page.dart';
-
-class TelemedicineData {
-  String sessionPrice;
-  String sessionDuration;
-  String waitPeriod;
-  String schedule;
-  List<Map<String, String>> confirmedPeriods;
-  DateTime submissionDate;
-
-  TelemedicineData({
-    required this.sessionPrice,
-    required this.sessionDuration,
-    required this.waitPeriod,
-    required this.schedule,
-    this.confirmedPeriods = const [],
-    required this.submissionDate,
-  });
-}
-
-List<TelemedicineData> globalTelemedicineList = [];
-TelemedicineData? globalDraftTelemedicine;
+import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
+import 'package:Ajial/specialist-app/dashboard/models/clinic_remote_models.dart';
 
 String formatTelemedicineDate(DateTime? date) {
   if (date == null) return '';
@@ -32,6 +14,23 @@ String formatTelemedicineDate(DateTime? date) {
     'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
   ];
   return 'منذ ${date.day} ${months[date.month - 1]} ${date.year}';
+}
+
+Color _rcStatusColor(String status) {
+  switch (status.toLowerCase()) {
+    case 'draft':
+      return Colors.blueGrey;
+    case 'pending':
+      return Colors.orange;
+    case 'approved':
+      return specialistGreen;
+    case 'rejected':
+      return Colors.red;
+    case 'cancelled':
+      return Colors.grey;
+    default:
+      return Colors.orange;
+  }
 }
 
 class SpecialistTelemedicineDataPage extends StatefulWidget {
@@ -47,16 +46,16 @@ class _SpecialistTelemedicineDataPageState
   @override
   void initState() {
     super.initState();
-    globalDraftTelemedicine = null;
-  }
-
-  void _refresh() {
-    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ClinicRemoteProvider>().loadRemoteConsultations();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    bool hasData = globalTelemedicineList.isNotEmpty;
+    final provider = context.watch<ClinicRemoteProvider>();
+    final consultations = provider.remoteConsultations;
+    final isLoading = provider.loadingRemoteConsultations;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -106,61 +105,106 @@ class _SpecialistTelemedicineDataPageState
               ),
 
               // Body
-              Expanded(
-                child: !hasData
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              'images/specialist_box.png',
-                              width: 80,
-                              height: 80,
-                              color: Colors.black.withValues(alpha: 0.5),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'يبدو انه لا يتوفر الكشوفات عن بعد تم\nاضافتها, اضغط اضافة كشف عن بعد جديد',
-                              style: TextStyle(
-                                fontFamily: specialistFont,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.black.withValues(alpha: 0.5),
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+              if (isLoading)
+                const Expanded(
+                  child: Center(child: CircularProgressIndicator(color: specialistGreen)),
+                )
+              else if (provider.errorMessage != null && consultations.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, size: 60, color: Colors.red.withValues(alpha: 0.5)),
+                        const SizedBox(height: 16),
+                        Text(
+                          provider.errorMessage!,
+                          style: TextStyle(
+                            fontFamily: specialistFont,
+                            fontSize: 14,
+                            color: Colors.black.withValues(alpha: 0.5),
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: globalTelemedicineList.length,
-                        itemBuilder: (context, index) {
-                          final data = globalTelemedicineList[index];
-                          return TelemedicineRequestCard(
-                            data: data,
-                            onEdit: () {
-                              globalDraftTelemedicine = data;
-                              Navigator.of(context)
-                                  .push(
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => provider.loadRemoteConsultations(),
+                          style: ElevatedButton.styleFrom(backgroundColor: specialistGreen),
+                          child: const Text('إعادة المحاولة', style: TextStyle(fontFamily: specialistFont, color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else if (consultations.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'images/specialist_box.png',
+                          width: 80,
+                          height: 80,
+                          color: Colors.black.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'يبدو انه لا يتوفر الكشوفات عن بعد تم\nاضافتها, اضغط اضافة كشف عن بعد جديد',
+                          style: TextStyle(
+                            fontFamily: specialistFont,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black.withValues(alpha: 0.5),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () => provider.loadRemoteConsultations(),
+                    color: specialistGreen,
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: consultations.length,
+                      itemBuilder: (context, index) {
+                        final rc = consultations[index];
+                        return TelemedicineRequestCard(
+                          data: rc,
+                          onEdit: () async {
+                            if (rc.status.toLowerCase() == 'pending') {
+                              await provider.startEditRemoteConsultation(rc.consultationId);
+                            }
+                            provider.currentRemoteConsultationDraftId = rc.consultationId;
+                            if (context.mounted) {
+                              Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      const SpecialistAddTelemedicinePage(),
+                                  builder: (_) => SpecialistAddTelemedicinePage(
+                                    consultationId: rc.consultationId,
+                                  ),
                                 ),
-                              )
-                                  .then((_) {
-                                _refresh();
-                              });
-                            },
-                            onDelete: () {
-                              setState(() {
-                                globalTelemedicineList.removeAt(index);
-                              });
-                            },
-                          );
-                        },
-                      ),
-              ),
+                              ).then((_) => provider.loadRemoteConsultations());
+                            }
+                          },
+                          onDelete: () async {
+                            final confirmed = await _showConfirmDialog(
+                              context,
+                              'هل أنت متأكد من إلغاء طلب الكشف عن بعد؟',
+                            );
+                            if (confirmed == true) {
+                              await provider.cancelRemoteConsultation(rc.consultationId);
+                            }
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),
 
               // Bottom Button
               Padding(
@@ -169,18 +213,20 @@ class _SpecialistTelemedicineDataPageState
                   width: double.infinity,
                   height: 56,
                   child: OutlinedButton(
-                    onPressed: () {
-                      globalDraftTelemedicine = null; // New request
-                      Navigator.of(context)
-                          .push(
-                        MaterialPageRoute(
-                          builder: (_) => const SpecialistAddTelemedicinePage(),
-                        ),
-                      )
-                          .then((_) {
-                        _refresh();
-                      });
-                    },
+                    onPressed: provider.submitting
+                        ? null
+                        : () async {
+                            final id = await provider.createRemoteConsultation();
+                            if (id != null && context.mounted) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => SpecialistAddTelemedicinePage(
+                                    consultationId: id,
+                                  ),
+                                ),
+                              ).then((_) => provider.loadRemoteConsultations());
+                            }
+                          },
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(
                           color: Colors.black.withValues(alpha: 0.8)),
@@ -188,15 +234,21 @@ class _SpecialistTelemedicineDataPageState
                         borderRadius: BorderRadius.circular(50),
                       ),
                     ),
-                    child: Text(
-                      hasData ? 'اضافة كشف جديد' : 'اضافة خدمة كشف عن بعد',
-                      style: const TextStyle(
-                        fontFamily: specialistFont,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
+                    child: provider.submitting
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: specialistGreen),
+                          )
+                        : Text(
+                            consultations.isNotEmpty ? 'اضافة كشف جديد' : 'اضافة خدمة كشف عن بعد',
+                            style: const TextStyle(
+                              fontFamily: specialistFont,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                            ),
+                          ),
                   ),
                 ),
               ),
@@ -206,10 +258,34 @@ class _SpecialistTelemedicineDataPageState
       ),
     );
   }
+
+  Future<bool?> _showConfirmDialog(BuildContext context, String message) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('تأكيد', style: TextStyle(fontFamily: specialistFont, fontWeight: FontWeight.bold)),
+          content: Text(message, style: const TextStyle(fontFamily: specialistFont, fontSize: 16)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('لا', style: TextStyle(fontFamily: specialistFont, color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('نعم', style: TextStyle(fontFamily: specialistFont, color: Colors.red, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class TelemedicineRequestCard extends StatefulWidget {
-  final TelemedicineData data;
+  final RemoteConsultationCardModel data;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -228,70 +304,11 @@ class TelemedicineRequestCard extends StatefulWidget {
 class _TelemedicineRequestCardState extends State<TelemedicineRequestCard> {
   bool _isExpanded = false;
 
-  Widget _buildDisabledField(String label, String value,
-      {bool hasCalendar = false, bool hasDropdown = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontFamily: specialistFont,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-            const Text(
-              '*',
-              style: TextStyle(
-                fontFamily: specialistFont,
-                fontSize: 14,
-                color: Colors.red,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: Colors.black.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                value.isEmpty ? 'غير محدد' : value,
-                style: TextStyle(
-                  fontFamily: specialistFont,
-                  fontSize: 14,
-                  color: Colors.black.withValues(alpha: 0.5),
-                ),
-              ),
-              if (hasCalendar)
-                const Icon(Icons.calendar_month_outlined,
-                    color: Colors.grey, size: 20),
-              if (hasDropdown)
-                const Icon(Icons.keyboard_arrow_down,
-                    color: Colors.grey, size: 20),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<SpecialistApplicationProvider>();
-    final specialty = provider.current?.specialtyName ?? 'تخصص';
+    final appProvider = context.watch<SpecialistApplicationProvider>();
+    final specialty = appProvider.current?.specialtyName ?? 'تخصص';
+    final statusColor = _rcStatusColor(widget.data.status);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -303,13 +320,12 @@ class _TelemedicineRequestCardState extends State<TelemedicineRequestCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header (Always visible)
+          // Header
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Icon (Right side in RTL)
                 Container(
                   width: 40,
                   height: 40,
@@ -327,7 +343,6 @@ class _TelemedicineRequestCardState extends State<TelemedicineRequestCard> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Title and Date
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,7 +358,7 @@ class _TelemedicineRequestCardState extends State<TelemedicineRequestCard> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        formatTelemedicineDate(widget.data.submissionDate),
+                        formatTelemedicineDate(widget.data.submittedAt),
                         style: TextStyle(
                           fontFamily: specialistFont,
                           fontSize: 12,
@@ -353,21 +368,20 @@ class _TelemedicineRequestCardState extends State<TelemedicineRequestCard> {
                     ],
                   ),
                 ),
-                // Status Badge
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
-                    'جاري المراجعة',
+                  child: Text(
+                    widget.data.statusAr,
                     style: TextStyle(
                       fontFamily: specialistFont,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Colors.orange,
+                      color: statusColor,
                     ),
                   ),
                 ),
@@ -375,127 +389,45 @@ class _TelemedicineRequestCardState extends State<TelemedicineRequestCard> {
             ),
           ),
 
-          // Expanded Content Area
-          if (_isExpanded) ...[
-            Divider(color: Colors.black.withValues(alpha: 0.1), height: 1),
-            InkWell(
-              onTap: () {
-                setState(() {
-                  _isExpanded = false;
-                });
-              },
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Rejection reason
+          if (widget.data.rejectionReason != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     const Text(
-                      'تفاصيل الكشف عن بعد',
+                      'السبب',
                       style: TextStyle(
                         fontFamily: specialistFont,
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: Colors.black,
                       ),
                     ),
-                    Icon(
-                      Icons.keyboard_arrow_up_rounded,
-                      color: Colors.black.withValues(alpha: 0.5),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.data.rejectionReason!,
+                      style: const TextStyle(
+                        fontFamily: specialistFont,
+                        fontSize: 14,
+                        color: Colors.black,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.right,
                     ),
                   ],
                 ),
               ),
             ),
-            Divider(color: Colors.black.withValues(alpha: 0.1), height: 1),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDisabledField('سعر الجلسة ج.م', widget.data.sessionPrice),
-                  _buildDisabledField('مدة الجلسة', widget.data.sessionDuration,
-                      hasDropdown: true),
-                  _buildDisabledField(
-                      'فترة الانتظار بين كل جلسة', widget.data.waitPeriod,
-                      hasDropdown: true),
-                  if (widget.data.schedule == 'مواعيد مخصصة' && widget.data.confirmedPeriods.isNotEmpty) ...[
-                    const Row(
-                      children: [
-                        Text(
-                          'مواعيد العمل',
-                          style: TextStyle(
-                            fontFamily: specialistFont,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
-                        ),
-                        Text(
-                          '*',
-                          style: TextStyle(
-                            fontFamily: specialistFont,
-                            fontSize: 14,
-                            color: Colors.red,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.black.withValues(alpha: 0.2)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'مواعيد مخصصة',
-                                style: TextStyle(
-                                  fontFamily: specialistFont,
-                                  fontSize: 14,
-                                  color: Colors.black.withValues(alpha: 0.5),
-                                ),
-                              ),
-                              const Icon(Icons.calendar_month_outlined,
-                                  color: Colors.grey, size: 20),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          ...widget.data.confirmedPeriods.map((p) => Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  '${p['day']} من ${p['from']} الى ${p['to']}',
-                                  style: TextStyle(
-                                    fontFamily: specialistFont,
-                                    fontSize: 13,
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                  ),
-                                ),
-                              )),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ] else ...[
-                    _buildDisabledField('مواعيد العمل', widget.data.schedule,
-                        hasCalendar: true),
-                  ],
-                ],
-              ),
-            ),
+            const SizedBox(height: 12),
           ],
 
           // Action Area
@@ -503,81 +435,54 @@ class _TelemedicineRequestCardState extends State<TelemedicineRequestCard> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                if (!_isExpanded) ...[
+                if (widget.data.canEdit) ...[
                   SizedBox(
                     width: double.infinity,
                     height: 48,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _isExpanded = true;
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: specialistGreen,
+                    child: OutlinedButton(
+                      onPressed: widget.onEdit,
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                            color: Colors.black.withValues(alpha: 0.4)),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(50),
                         ),
-                        elevation: 0,
                       ),
                       child: const Text(
-                        'عرض طلب الاضافة',
+                        'تعديل البيانات',
                         style: TextStyle(
                           fontFamily: specialistFont,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          color: Colors.black,
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 12),
                 ],
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: OutlinedButton(
-                    onPressed: widget.onEdit,
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                          color: Colors.black.withValues(alpha: 0.4)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
+                if (widget.data.canCancel)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: TextButton(
+                      onPressed: widget.onDelete,
+                      style: TextButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      'تعديل البيانات',
-                      style: TextStyle(
-                        fontFamily: specialistFont,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: TextButton(
-                    onPressed: widget.onDelete,
-                    style: TextButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                    ),
-                    child: const Text(
-                      'الغاء طلب الاضافة',
-                      style: TextStyle(
-                        fontFamily: specialistFont,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.red,
+                      child: const Text(
+                        'الغاء طلب الاضافة',
+                        style: TextStyle(
+                          fontFamily: specialistFont,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.red,
+                        ),
                       ),
                     ),
                   ),
-                ),
               ],
             ),
           ),

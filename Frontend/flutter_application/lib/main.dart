@@ -69,6 +69,7 @@ import 'package:Ajial/lessons/screens/lesson_detail_screen.dart';
 import 'package:Ajial/lessons/screens/lesson_quiz_screen.dart';
 import 'package:Ajial/ranking/providers/ranking_provider.dart';
 import 'package:Ajial/ranking/ranking_page.dart';
+import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
 
 // Background handler is only supported on mobile (Android/iOS), not on web.
 @pragma('vm:entry-point')
@@ -212,6 +213,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => SpecialistApplicationProvider()),
         ChangeNotifierProvider(create: (_) => LessonProvider()),
         ChangeNotifierProvider(create: (_) => RankingProvider()),
+        ChangeNotifierProvider(create: (_) => ClinicRemoteProvider()),
       ],
       child: const AjialApp(),
     ),

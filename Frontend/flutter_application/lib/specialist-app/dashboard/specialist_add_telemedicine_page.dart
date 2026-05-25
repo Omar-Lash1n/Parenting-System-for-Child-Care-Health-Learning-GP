@@ -1,11 +1,15 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_telemedicine_success_page.dart';
-import 'package:Ajial/specialist-app/dashboard/specialist_telemedicine_data_page.dart';
+import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
 
 class SpecialistAddTelemedicinePage extends StatefulWidget {
-  const SpecialistAddTelemedicinePage({super.key});
+  final String consultationId;
+
+  const SpecialistAddTelemedicinePage({super.key, required this.consultationId});
 
   @override
   State<SpecialistAddTelemedicinePage> createState() =>
@@ -45,13 +49,56 @@ class _SpecialistAddTelemedicinePageState
   @override
   void initState() {
     super.initState();
-    if (globalDraftTelemedicine != null) {
-      _priceController.text = globalDraftTelemedicine!.sessionPrice;
-      _selectedDuration = globalDraftTelemedicine!.sessionDuration;
-      _selectedWaitTime = globalDraftTelemedicine!.waitPeriod;
-      _scheduleController.text = globalDraftTelemedicine!.schedule;
-      _confirmedPeriods = List.from(globalDraftTelemedicine!.confirmedPeriods);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final provider = context.read<ClinicRemoteProvider>();
+      await provider.loadRemoteConsultationDetail(widget.consultationId);
+      final detail = provider.remoteConsultationDetail;
+      if (detail != null && mounted) {
+        setState(() {
+          _priceController.text = detail.sessionPrice?.toStringAsFixed(0) ?? '';
+          if (detail.sessionDurationMinutes != null) {
+            _selectedDuration = _durationFromMinutes(detail.sessionDurationMinutes!);
+          }
+          if (detail.waitingPeriodMinutes != null) {
+            _selectedWaitTime = _waitFromMinutes(detail.waitingPeriodMinutes!);
+          }
+          if (detail.workingHoursJson != null && detail.workingHoursJson!.isNotEmpty) {
+            try {
+              final decoded = jsonDecode(detail.workingHoursJson!);
+              if (decoded is Map && decoded['type'] == 'fixed') {
+                _scheduleController.text = 'يوميا من ${decoded['from']} الى ${decoded['to']}';
+              } else if (decoded is Map && decoded['type'] == 'specific') {
+                final periods = decoded['periods'] as List? ?? [];
+                _confirmedPeriods = periods.map((p) => Map<String, String>.from(p as Map)).toList();
+                _scheduleController.text = _confirmedPeriods.isNotEmpty ? 'مواعيد مخصصة' : '';
+              }
+            } catch (_) {
+              _scheduleController.text = detail.workingHoursJson!;
+            }
+          }
+        });
+      }
+    });
+  }
+
+  String? _durationFromMinutes(int minutes) {
+    final map = {15: '15 دق', 30: '30 دق', 45: '45 دق', 60: '1 س', 75: '1س 15دق', 90: '1س 30دق', 105: '1س 45دق', 120: '2س'};
+    return map[minutes];
+  }
+
+  String? _waitFromMinutes(int minutes) {
+    final map = {5: '5 دق', 10: '10 دق', 15: '15 دق', 20: '20 دق', 25: '25 دق', 30: '30 دق'};
+    return map[minutes];
+  }
+
+  int _durationToMinutes(String duration) {
+    final map = {'15 دق': 15, '30 دق': 30, '45 دق': 45, '1 س': 60, '1س 15دق': 75, '1س 30دق': 90, '1س 45دق': 105, '2س': 120};
+    return map[duration] ?? 30;
+  }
+
+  int _waitToMinutes(String wait) {
+    final map = {'5 دق': 5, '10 دق': 10, '15 دق': 15, '20 دق': 20, '25 دق': 25, '30 دق': 30};
+    return map[wait] ?? 10;
   }
 
   @override
@@ -61,35 +108,52 @@ class _SpecialistAddTelemedicinePageState
     super.dispose();
   }
 
-  void _onNext() {
+  void _onNext() async {
     if (_formKey.currentState?.validate() ?? false) {
       if (_scheduleController.text.isEmpty) {
         _showErrorDialog(context, 'الرجاء تحديد مواعيد العمل');
         return;
       }
 
-      if (globalDraftTelemedicine != null) {
-        globalDraftTelemedicine!.sessionPrice = _priceController.text;
-        globalDraftTelemedicine!.sessionDuration = _selectedDuration ?? '';
-        globalDraftTelemedicine!.waitPeriod = _selectedWaitTime ?? '';
-        globalDraftTelemedicine!.schedule = _scheduleController.text;
-        globalDraftTelemedicine!.confirmedPeriods = List.from(_confirmedPeriods);
-      } else {
-        globalDraftTelemedicine = TelemedicineData(
-          sessionPrice: _priceController.text,
-          sessionDuration: _selectedDuration ?? '',
-          waitPeriod: _selectedWaitTime ?? '',
-          schedule: _scheduleController.text,
-          confirmedPeriods: List.from(_confirmedPeriods),
-          submissionDate: DateTime.now(),
-        );
+      final provider = context.read<ClinicRemoteProvider>();
+
+      // Build working hours JSON
+      String? workingHoursJson;
+      if (_scheduleController.text.startsWith('يوميا من')) {
+        final parts = _scheduleController.text
+            .replaceFirst('يوميا من ', '')
+            .split(' الى ');
+        if (parts.length == 2) {
+          workingHoursJson = jsonEncode({'type': 'fixed', 'from': parts[0], 'to': parts[1]});
+        }
+      } else if (_confirmedPeriods.isNotEmpty) {
+        workingHoursJson = jsonEncode({'type': 'specific', 'periods': _confirmedPeriods});
       }
 
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => const SpecialistTelemedicineSuccessPage(),
-        ),
+      final success = await provider.updateRemoteConsultation(
+        widget.consultationId,
+        sessionPrice: double.tryParse(_priceController.text),
+        sessionDurationMinutes: _selectedDuration != null ? _durationToMinutes(_selectedDuration!) : null,
+        waitingPeriodMinutes: _selectedWaitTime != null ? _waitToMinutes(_selectedWaitTime!) : null,
+        workingHoursJson: workingHoursJson,
       );
+
+      if (success && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SpecialistTelemedicineSuccessPage(
+              consultationId: widget.consultationId,
+            ),
+          ),
+        );
+      } else if (provider.errorMessage != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.errorMessage!, style: const TextStyle(fontFamily: specialistFont)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
