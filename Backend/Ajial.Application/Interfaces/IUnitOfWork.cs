@@ -38,6 +38,8 @@ public interface IUnitOfWork : IDisposable
     IRepository<LessonQuestionAnswer> LessonQuestionAnswers { get; } // ✅ Lesson Feature
     IRepository<RankingCycle> RankingCycles { get; }                // ✅ Ranking Feature
     IRepository<RankingEntry> RankingEntries { get; }               // ✅ Ranking Feature
+    IRepository<Clinic> Clinics { get; }                            // ✅ Clinic Feature
+    IRepository<RemoteConsultation> RemoteConsultations { get; }    // ✅ Remote Consultation Feature
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

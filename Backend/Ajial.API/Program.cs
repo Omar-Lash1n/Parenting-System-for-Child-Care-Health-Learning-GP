@@ -117,6 +117,8 @@ builder.Services.AddScoped<IParentHomeService, ParentHomeService>();
 builder.Services.AddScoped<IDailyQuestionService, DailyQuestionService>();
 builder.Services.AddScoped<ILessonService, LessonService>();                  // ✅ Lesson Feature (التغذية التربوية)
 builder.Services.AddScoped<IRankingService, RankingService>();                 // ✅ Ranking Feature (لوحة التكريم)
+builder.Services.AddScoped<IClinicService, ClinicService>();                   // ✅ Clinic Feature (العيادات)
+builder.Services.AddScoped<IRemoteConsultationService, RemoteConsultationService>(); // ✅ Remote Consultation Feature (الكشف عن بعد)
 // ✅ Infrastructure Services
 builder.Services.AddScoped<IImageService, AzureBlobImageService>(); // ✅ NEW - Image Upload to Azure
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();

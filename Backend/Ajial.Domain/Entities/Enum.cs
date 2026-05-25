@@ -39,3 +39,30 @@ public enum HealthUnitType
     Hospital = 2,            // مستشفى
     VaccinationCenter = 3    // مركز تطعيم
 }
+
+public enum ClinicStatus
+{
+    Draft = 0,      // مسودة
+    Pending = 1,    // قيد المراجعة
+    Approved = 2,   // تمت الموافقة
+    Rejected = 3,   // مرفوض
+    Cancelled = 4   // ملغي
+}
+
+public enum ClinicDocumentType
+{
+    LicenseImage = 1,               // صورة ترخيص العيادة
+    SyndicateRegistrationImage = 2, // شهادة تسجيل العيادة بالنقابة
+    HazardousWasteImage = 3,        // إيصال سداد رسوم النقايات الخطرة
+    ExteriorImage = 4,              // صورة العيادة من الخارج
+    InteriorImage = 5               // صورة العيادة من الداخل
+}
+
+public enum RemoteConsultationStatus
+{
+    Draft = 0,      // مسودة
+    Pending = 1,    // قيد المراجعة
+    Approved = 2,   // تمت الموافقة
+    Rejected = 3,   // مرفوض
+    Cancelled = 4   // ملغي
+}

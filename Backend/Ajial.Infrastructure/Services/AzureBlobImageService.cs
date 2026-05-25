@@ -431,4 +431,26 @@ public class AzureBlobImageService : IImageService
             return false;
         }
     }
+
+    public async Task<string> UploadClinicImageAsync(IFormFile file, Guid clinicId, string subfolder)
+    {
+        if (file == null || file.Length == 0)
+            throw new ArgumentException("الملف فارغ");
+
+        ValidateImage(file);
+
+        var clinicContainerName = _configuration["AzureStorage:ClinicContainerName"] ?? "clinic-documents";
+        var containerClient = _blobServiceClient.GetBlobContainerClient(clinicContainerName);
+        await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var blobName = $"{subfolder}/clinic_{clinicId}_{Guid.NewGuid()}{extension}";
+        var blobClient = containerClient.GetBlobClient(blobName);
+
+        var headers = new BlobHttpHeaders { ContentType = file.ContentType, CacheControl = "public, max-age=31536000" };
+        using var stream = file.OpenReadStream();
+        await blobClient.UploadAsync(stream, new BlobUploadOptions { HttpHeaders = headers });
+
+        return blobClient.Uri.ToString();
+    }
 }

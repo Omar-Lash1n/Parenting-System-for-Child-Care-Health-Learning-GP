@@ -43,6 +43,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<LessonQuestionAnswer> LessonQuestionAnswers { get; set; } = null!; // ✅ Lesson Feature
     public DbSet<RankingCycle> RankingCycles { get; set; } = null!;                // ✅ Ranking Feature
     public DbSet<RankingEntry> RankingEntries { get; set; } = null!;               // ✅ Ranking Feature
+    public DbSet<Clinic> Clinics { get; set; } = null!;                            // ✅ Clinic Feature
+    public DbSet<RemoteConsultation> RemoteConsultations { get; set; } = null!;    // ✅ Remote Consultation Feature
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -922,6 +924,62 @@ public class ApplicationDbContext : DbContext
 
             entity.HasIndex(e => e.RankingCycleId);
             entity.HasIndex(e => new { e.RankingCycleId, e.ParentId }).IsUnique();
+        });
+
+        // ✅ Clinic Configuration
+        modelBuilder.Entity<Clinic>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Name).HasMaxLength(200);
+            entity.Property(e => e.DistrictName).HasMaxLength(200);
+            entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.WorkingHoursJson).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.ExaminationPrice).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.ConsultationPrice).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.LicenseImageUrl).HasMaxLength(500);
+            entity.Property(e => e.SyndicateRegistrationImageUrl).HasMaxLength(500);
+            entity.Property(e => e.HazardousWasteImageUrl).HasMaxLength(500);
+            entity.Property(e => e.ExteriorImageUrl).HasMaxLength(500);
+            entity.Property(e => e.InteriorImageUrl).HasMaxLength(500);
+            entity.Property(e => e.RejectionReason).HasMaxLength(1000);
+            entity.Property(e => e.Status).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+
+            entity.HasOne(e => e.Specialist)
+                  .WithMany()
+                  .HasForeignKey(e => e.SpecialistId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Governorate)
+                  .WithMany()
+                  .HasForeignKey(e => e.GovernorateId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .IsRequired(false);
+
+            entity.HasIndex(e => e.SpecialistId);
+            entity.HasIndex(e => e.Status);
+        });
+
+        // ✅ RemoteConsultation Configuration
+        modelBuilder.Entity<RemoteConsultation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.SessionPrice).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.WorkingHoursJson).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.RejectionReason).HasMaxLength(1000);
+            entity.Property(e => e.Status).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+
+            entity.HasOne(e => e.Specialist)
+                  .WithMany()
+                  .HasForeignKey(e => e.SpecialistId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.SpecialistId);
+            entity.HasIndex(e => e.Status);
         });
 
         // Seed data

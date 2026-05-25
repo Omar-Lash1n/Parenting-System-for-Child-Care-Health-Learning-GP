@@ -25,4 +25,7 @@ public interface IImageService
     /// يُستخدم عند حذف تسجيل أو صورة من حاوية مختلفة عن الحاوية الافتراضية
     /// </summary>
     Task<bool> DeleteBlobByUrlAsync(string blobUrl);
+
+    /// <summary>رفع مستند عيادة إلى حاوية clinic-documents</summary>
+    Task<string> UploadClinicImageAsync(IFormFile file, Guid clinicId, string subfolder);
 }
