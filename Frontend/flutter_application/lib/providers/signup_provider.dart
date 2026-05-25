@@ -15,6 +15,7 @@ class SignupProvider extends ChangeNotifier {
   bool _hasNumber = false;
   bool _hasSymbol = false;
   bool _hasUppercase = false;
+  bool _hasLowercase = false;
   double _passwordStrength = 0.0;
 
   // --- Getters ---
@@ -26,6 +27,7 @@ class SignupProvider extends ChangeNotifier {
   bool get hasNumber => _hasNumber;
   bool get hasSymbol => _hasSymbol;
   bool get hasUppercase => _hasUppercase;
+  bool get hasLowercase => _hasLowercase;
   double get passwordStrength => _passwordStrength;
 
   // --- Toggle Password Visibility ---
@@ -36,35 +38,34 @@ class SignupProvider extends ChangeNotifier {
 
   // --- Validation Methods ---
 
-  /// Full name: must be at least 2 words, no numbers/special chars,
-  /// at least 4 characters total, allows Arabic + English letters
+  /// Full name: 3-100 characters, no leading/trailing spaces,
+  /// can contain letters, spaces, Arabic characters only
   bool validateName(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return false;
-    if (trimmed.length < 4) return false;
-    // Only letters (Arabic+English), spaces, and hyphens allowed
-    if (!RegExp(r'^[\u0600-\u06FF\u0750-\u077Fa-zA-Z\s\-]+$').hasMatch(trimmed)) {
+    if (trimmed.length < 3 || trimmed.length > 100) return false;
+    // No leading/trailing spaces (compare with original)
+    if (value != trimmed) return false;
+    // Only letters (Arabic+English) and spaces allowed
+    if (!RegExp(r'^[\u0600-\u06FF\u0750-\u077Fa-zA-Z\s]+$').hasMatch(trimmed)) {
       return false;
     }
-    // Must contain at least 2 parts (first + last name)
-    final parts = trimmed.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    return parts.length >= 2;
+    return true;
   }
 
-  /// Username: 3-20 chars, letters/numbers/underscores/dots only, no spaces,
-  /// must start with a letter
+  /// Username: 3-50 chars, alphanumeric + underscore only, no spaces
   bool validateUsername(String value) {
     if (value.isEmpty) return false;
     if (value.contains(' ')) return false;
-    if (value.length < 3 || value.length > 20) return false;
-    // Must start with a letter, then letters/numbers/underscore/dot
-    return RegExp(r'^[a-zA-Z\u0600-\u06FF][a-zA-Z0-9\u0600-\u06FF_.]*$')
-        .hasMatch(value);
+    if (value.length < 3 || value.length > 50) return false;
+    // Alphanumeric and underscore only
+    return RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value);
   }
 
-  /// Email: proper format with domain validation
+  /// Email: valid format, max 100 characters, must be unique (server-side)
   bool validateEmail(String value) {
     if (value.isEmpty) return false;
+    if (value.length > 100) return false;
     // RFC 5322 simplified — ensures TLD has at least 2 chars
     return RegExp(
       r'^[a-zA-Z0-9.!#$%&*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z]{2,})+$',
@@ -82,11 +83,14 @@ class SignupProvider extends ChangeNotifier {
     if (!RegExp(r'[A-Z]').hasMatch(value)) {
       return 'يجب أن تحتوي على حرف كبير واحد على الأقل';
     }
+    if (!RegExp(r'[a-z]').hasMatch(value)) {
+      return 'يجب أن تحتوي على حرف صغير واحد على الأقل';
+    }
     if (!RegExp(r'[0-9]').hasMatch(value)) {
       return 'يجب أن تحتوي على رقم واحد على الأقل';
     }
-    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=~`/\\]').hasMatch(value)) {
-      return 'يجب أن تحتوي على رمز خاص واحد على الأقل';
+    if (!RegExp(r'[@$!%*?&#]').hasMatch(value)) {
+      return 'يجب أن تحتوي على رمز خاص واحد على الأقل (@\$!%*?&#)';
     }
     return null;
   }
@@ -120,22 +124,24 @@ class SignupProvider extends ChangeNotifier {
   void updatePasswordStrength(String password) {
     _has8Chars = password.length >= 8;
     _hasNumber = RegExp(r'[0-9]').hasMatch(password);
-    _hasSymbol = RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=~`/\\]').hasMatch(password);
+    _hasSymbol = RegExp(r'[@$!%*?&#]').hasMatch(password);
     _hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
+    _hasLowercase = RegExp(r'[a-z]').hasMatch(password);
 
     int conditionsMet = 0;
     if (_has8Chars) conditionsMet++;
     if (_hasNumber) conditionsMet++;
     if (_hasSymbol) conditionsMet++;
     if (_hasUppercase) conditionsMet++;
+    if (_hasLowercase) conditionsMet++;
 
-    _passwordStrength = conditionsMet / 4.0;
+    _passwordStrength = conditionsMet / 5.0;
     notifyListeners();
   }
 
-  /// Check if password is strong enough (all 4 criteria met)
+  /// Check if password is strong enough (all 5 criteria met)
   bool isPasswordStrong() {
-    return _has8Chars && _hasNumber && _hasSymbol && _hasUppercase;
+    return _has8Chars && _hasNumber && _hasSymbol && _hasUppercase && _hasLowercase;
   }
 
   /// Reset provider state
@@ -148,6 +154,7 @@ class SignupProvider extends ChangeNotifier {
     _hasNumber = false;
     _hasSymbol = false;
     _hasUppercase = false;
+    _hasLowercase = false;
     _passwordStrength = 0.0;
     notifyListeners();
   }
