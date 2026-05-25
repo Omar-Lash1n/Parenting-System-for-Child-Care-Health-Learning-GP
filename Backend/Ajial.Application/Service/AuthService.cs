@@ -349,12 +349,12 @@ public class AuthService : IAuthService
                     user.FullName
                 );
             }
-            catch (Exception)
+            catch (Exception emailEx)
             {
-                // فشل إرسال الإيميل
+                // فشل إرسال الإيميل - include real error for debugging
                 return ApiResponse<ForgotPasswordResponseDto>.FailureResponse(
                     "فشل في إرسال البريد الإلكتروني",
-                    new List<string> { "حدث خطأ أثناء إرسال رسالة إعادة التعيين. يرجى المحاولة لاحقاً." }
+                    new List<string> { $"خطأ SMTP: {emailEx.Message}" }
                 );
             }
 

@@ -1,4 +1,4 @@
-﻿using Ajial.Application.DTOs.Common;
+using Ajial.Application.DTOs.Common;
 using Ajial.Application.DTOs.Parent;
 using Ajial.Application.DTOs.Validators;
 using Ajial.Application.Interfaces;
@@ -986,7 +986,7 @@ public class ParentService : IParentService
             _logger.LogError(ex, "Error sending email verification for user ID: {UserId}", userId);
             return ApiResponse<SendEmailVerificationResponseDto>.FailureResponse(
                 "حدث خطأ أثناء إرسال رابط التحقق",
-                new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً" }
+                new List<string> { $"خطأ SMTP: {ex.Message}" }
             );
         }
     }
