@@ -238,14 +238,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       if (value == null || value.trim().isEmpty) {
                                         return 'الاسم الكامل مطلوب';
                                       }
-                                      if (value.trim().length < 4) {
-                                        return 'الاسم يجب أن يكون 4 أحرف على الأقل';
+                                      if (value.trim().length < 3) {
+                                        return 'الاسم يجب أن يكون 3 أحرف على الأقل';
                                       }
-                                      if (RegExp(r'[0-9]').hasMatch(value)) {
-                                        return 'الاسم يجب ألا يحتوي على أرقام';
+                                      if (value.trim().length > 100) {
+                                        return 'الاسم يجب ألا يتجاوز 100 حرف';
+                                      }
+                                      if (value != value.trim()) {
+                                        return 'يجب ألا يحتوي على مسافات في البداية أو النهاية';
                                       }
                                       if (!provider.validateName(value)) {
-                                        return 'يرجى ادخال الاسم الأول والأخير بدون رموز';
+                                        return 'يجب أن يحتوي على أحرف ومسافات فقط بدون أرقام أو رموز';
                                       }
                                       return null;
                                     },
@@ -261,7 +264,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     textAlign: TextAlign.right,
                                     decoration: _buildInputDecoration(
                                       hintText:
-                                          'اكتب اسم المستخدم (3-20 حرف)...',
+                                          'اكتب اسم المستخدم (3-50 حرف)...',
                                       suffixIcon: _usernameController
                                               .text.isNotEmpty
                                           ? IconButton(
@@ -290,11 +293,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       if (value.length < 3) {
                                         return 'يجب أن يكون 3 أحرف على الأقل';
                                       }
-                                      if (value.length > 20) {
-                                        return 'يجب ألا يتجاوز 20 حرف';
+                                      if (value.length > 50) {
+                                        return 'يجب ألا يتجاوز 50 حرف';
                                       }
                                       if (!provider.validateUsername(value)) {
-                                        return 'يجب أن يبدأ بحرف ويحتوي فقط على أحرف وأرقام';
+                                        return 'يجب أن يحتوي فقط على أحرف وأرقام وشرطة سفلية (_)';
                                       }
                                       return null;
                                     },
@@ -331,6 +334,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
                                         return 'البريد الالكتروني مطلوب';
+                                      }
+                                      if (value.length > 100) {
+                                        return 'البريد الالكتروني يجب ألا يتجاوز 100 حرف';
                                       }
                                       if (!provider.validateEmail(value)) {
                                         return 'صيغة بريد الكتروني غير صحيحة';
@@ -404,11 +410,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                             met: provider.hasUppercase),
                                         const SizedBox(height: 4),
                                         _buildStrengthCheck(
+                                            text: 'يحتوي على حرف صغير (a-z)',
+                                            met: provider.hasLowercase),
+                                        const SizedBox(height: 4),
+                                        _buildStrengthCheck(
                                             text: 'يحتوي على أرقام (0-9)',
                                             met: provider.hasNumber),
                                         const SizedBox(height: 4),
                                         _buildStrengthCheck(
-                                            text: 'يحتوي على رموز خاصة',
+                                            text: 'يحتوي على رموز خاصة (@!%*?&#)',
                                             met: provider.hasSymbol),
                                       ],
                                     ),
