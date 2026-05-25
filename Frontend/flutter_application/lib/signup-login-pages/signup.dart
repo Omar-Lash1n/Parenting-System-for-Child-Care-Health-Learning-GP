@@ -91,14 +91,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void _submitForm() {
+  void _submitForm() async {
     final provider = context.read<SignupProvider>();
 
     if (_formKey.currentState!.validate()) {
       if (provider.isPasswordStrong()) {
         print('Form is valid and ready to submit!');
 
-        Navigator.push(
+        // Navigate to page 2 and wait for result
+        final result = await Navigator.push<Map<String, String?>?>(
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
@@ -123,6 +124,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
             transitionDuration: const Duration(milliseconds: 700),
           ),
         );
+
+        // Handle server errors returned from page 2
+        if (result != null && mounted) {
+          provider.setServerErrors(
+            emailError: result['emailError'],
+            usernameError: result['usernameError'],
+          );
+          // Trigger form re-validation to show server errors
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _formKey.currentState?.validate();
+          });
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -299,6 +312,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       if (!provider.validateUsername(value)) {
                                         return 'يجب أن يحتوي فقط على أحرف وأرقام وشرطة سفلية (_)';
                                       }
+                                      // Server-side duplicate check
+                                      if (provider.serverUsernameError != null) {
+                                        return provider.serverUsernameError;
+                                      }
                                       return null;
                                     },
                                   ),
@@ -340,6 +357,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       }
                                       if (!provider.validateEmail(value)) {
                                         return 'صيغة بريد الكتروني غير صحيحة';
+                                      }
+                                      // Server-side duplicate check
+                                      if (provider.serverEmailError != null) {
+                                        return provider.serverEmailError;
                                       }
                                       return null;
                                     },

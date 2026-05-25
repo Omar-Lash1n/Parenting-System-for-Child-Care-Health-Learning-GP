@@ -48,6 +48,15 @@ class _DataEntryPageState extends State<DataEntryPage> {
   late double _screenWidth;
 
   @override
+  void initState() {
+    super.initState();
+    // Fetch cities from API when page loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ContinueSignupProvider>().fetchCities();
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final size = MediaQuery.of(context).size;
@@ -153,60 +162,128 @@ class _DataEntryPageState extends State<DataEntryPage> {
                               // --- 1. City Selection ---
                               _buildFieldLabel('المدينة *'),
                               const SizedBox(height: 8),
-                              Container(
-                                height: fieldAndRoleButtonHeight,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey.shade400,
-                                    width: 1.5,
-                                  ),
-                                  borderRadius:
-                                      BorderRadius.circular(fieldBorderRadius),
-                                ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<int>(
-                                    isExpanded: true,
-                                    hint: Text(
-                                      'اختر مدينتك من القائمة',
-                                      style: TextStyle(
-                                        fontFamily: kFontFamily,
-                                        color: Colors.grey.shade600,
-                                        fontSize: 14,
+                              provider.isCitiesLoading
+                                  ? Container(
+                                      height: fieldAndRoleButtonHeight,
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: Colors.grey.shade400,
+                                          width: 1.5,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                            fieldBorderRadius),
                                       ),
-                                    ),
-                                    value: provider.selectedCityId,
-                                    icon: const Icon(
-                                      Icons.keyboard_arrow_down,
-                                      color: Colors.grey,
-                                    ),
-                                    onChanged: provider.isLoading
-                                        ? null
-                                        : (int? newValue) {
-                                            provider.setCity(newValue);
-                                          },
-                                    items: provider.cities
-                                        .map<DropdownMenuItem<int>>((
-                                      Map<String, dynamic> city,
-                                    ) {
-                                      return DropdownMenuItem<int>(
-                                        value: city['id'] as int,
-                                        child: Align(
-                                          alignment: Alignment.centerRight,
-                                          child: Text(
-                                            city['nameAr'] as String,
-                                            style: const TextStyle(
-                                              fontFamily: kFontFamily,
-                                              fontSize: 15,
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFFBF092F),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : provider.citiesError != null &&
+                                          provider.cities.isEmpty
+                                      ? GestureDetector(
+                                          onTap: () => provider.fetchCities(),
+                                          child: Container(
+                                            height: fieldAndRoleButtonHeight,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 16.0),
+                                            decoration: BoxDecoration(
+                                              border: Border.all(
+                                                color: Colors.red.shade300,
+                                                width: 1.5,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      fieldBorderRadius),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(Icons.refresh,
+                                                    color:
+                                                        Colors.red.shade400,
+                                                    size: 20),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  provider.citiesError!,
+                                                  style: TextStyle(
+                                                    fontFamily: kFontFamily,
+                                                    fontSize: 13,
+                                                    color:
+                                                        Colors.red.shade400,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        )
+                                      : Container(
+                                          height: fieldAndRoleButtonHeight,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16.0),
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                              color: Colors.grey.shade400,
+                                              width: 1.5,
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(
+                                                    fieldBorderRadius),
+                                          ),
+                                          child: DropdownButtonHideUnderline(
+                                            child: DropdownButton<int>(
+                                              isExpanded: true,
+                                              hint: Text(
+                                                'اختر مدينتك من القائمة',
+                                                style: TextStyle(
+                                                  fontFamily: kFontFamily,
+                                                  color:
+                                                      Colors.grey.shade600,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                              value:
+                                                  provider.selectedCityId,
+                                              icon: const Icon(
+                                                Icons.keyboard_arrow_down,
+                                                color: Colors.grey,
+                                              ),
+                                              onChanged: provider.isLoading
+                                                  ? null
+                                                  : (int? newValue) {
+                                                      provider
+                                                          .setCity(newValue);
+                                                    },
+                                              items: provider.cities
+                                                  .map<DropdownMenuItem<int>>((
+                                                Map<String, dynamic> city,
+                                              ) {
+                                                return DropdownMenuItem<int>(
+                                                  value: city['id'] as int,
+                                                  child: Align(
+                                                    alignment:
+                                                        Alignment.centerRight,
+                                                    child: Text(
+                                                      city['nameAr']
+                                                          as String,
+                                                      style: const TextStyle(
+                                                        fontFamily:
+                                                            kFontFamily,
+                                                        fontSize: 15,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                );
+                                              }).toList(),
                                             ),
                                           ),
                                         ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
-                              ),
                               const SizedBox(height: 20),
 
                               // --- 2. Date of Birth ---

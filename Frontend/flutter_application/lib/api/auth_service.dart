@@ -82,6 +82,31 @@ class AuthService {
     }
   }
 
+  /// جلب قائمة المدن من السيرفر
+  /// GET /api/Cities
+  Future<List<Map<String, dynamic>>> fetchCities() async {
+    final String apiUrl = '$_apiBaseUrl/Cities';
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {'accept': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          return List<Map<String, dynamic>>.from(responseBody['data']);
+        }
+      }
+      print('Fetch Cities Error: ${response.statusCode} - ${response.body}');
+      return [];
+    } catch (e) {
+      print('Connection Error in fetchCities: $e');
+      return [];
+    }
+  }
+
   /// دالة تسجيل دخول الوالدين
   Future<(String?, String?)> loginParent({
     required String username,

@@ -10,6 +10,10 @@ class SignupProvider extends ChangeNotifier {
   bool _isUsernameValid = false;
   bool _isEmailValid = false;
 
+  // Server-side errors (from registration attempt)
+  String? _serverEmailError;
+  String? _serverUsernameError;
+
   // Password strength
   bool _has8Chars = false;
   bool _hasNumber = false;
@@ -23,6 +27,8 @@ class SignupProvider extends ChangeNotifier {
   bool get isFullNameValid => _isFullNameValid;
   bool get isUsernameValid => _isUsernameValid;
   bool get isEmailValid => _isEmailValid;
+  String? get serverEmailError => _serverEmailError;
+  String? get serverUsernameError => _serverUsernameError;
   bool get has8Chars => _has8Chars;
   bool get hasNumber => _hasNumber;
   bool get hasSymbol => _hasSymbol;
@@ -34,6 +40,30 @@ class SignupProvider extends ChangeNotifier {
   void togglePasswordVisibility() {
     _isPasswordVisible = !_isPasswordVisible;
     notifyListeners();
+  }
+
+  // --- Server Error Methods ---
+
+  /// Set server-side errors for email/username (e.g. duplicates)
+  void setServerErrors({String? emailError, String? usernameError}) {
+    _serverEmailError = emailError;
+    _serverUsernameError = usernameError;
+    notifyListeners();
+  }
+
+  /// Clear server errors (called when user edits the field)
+  void clearServerEmailError() {
+    if (_serverEmailError != null) {
+      _serverEmailError = null;
+      notifyListeners();
+    }
+  }
+
+  void clearServerUsernameError() {
+    if (_serverUsernameError != null) {
+      _serverUsernameError = null;
+      notifyListeners();
+    }
   }
 
   // --- Validation Methods ---
@@ -105,6 +135,7 @@ class SignupProvider extends ChangeNotifier {
   }
 
   void onUsernameChanged(String value) {
+    clearServerUsernameError();
     final isValid = validateUsername(value);
     if (_isUsernameValid != isValid) {
       _isUsernameValid = isValid;
@@ -113,6 +144,7 @@ class SignupProvider extends ChangeNotifier {
   }
 
   void onEmailChanged(String value) {
+    clearServerEmailError();
     final isValid = validateEmail(value);
     if (_isEmailValid != isValid) {
       _isEmailValid = isValid;
@@ -156,6 +188,8 @@ class SignupProvider extends ChangeNotifier {
     _hasUppercase = false;
     _hasLowercase = false;
     _passwordStrength = 0.0;
+    _serverEmailError = null;
+    _serverUsernameError = null;
     notifyListeners();
   }
 }

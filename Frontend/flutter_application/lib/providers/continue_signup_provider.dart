@@ -15,20 +15,19 @@ class ContinueSignupProvider extends ChangeNotifier {
   String? _selectedRole; // 'أب', 'أم'
   bool _isLoading = false;
 
-  // Cities list
-  final List<Map<String, dynamic>> cities = [
-    {"id": 1, "nameAr": "القاهرة"},
-    {"id": 2, "nameAr": "الإسكندرية"},
-    {"id": 3, "nameAr": "الجيزة"},
-    {"id": 4, "nameAr": "شبرا الخيمة"},
-    {"id": 5, "nameAr": "بورسعيد"},
-  ];
+  // Cities from API
+  List<Map<String, dynamic>> _cities = [];
+  bool _isCitiesLoading = false;
+  String? _citiesError;
 
   // --- Getters ---
   int? get selectedCityId => _selectedCityId;
   DateTime? get selectedDateOfBirth => _selectedDateOfBirth;
   String? get selectedRole => _selectedRole;
   bool get isLoading => _isLoading;
+  List<Map<String, dynamic>> get cities => _cities;
+  bool get isCitiesLoading => _isCitiesLoading;
+  String? get citiesError => _citiesError;
 
   // --- Setters ---
   void setCity(int? cityId) {
@@ -44,6 +43,29 @@ class ContinueSignupProvider extends ChangeNotifier {
   void setRole(String? role) {
     _selectedRole = role;
     notifyListeners();
+  }
+
+  // --- Fetch Cities from API ---
+  Future<void> fetchCities() async {
+    if (_cities.isNotEmpty && _citiesError == null) return; // Already loaded successfully
+
+    _isCitiesLoading = true;
+    _citiesError = null;
+    notifyListeners();
+
+    try {
+      final fetchedCities = await _authService.fetchCities();
+      if (fetchedCities.isNotEmpty) {
+        _cities = fetchedCities;
+      } else {
+        _citiesError = 'فشل في تحميل المدن. يرجى المحاولة مرة أخرى.';
+      }
+    } catch (e) {
+      _citiesError = 'حدث خطأ في تحميل المدن.';
+    } finally {
+      _isCitiesLoading = false;
+      notifyListeners();
+    }
   }
 
   // --- Helper Methods ---
@@ -118,16 +140,53 @@ class ContinueSignupProvider extends ChangeNotifier {
           ),
         );
       } else {
-        // Error from server
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'حدث خطأ: $error',
-              style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
+        // Check if error is related to email or username duplication
+        final lowerError = error.toLowerCase();
+        String? emailError;
+        String? usernameError;
+
+        if (lowerError.contains('email') || 
+            lowerError.contains('بريد') || 
+            lowerError.contains('الإيميل') ||
+            lowerError.contains('الايميل') ||
+            lowerError.contains('البريد')) {
+          emailError = error;
+        }
+        
+        if (lowerError.contains('username') || 
+            lowerError.contains('مستخدم') || 
+            lowerError.contains('اسم المستخدم')) {
+          usernameError = error;
+        }
+
+        // If error is related to email or username, pop back to page 1
+        if (emailError != null || usernameError != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                error,
+                style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
+              ),
+              backgroundColor: const Color(0xFFBF092F),
             ),
-            backgroundColor: const Color(0xFFBF092F),
-          ),
-        );
+          );
+          // Pop back with error info
+          Navigator.pop(context, {
+            'emailError': emailError,
+            'usernameError': usernameError,
+          });
+        } else {
+          // Other server error — show in current page
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'حدث خطأ: $error',
+                style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
+              ),
+              backgroundColor: const Color(0xFFBF092F),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (!context.mounted) return;
@@ -152,6 +211,7 @@ class ContinueSignupProvider extends ChangeNotifier {
     _selectedDateOfBirth = null;
     _selectedRole = null;
     _isLoading = false;
+    // Don't clear cities — keep them cached
     notifyListeners();
   }
 }
