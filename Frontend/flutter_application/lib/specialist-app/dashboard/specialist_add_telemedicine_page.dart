@@ -22,6 +22,7 @@ class _SpecialistAddTelemedicinePageState
 
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _scheduleController = TextEditingController();
+  late String _currentConsultationId;
   String? _selectedDuration;
   String? _selectedWaitTime;
 
@@ -49,9 +50,11 @@ class _SpecialistAddTelemedicinePageState
   @override
   void initState() {
     super.initState();
+    _currentConsultationId = widget.consultationId;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_currentConsultationId.isEmpty) return;
       final provider = context.read<ClinicRemoteProvider>();
-      await provider.loadRemoteConsultationDetail(widget.consultationId);
+      await provider.loadRemoteConsultationDetail(_currentConsultationId);
       final detail = provider.remoteConsultationDetail;
       if (detail != null && mounted) {
         setState(() {
@@ -130,8 +133,25 @@ class _SpecialistAddTelemedicinePageState
         workingHoursJson = jsonEncode({'type': 'specific', 'periods': _confirmedPeriods});
       }
 
+      if (_currentConsultationId.isEmpty) {
+        final newId = await provider.createRemoteConsultation();
+        if (newId != null) {
+          _currentConsultationId = newId;
+        } else {
+          if (provider.errorMessage != null && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(provider.errorMessage!, style: const TextStyle(fontFamily: specialistFont)),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
       final success = await provider.updateRemoteConsultation(
-        widget.consultationId,
+        _currentConsultationId,
         sessionPrice: double.tryParse(_priceController.text),
         sessionDurationMinutes: _selectedDuration != null ? _durationToMinutes(_selectedDuration!) : null,
         waitingPeriodMinutes: _selectedWaitTime != null ? _waitToMinutes(_selectedWaitTime!) : null,
@@ -142,7 +162,7 @@ class _SpecialistAddTelemedicinePageState
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => SpecialistTelemedicineSuccessPage(
-              consultationId: widget.consultationId,
+              consultationId: _currentConsultationId,
             ),
           ),
         );

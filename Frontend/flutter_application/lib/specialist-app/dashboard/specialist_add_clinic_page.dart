@@ -23,6 +23,7 @@ class _SpecialistAddClinicPageState extends State<SpecialistAddClinicPage> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _mobileController = TextEditingController();
   
+  late String _currentClinicId;
   String? _selectedGov;
   String? _selectedCity;
   bool _loaded = false;
@@ -30,9 +31,14 @@ class _SpecialistAddClinicPageState extends State<SpecialistAddClinicPage> {
   @override
   void initState() {
     super.initState();
+    _currentClinicId = widget.clinicId;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_currentClinicId.isEmpty) {
+        setState(() => _loaded = true);
+        return;
+      }
       final provider = context.read<ClinicRemoteProvider>();
-      await provider.loadClinicDetail(widget.clinicId);
+      await provider.loadClinicDetail(_currentClinicId);
       final detail = provider.clinicDetail;
       if (detail != null && mounted) {
         setState(() {
@@ -72,8 +78,25 @@ class _SpecialistAddClinicPageState extends State<SpecialistAddClinicPage> {
       final govIndex = govKeys.indexOf(_selectedGov ?? '');
       final governorateId = govIndex >= 0 ? govIndex + 1 : null;
 
+      if (_currentClinicId.isEmpty) {
+        final newId = await provider.createClinic();
+        if (newId != null) {
+          _currentClinicId = newId;
+        } else {
+          if (provider.errorMessage != null && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(provider.errorMessage!, style: const TextStyle(fontFamily: specialistFont)),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
       final success = await provider.updateClinicDetails(
-        widget.clinicId,
+        _currentClinicId,
         name: _nameController.text,
         governorateId: governorateId,
         districtName: _selectedCity ?? '',
@@ -85,7 +108,7 @@ class _SpecialistAddClinicPageState extends State<SpecialistAddClinicPage> {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => SpecialistAddClinicStep2Page(
-              clinicId: widget.clinicId,
+              clinicId: _currentClinicId,
             ),
           ),
         );
