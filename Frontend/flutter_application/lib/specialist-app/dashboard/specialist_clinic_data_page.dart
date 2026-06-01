@@ -50,7 +50,9 @@ class _SpecialistClinicDataPageState extends State<SpecialistClinicDataPage> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ClinicRemoteProvider>();
-    final clinics = provider.clinics;
+    final clinics = provider.clinics
+        .where((c) => !(c.status.toLowerCase() == 'draft' && c.submittedAt == null))
+        .toList();
     final isLoading = provider.loadingClinics;
 
     return Directionality(
@@ -313,17 +315,14 @@ class _SpecialistClinicDataPageState extends State<SpecialistClinicDataPage> {
                   child: OutlinedButton(
                     onPressed: provider.submitting
                         ? null
-                        : () async {
-                            final clinicId = await provider.createClinic();
-                            if (clinicId != null && context.mounted) {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SpecialistAddClinicPage(
-                                    clinicId: clinicId,
-                                  ),
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const SpecialistAddClinicPage(
+                                  clinicId: '',
                                 ),
-                              ).then((_) => provider.loadClinics());
-                            }
+                              ),
+                            ).then((_) => provider.loadClinics());
                           },
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: Colors.black.withValues(alpha: 0.8)),

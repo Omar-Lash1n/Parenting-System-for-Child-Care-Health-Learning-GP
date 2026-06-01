@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:Ajial/specialist-app/application-tracking/providers/specialist_application_provider.dart'
     show SpecialistApplicationProvider;
 import 'package:flutter/material.dart';
@@ -175,9 +176,7 @@ class _SpecialistClinicDetailsPageState
                         _buildExpansionTile(
                           title: 'اوقات العمل و التكلفة',
                           children: [
-                            _buildMockField(
-                                'مواعيد العمل*', detail.workingHoursJson ?? '',
-                                hasCalendar: true),
+                            _buildWorkingHoursSection(detail.workingHoursJson),
                             _buildMockField(
                                 'سعر الكشف ج.م*',
                                 detail.examinationPrice?.toStringAsFixed(0) ??
@@ -435,6 +434,66 @@ class _SpecialistClinicDetailsPageState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildWorkingHoursSection(String? jsonString) {
+    if (jsonString == null || jsonString.isEmpty) {
+      return _buildMockField('مواعيد العمل*', '', hasCalendar: true);
+    }
+
+    try {
+      final decoded = jsonDecode(jsonString);
+      if (decoded is Map) {
+        if (decoded['type'] == 'fixed') {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildMockField('مواعيد العمل*', 'مواعيد ثابتة', hasCalendar: true),
+              _buildScheduleBlock('يومياً من ${decoded['from']} الى ${decoded['to']}'),
+              const SizedBox(height: 8),
+            ],
+          );
+        } else if (decoded['type'] == 'specific') {
+          final periods = decoded['periods'] as List? ?? [];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildMockField('مواعيد العمل*', 'مواعيد مخصصة', hasCalendar: true),
+              for (var p in periods)
+                _buildScheduleBlock('${p['day']} من ${p['from']} الى ${p['to']}'),
+              const SizedBox(height: 8),
+            ],
+          );
+        }
+      }
+    } catch (_) {
+      // Fallback
+    }
+
+    return _buildMockField('مواعيد العمل*', jsonString, hasCalendar: true);
+  }
+
+  Widget _buildScheduleBlock(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontFamily: specialistFont,
+            fontSize: 14,
+            color: Colors.black,
+          ),
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }

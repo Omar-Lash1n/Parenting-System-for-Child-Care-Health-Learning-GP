@@ -54,7 +54,9 @@ class _SpecialistTelemedicineDataPageState
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ClinicRemoteProvider>();
-    final consultations = provider.remoteConsultations;
+    final consultations = provider.remoteConsultations
+        .where((c) => !(c.status.toLowerCase() == 'draft' && c.submittedAt == null))
+        .toList();
     final isLoading = provider.loadingRemoteConsultations;
 
     return Directionality(
@@ -215,17 +217,14 @@ class _SpecialistTelemedicineDataPageState
                   child: OutlinedButton(
                     onPressed: provider.submitting
                         ? null
-                        : () async {
-                            final id = await provider.createRemoteConsultation();
-                            if (id != null && context.mounted) {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SpecialistAddTelemedicinePage(
-                                    consultationId: id,
-                                  ),
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const SpecialistAddTelemedicinePage(
+                                  consultationId: '',
                                 ),
-                              ).then((_) => provider.loadRemoteConsultations());
-                            }
+                              ),
+                            ).then((_) => provider.loadRemoteConsultations());
                           },
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(
