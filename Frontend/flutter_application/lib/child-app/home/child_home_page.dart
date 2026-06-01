@@ -7,6 +7,7 @@ import 'package:Ajial/child-app/child-sign-in.dart';
 import 'package:Ajial/child-app/recordings/child_recordings_page.dart';
 import 'package:Ajial/child-app/tasks/child_tasks_page.dart';
 import 'package:Ajial/child-app/rewards/child_rewards_page.dart';
+import 'package:Ajial/child-app/home/math_game_page.dart';
 
 // --- Constants ---
 const String kFontFamily = 'IBM Plex Sans Arabic';
@@ -408,7 +409,15 @@ class _ChildHomePageState extends State<ChildHomePage>
                   imagePath: 'images/numbers.png',
                   imageSize: 70,
                   fontSize: 24,
-                  onTap: () => provider.playClick(),
+                  onTap: () {
+                    provider.playClick();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MathGamePage(),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
