@@ -8,6 +8,7 @@ import 'package:Ajial/child-app/recordings/child_recordings_page.dart';
 import 'package:Ajial/child-app/tasks/child_tasks_page.dart';
 import 'package:Ajial/child-app/rewards/child_rewards_page.dart';
 import 'package:Ajial/child-app/home/math_game_page.dart';
+import 'package:Ajial/child-app/home/memory_game_page.dart';
 
 // --- Constants ---
 const String kFontFamily = 'IBM Plex Sans Arabic';
@@ -421,6 +422,27 @@ class _ChildHomePageState extends State<ChildHomePage>
                 ),
               ),
             ],
+          ),
+        ),
+        SizedBox(height: cardSpacing),
+
+        // Row: Full width "لعبة الذاكرة" (Memory Match) card
+        SizedBox(
+          height: middleCardHeight,
+          width: double.infinity,
+          child: _buildActivityCard(
+            title: 'لعبة الذاكرة',
+            gradientColors: const [Color(0xFF7BD88F), Color(0xFF34A853)],
+            imagePath: 'images/grapes.png',
+            imageSize: 70,
+            fontSize: 24,
+            onTap: () {
+              provider.playClick();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MemoryGamePage()),
+              );
+            },
           ),
         ),
         SizedBox(height: cardSpacing),
