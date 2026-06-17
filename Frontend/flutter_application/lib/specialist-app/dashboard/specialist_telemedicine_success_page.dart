@@ -58,35 +58,15 @@ class SpecialistTelemedicineSuccessPage extends StatelessWidget {
                 ),
                 
                 const Spacer(flex: 3),
-
-                // Error message
-                if (provider.errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Text(
-                      provider.errorMessage!,
-                      style: const TextStyle(
-                        fontFamily: specialistFont,
-                        fontSize: 14,
-                        color: Colors.red,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
                 
-                // Continue Button — calls submit API
+                // Continue Button
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: provider.submitting
-                        ? null
-                        : () async {
-                            final success = await provider.submitRemoteConsultation(consultationId);
-                            if (success && context.mounted) {
-                              Navigator.of(context).popUntil((route) => route.isFirst);
-                            }
-                          },
+                    onPressed: () {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: specialistGreen,
                       shape: RoundedRectangleBorder(
@@ -94,21 +74,15 @@ class SpecialistTelemedicineSuccessPage extends StatelessWidget {
                       ),
                       elevation: 0,
                     ),
-                    child: provider.submitting
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text(
-                            'ارسال للمراجعة',
-                            style: TextStyle(
-                              fontFamily: specialistFont,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
+                    child: const Text(
+                      'استمرار',
+                      style: TextStyle(
+                        fontFamily: specialistFont,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),

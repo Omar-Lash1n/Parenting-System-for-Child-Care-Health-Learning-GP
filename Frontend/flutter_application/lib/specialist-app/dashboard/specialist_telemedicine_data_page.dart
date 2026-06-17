@@ -6,6 +6,7 @@ import 'package:Ajial/specialist-app/application-tracking/providers/specialist_a
 import 'package:Ajial/specialist-app/dashboard/specialist_add_telemedicine_page.dart';
 import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
 import 'package:Ajial/specialist-app/dashboard/models/clinic_remote_models.dart';
+import 'package:Ajial/specialist-app/dashboard/services/clinic_remote_api_service.dart';
 
 String formatTelemedicineDate(DateTime? date) {
   if (date == null) return '';
@@ -302,6 +303,162 @@ class TelemedicineRequestCard extends StatefulWidget {
 
 class _TelemedicineRequestCardState extends State<TelemedicineRequestCard> {
   bool _isExpanded = false;
+  bool _isLoadingDetails = false;
+  RemoteConsultationDetailModel? _details;
+
+  Future<void> _fetchDetails() async {
+    setState(() => _isLoadingDetails = true);
+    try {
+      final api = ClinicRemoteApiService();
+      _details = await api.getRemoteConsultationDetail(widget.data.consultationId);
+    } catch (e) {
+      // Handle error silently or log
+    } finally {
+      if (mounted) setState(() => _isLoadingDetails = false);
+    }
+  }
+
+  Future<void> _toggleExpand() async {
+    setState(() {
+      _isExpanded = !_isExpanded;
+    });
+
+    if (_isExpanded && _details == null) {
+      _fetchDetails();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant TelemedicineRequestCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the parent rebuilds this widget with new data (e.g. after refresh),
+    // clear the cached details and refetch if currently expanded.
+    if (oldWidget.data != widget.data) {
+      _details = null;
+      if (_isExpanded) {
+        _fetchDetails();
+      }
+    }
+  }
+
+  Widget _buildDetailsContent() {
+    String scheduleText = 'مواعيد مخصصة';
+    List<dynamic> workingPeriods = [];
+    
+    if (_details!.workingHoursJson != null && _details!.workingHoursJson!.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(_details!.workingHoursJson!);
+        if (decoded is Map) {
+          if (decoded['type'] == 'fixed') {
+            scheduleText = 'يوميا من ${decoded['from']} الى ${decoded['to']}';
+          } else if (decoded['type'] == 'specific') {
+            workingPeriods = decoded['periods'] as List? ?? [];
+          }
+        } else if (decoded is List) {
+          workingPeriods = decoded;
+        }
+      } catch (_) {}
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildLabel('سعر الجلسة ج.م*'),
+        _buildReadOnlyField(_details!.sessionPrice?.toStringAsFixed(0) ?? ''),
+        const SizedBox(height: 12),
+        
+        _buildLabel('مدة الجلسة*'),
+        _buildReadOnlyField('${_details!.sessionDurationMinutes ?? ''} دق', isDropdown: true),
+        const SizedBox(height: 12),
+        
+        _buildLabel('فترة الانتظار بين كل جلسة*'),
+        _buildReadOnlyField('${_details!.waitingPeriodMinutes ?? ''} دق', isDropdown: true),
+        const SizedBox(height: 12),
+        
+        _buildLabel('مواعيد العمل*'),
+        _buildReadOnlyField(scheduleText, icon: Icons.calendar_today_outlined),
+        if (workingPeriods.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ...workingPeriods.map((period) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Center(
+                  child: Text(
+                    '${period['day']} من ${period['from']} الى ${period['to']}',
+                    style: TextStyle(
+                      fontFamily: specialistFont,
+                      fontSize: 14,
+                      color: Colors.black.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, right: 4),
+      child: RichText(
+        text: TextSpan(
+          text: text.replaceAll('*', ''),
+          style: const TextStyle(
+            fontFamily: specialistFont,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+          children: [
+            if (text.contains('*'))
+              const TextSpan(
+                text: '*',
+                style: TextStyle(color: Colors.red),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyField(String text, {bool isDropdown = false, IconData? icon}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: Colors.black.withValues(alpha: 0.5), size: 20),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontFamily: specialistFont,
+                fontSize: 14,
+                color: Colors.black.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          if (isDropdown)
+            Icon(Icons.keyboard_arrow_down_rounded, color: Colors.black.withValues(alpha: 0.5)),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -429,12 +586,52 @@ class _TelemedicineRequestCardState extends State<TelemedicineRequestCard> {
             const SizedBox(height: 12),
           ],
 
-          // Action Area
+          // Expanded Details
+          if (_isExpanded) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: _isLoadingDetails
+                  ? const Center(child: CircularProgressIndicator(color: specialistGreen))
+                  : _details == null
+                      ? const Center(child: Text('فشل في تحميل التفاصيل', style: TextStyle(fontFamily: specialistFont)))
+                      : _buildDetailsContent(),
+            ),
+          ],
+
+          // Action Area (Buttons)
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                if (widget.data.canEdit) ...[
+                // 1. Show Add Request Button (Green)
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _toggleExpand,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: specialistGreen,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      _isExpanded ? 'إخفاء بيانات الطلب' : 'عرض طلب الاضافة',
+                      style: const TextStyle(
+                        fontFamily: specialistFont,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // 2. Edit Data Button (Outlined)
+                if (widget.data.canEdit || widget.data.status.toLowerCase() == 'pending') ...[
                   SizedBox(
                     width: double.infinity,
                     height: 48,
@@ -460,6 +657,8 @@ class _TelemedicineRequestCardState extends State<TelemedicineRequestCard> {
                   ),
                   const SizedBox(height: 12),
                 ],
+
+                // 3. Cancel Request Button (Text)
                 if (widget.data.canCancel)
                   SizedBox(
                     width: double.infinity,

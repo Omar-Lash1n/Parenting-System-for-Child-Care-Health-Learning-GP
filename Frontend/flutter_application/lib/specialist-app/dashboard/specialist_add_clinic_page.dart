@@ -73,10 +73,32 @@ class _SpecialistAddClinicPageState extends State<SpecialistAddClinicPage> {
     if (_formKey.currentState!.validate()) {
       final provider = context.read<ClinicRemoteProvider>();
       
-      // Find governorate index (1-based) to send as governorateId
-      final govKeys = egyptianGovernorates.keys.toList();
-      final govIndex = govKeys.indexOf(_selectedGov ?? '');
-      final governorateId = govIndex >= 0 ? govIndex + 1 : null;
+      // Find governorate ID dynamically from the server
+      int? realGovernorateId;
+      if (_selectedGov != null) {
+        provider.submitting = true; // Show loading indicator
+        provider.notifyListeners();
+        
+        realGovernorateId = await provider.getGovernorateIdByName(_selectedGov!);
+        
+        provider.submitting = false;
+        provider.notifyListeners();
+        
+        if (realGovernorateId == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  provider.errorMessage ?? 'عذراً، المحافظة غير مطابقة', 
+                  style: const TextStyle(fontFamily: specialistFont)
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+      }
 
       if (_currentClinicId.isEmpty) {
         final newId = await provider.createClinic();
@@ -98,7 +120,7 @@ class _SpecialistAddClinicPageState extends State<SpecialistAddClinicPage> {
       final success = await provider.updateClinicDetails(
         _currentClinicId,
         name: _nameController.text,
-        governorateId: governorateId,
+        governorateId: realGovernorateId,
         districtName: _selectedCity ?? '',
         address: _addressController.text,
         phone: _mobileController.text,

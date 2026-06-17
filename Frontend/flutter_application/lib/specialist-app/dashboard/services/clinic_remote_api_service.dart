@@ -75,6 +75,18 @@ class ClinicRemoteApiService {
     );
   }
 
+  /// GET /api/Cities — Fetch all cities from backend
+  Future<List<Map<String, dynamic>>> getCities() async {
+    final response = await _dio.get(
+      '/Cities',
+      options: await _options(),
+    );
+    return _parseResponse<List<Map<String, dynamic>>>(
+      response.data,
+      (data) => (data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList(),
+    );
+  }
+
   /// PUT /api/doctor/clinics/{clinicId}/details — Update Step 1 fields.
   Future<ClinicDetailModel> updateClinicDetails(
     String clinicId, {

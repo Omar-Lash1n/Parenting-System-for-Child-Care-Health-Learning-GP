@@ -19,6 +19,7 @@ class SpecialistApplicationApiService {
                 receiveTimeout: const Duration(seconds: 20),
                 sendTimeout: const Duration(seconds: 90),
                 headers: {'Accept': 'application/json'},
+                validateStatus: (status) => status != null && status < 500,
               ),
             );
 

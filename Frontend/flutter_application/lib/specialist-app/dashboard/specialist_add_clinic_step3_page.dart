@@ -67,14 +67,25 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
     }
   }
 
-  void _onNext() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => SpecialistAddClinicSuccessPage(
-          clinicId: widget.clinicId,
+  void _onNext() async {
+    final provider = context.read<ClinicRemoteProvider>();
+    final success = await provider.submitClinic(widget.clinicId);
+    if (success && mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SpecialistAddClinicSuccessPage(
+            clinicId: widget.clinicId,
+          ),
         ),
-      ),
-    );
+      );
+    } else if (provider.errorMessage != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.errorMessage!, style: const TextStyle(fontFamily: specialistFont)),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _onPrevious() {
@@ -245,7 +256,7 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: _onNext,
+                        onPressed: provider.submitting ? null : _onNext,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: specialistGreen,
                           shape: RoundedRectangleBorder(
@@ -253,15 +264,21 @@ class _SpecialistAddClinicStep3PageState extends State<SpecialistAddClinicStep3P
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'التالي',
-                          style: TextStyle(
-                            fontFamily: specialistFont,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
+                        child: provider.submitting
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text(
+                                'التالي',
+                                style: TextStyle(
+                                  fontFamily: specialistFont,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 12),

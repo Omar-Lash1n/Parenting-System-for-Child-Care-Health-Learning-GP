@@ -96,6 +96,37 @@ class ClinicRemoteProvider extends ChangeNotifier {
     }
   }
 
+  /// Helper method to safely normalize Arabic text for comparison
+  String _normalizeArabic(String text) {
+    return text
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll('ة', 'ه')
+        .trim();
+  }
+
+  /// Look up governorate ID by its name from backend API
+  Future<int?> getGovernorateIdByName(String name) async {
+    errorMessage = null;
+    try {
+      final cities = await _api.getCities();
+      final normalizedInput = _normalizeArabic(name);
+
+      for (var city in cities) {
+        final cityNameAr = _normalizeArabic(city['nameAr']?.toString() ?? '');
+        if (cityNameAr.isNotEmpty && cityNameAr == normalizedInput) {
+          return city['id'] as int?;
+        }
+      }
+      errorMessage = 'عذراً، لم يتم العثور على تطابق للمحافظة المختارة في قاعدة بيانات الخادم';
+      return null;
+    } catch (e) {
+      errorMessage = _cleanError(e);
+      return null;
+    }
+  }
+
   /// Update Step 1 details. Returns true on success.
   Future<bool> updateClinicDetails(
     String clinicId, {

@@ -159,13 +159,23 @@ class _SpecialistAddTelemedicinePageState
       );
 
       if (success && mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => SpecialistTelemedicineSuccessPage(
-              consultationId: _currentConsultationId,
+        final submitSuccess = await provider.submitRemoteConsultation(_currentConsultationId);
+        if (submitSuccess && mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => SpecialistTelemedicineSuccessPage(
+                consultationId: _currentConsultationId,
+              ),
             ),
-          ),
-        );
+          );
+        } else if (provider.errorMessage != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(provider.errorMessage!, style: const TextStyle(fontFamily: specialistFont)),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       } else if (provider.errorMessage != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -199,6 +209,7 @@ class _SpecialistAddTelemedicinePageState
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<ClinicRemoteProvider>();
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -450,7 +461,7 @@ class _SpecialistAddTelemedicinePageState
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: _onNext,
+                        onPressed: provider.submitting ? null : _onNext,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: specialistGreen,
                           shape: RoundedRectangleBorder(
@@ -458,15 +469,21 @@ class _SpecialistAddTelemedicinePageState
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'التالي',
-                          style: TextStyle(
-                            fontFamily: specialistFont,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
+                        child: provider.submitting
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text(
+                                'التالي',
+                                style: TextStyle(
+                                  fontFamily: specialistFont,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 12),
