@@ -22,9 +22,9 @@
   }
 
   h1 {
-    font-size: 36px;
-    font-weight: 700;
-    margin-bottom: 12px;
+    font-size: 42px;
+    font-weight: 800;
+    margin-bottom: 16px;
     background: linear-gradient(to left, #fff, #b4b4c7);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -46,6 +46,8 @@
 
 .nav-card {
   background: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 40px 30px;
@@ -76,10 +78,23 @@
     transition: opacity 0.3s ease;
   }
 
-  .card-icon {
-    font-size: 56px;
+  .card-icon-container {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 24px;
+    background: var(--card-color-light);
+    color: var(--card-color);
     margin-bottom: 24px;
-    transition: transform 0.3s ease;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+    
+    svg {
+      width: 40px;
+      height: 40px;
+      stroke-width: 2px;
+    }
   }
 
   h2 {
@@ -121,8 +136,9 @@
       opacity: 1;
     }
 
-    .card-icon {
-      transform: scale(1.1);
+    .card-icon-container {
+      transform: scale(1.1) translateY(-4px);
+      box-shadow: 0 10px 24px var(--card-color-light);
     }
 
     h2 {
@@ -151,7 +167,7 @@
 
 .parents-card {
   --card-color: var(--parent-color);
-  --card-color-light: rgba(120, 0, 0, 0.15);
+  --card-color-light: var(--parent-color-light);
 }
 
 .daily-questions-card {
