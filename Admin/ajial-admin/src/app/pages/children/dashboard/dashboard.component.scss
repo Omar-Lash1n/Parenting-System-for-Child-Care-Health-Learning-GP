@@ -279,6 +279,35 @@
   }
 }
 
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 16px;
+  text-align: center;
+  padding: 40px;
+
+  h3 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--danger);
+    margin-top: 8px;
+  }
+
+  p {
+    color: var(--text-secondary);
+    font-size: 15px;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+
+  .btn {
+    margin-top: 8px;
+  }
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

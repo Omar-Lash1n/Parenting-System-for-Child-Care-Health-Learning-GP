@@ -1,4 +1,4 @@
-<div class="dashboard-container" *ngIf="!loading && summary; else loadingTpl">
+<div class="dashboard-container" *ngIf="!loading && !hasError && summary; else statusTpl">
   <header class="page-header">
     <div class="header-text">
       <h1>إحصائيات الوالدين</h1>
@@ -10,7 +10,7 @@
   <div class="stats-grid">
     <div class="stat-card">
       <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
-        <svg xmlns="http://www.w3.org/-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
       </div>
       <div class="stat-info">
         <h3>إجمالي الوالدين</h3>
@@ -119,9 +119,22 @@
   </div>
 </div>
 
-<ng-template #loadingTpl>
-  <div class="loading-state">
+<ng-template #statusTpl>
+  <div class="loading-state" *ngIf="loading && !hasError">
     <div class="spinner"></div>
     <p>جاري تحميل البيانات...</p>
+  </div>
+  <div class="error-state" *ngIf="hasError">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <h3>فشل الاتصال بالسيرفر</h3>
+    <p>تعذّر تحميل البيانات. تأكد من اتصالك بالإنترنت وحاول لاحقاً.</p>
+    <button class="btn btn-outline" (click)="fetchData()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      إعادة المحاولة
+    </button>
   </div>
 </ng-template>

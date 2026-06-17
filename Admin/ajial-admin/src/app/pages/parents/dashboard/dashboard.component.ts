@@ -17,6 +17,7 @@ export class DashboardComponent implements OnInit {
   parents: Parent[] | null = null;
   summary: ParentSummary | null = null;
   loading = true;
+  hasError = false;
 
   @ViewChild('ageGroupChart') ageGroupChart!: ElementRef;
   @ViewChild('genderChart') genderChart!: ElementRef;
@@ -28,12 +29,22 @@ export class DashboardComponent implements OnInit {
   }
 
   fetchData() {
+    this.loading = true;
+    this.hasError = false;
+    this.cdr.detectChanges();
+
     this.analyticsService.getParentsSummary().subscribe({
       next: (res) => {
         if (res.success) {
           this.summary = res.data;
           this.checkAndInitCharts();
         }
+      },
+      error: (err) => {
+        console.error('Parents summary fetch error:', err);
+        this.hasError = true;
+        this.loading = false;
+        this.cdr.detectChanges();
       }
     });
 
@@ -43,6 +54,12 @@ export class DashboardComponent implements OnInit {
           this.parents = res.data;
           this.checkAndInitCharts();
         }
+      },
+      error: (err) => {
+        console.error('Parents analytics fetch error:', err);
+        this.hasError = true;
+        this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -149,4 +166,3 @@ export class DashboardComponent implements OnInit {
     });
   }
 }
-

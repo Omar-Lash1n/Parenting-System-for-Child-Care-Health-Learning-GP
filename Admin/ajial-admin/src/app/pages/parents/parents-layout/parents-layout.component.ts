@@ -10,6 +10,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 })
 export class ParentsLayoutComponent implements OnInit {
   ngOnInit() {
-    document.body.className = 'theme-parents';
+    const isLight = document.body.classList.contains('light-mode');
+    document.body.className = isLight ? 'light-mode theme-parents' : 'theme-parents';
   }
 }

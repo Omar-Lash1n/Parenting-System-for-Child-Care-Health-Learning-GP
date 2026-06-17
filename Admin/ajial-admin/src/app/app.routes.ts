@@ -26,8 +26,7 @@ export const routes: Routes = [
         path: 'specialists', 
         component: SpecialistsLayoutComponent,
         children: [
-            { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-            { path: 'dashboard', component: SpecialistsMainDashboardComponent, title: 'أجيال | المتخصصين - إحصائيات' },
+            { path: '', redirectTo: 'requests', pathMatch: 'full' },
             { path: 'requests', component: SpecialistsDashboardComponent, title: 'أجيال | المتخصصين - طلبات' }
         ]
     },

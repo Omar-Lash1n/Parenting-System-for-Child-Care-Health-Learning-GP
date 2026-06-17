@@ -575,6 +575,38 @@ body {
   font-size: 15px;
 }
 
+.error-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 16px;
+  text-align: center;
+  padding: 60px 40px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+
+  h3 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--danger);
+    margin-top: 8px;
+  }
+
+  p {
+    color: var(--text-secondary);
+    font-size: 15px;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+
+  .btn {
+    margin-top: 8px;
+  }
+}
+
 /* ─── Modal ─────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;

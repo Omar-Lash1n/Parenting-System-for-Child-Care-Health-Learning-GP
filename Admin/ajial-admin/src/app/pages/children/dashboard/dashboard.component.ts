@@ -16,6 +16,7 @@ export class DashboardComponent implements OnInit {
 
   children: Child[] = [];
   loading = true;
+  hasError = false;
 
   summary = {
     totalChildren: 0,
@@ -30,6 +31,14 @@ export class DashboardComponent implements OnInit {
   @ViewChild('activeChart') activeChart!: ElementRef;
 
   ngOnInit() {
+    this.fetchData();
+  }
+
+  fetchData() {
+    this.loading = true;
+    this.hasError = false;
+    this.cdr.detectChanges();
+
     this.analyticsService.getChildrenAnalytics().subscribe({
       next: (res) => {
         if (res.success) {
@@ -39,6 +48,12 @@ export class DashboardComponent implements OnInit {
           this.cdr.detectChanges(); // force view update
           this.initCharts();
         }
+      },
+      error: (err) => {
+        console.error('Children analytics fetch error:', err);
+        this.hasError = true;
+        this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }

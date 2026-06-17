@@ -10,6 +10,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 })
 export class RankingLayoutComponent implements OnInit {
   ngOnInit() {
-    document.body.className = 'theme-ranking';
+    const isLight = document.body.classList.contains('light-mode');
+    document.body.className = isLight ? 'light-mode theme-ranking' : 'theme-ranking';
   }
 }

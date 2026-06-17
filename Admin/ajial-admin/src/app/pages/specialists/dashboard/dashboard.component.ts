@@ -22,6 +22,7 @@ export class DashboardComponent implements OnInit {
   rejectedCount = 0;
 
   isLoading = false;
+  hasError = false;
 
   // Modals state
   isDetailModalActive = false;
@@ -42,6 +43,8 @@ export class DashboardComponent implements OnInit {
 
   fetchSpecialists() {
     this.isLoading = true;
+    this.hasError = false;
+    this.cdr.detectChanges();
     this.http.get<any>(`${this.API_BASE}/Specialist`).subscribe({
       next: (res) => {
         if (res.success && Array.isArray(res.data)) {
@@ -56,11 +59,9 @@ export class DashboardComponent implements OnInit {
       },
       error: (err) => {
         console.error('Fetch error:', err);
-        if (err.status === 401) {
-          this.showToast('لم يتم التحقق من الصلاحيات (401 Unauthorized)', 'error');
-        } else {
-          this.showToast('فشل الاتصال بالسيرفر.', 'error');
-        }
+        this.hasError = true;
+        this.allSpecialists = [];
+        this.filteredSpecialists = [];
         this.isLoading = false;
         this.cdr.detectChanges();
       }

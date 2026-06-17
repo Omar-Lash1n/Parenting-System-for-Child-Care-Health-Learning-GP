@@ -10,6 +10,8 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 })
 export class SpecialistsLayoutComponent implements OnInit {
   ngOnInit() {
-    document.body.className = 'theme-specialists';
+    // Remove all theme-* classes but preserve light-mode
+    const isLight = document.body.classList.contains('light-mode');
+    document.body.className = isLight ? 'light-mode theme-specialists' : 'theme-specialists';
   }
 }

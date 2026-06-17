@@ -10,6 +10,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 })
 export class DailyQuestionsLayoutComponent implements OnInit {
   ngOnInit() {
-    document.body.className = 'theme-daily-questions';
+    const isLight = document.body.classList.contains('light-mode');
+    document.body.className = isLight ? 'light-mode theme-daily-questions' : 'theme-daily-questions';
   }
 }
