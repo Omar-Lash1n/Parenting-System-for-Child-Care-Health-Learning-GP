@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:Ajial/providers/child_profile_provider.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
 import 'package:Ajial/providers/family_provider.dart';
@@ -856,6 +857,60 @@ class _MyChildProfilePageState extends State<MyChildProfilePage> {
                   Navigator.of(context).pop(); // dismiss loading
                   Navigator.pushNamed(context, '/vaccination-welcome',
                       arguments: {'childId': widget.childId});
+                }
+              }
+              // --- السجل الطبي (Medical Record) ---
+              else if (item.title == 'السجل الطبي') {
+                // Show loading
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => const Center(
+                    child: CircularProgressIndicator(color: _kPrimaryRed),
+                  ),
+                );
+
+                try {
+                  final (success, urlOrError) =
+                      await AuthService().getMedicalFileUrl(widget.childId!);
+
+                  if (!mounted) return;
+                  Navigator.of(context).pop(); // dismiss loading
+
+                  if (success) {
+                    // Open the PDF URL in the browser
+                    final uri = Uri.parse(urlOrError);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } else {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('لا يمكن فتح الملف الطبي',
+                              style: TextStyle(fontFamily: _kFontFamily)),
+                          backgroundColor: _kPrimaryRed,
+                        ),
+                      );
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(urlOrError,
+                            style: const TextStyle(fontFamily: _kFontFamily)),
+                        backgroundColor: _kPrimaryRed,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (!mounted) return;
+                  Navigator.of(context).pop(); // dismiss loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('حدث خطأ أثناء تحميل الملف الطبي',
+                          style: TextStyle(fontFamily: _kFontFamily)),
+                      backgroundColor: _kPrimaryRed,
+                    ),
+                  );
                 }
               }
               // Other dashboard items can be wired here

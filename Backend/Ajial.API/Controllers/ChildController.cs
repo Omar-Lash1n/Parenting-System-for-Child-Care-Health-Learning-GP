@@ -1,5 +1,6 @@
 ﻿using Ajial.Application.DTOs.Child;
 using Ajial.Application.DTOs.Common;
+using Ajial.Application.DTOs.MedicalFile;
 using Ajial.Application.DTOs.VoiceNote;
 using Ajial.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -14,15 +15,18 @@ public class ChildController : ControllerBase
 {
     private readonly IChildService _childService;
     private readonly IVoiceNoteService _voiceNoteService;
+    private readonly IMedicalFileService _medicalFileService;
     private readonly ILogger<ChildController> _logger;
 
     public ChildController(
         IChildService childService,
         IVoiceNoteService voiceNoteService,
+        IMedicalFileService medicalFileService,
         ILogger<ChildController> logger)
     {
         _childService = childService;
         _voiceNoteService = voiceNoteService;
+        _medicalFileService = medicalFileService;
         _logger = logger;
     }
 
@@ -205,6 +209,34 @@ public class ChildController : ControllerBase
                 new List<string> { "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقاً" }
             ));
         }
+    }
+
+    /// <summary>
+    /// السجل الطبي — توليد الملف الطبي الموحد للطفل (PDF) وإرجاع رابطه.
+    /// </summary>
+    /// <remarks>
+    /// يُستخدم عند الضغط على "السجل الطبي" في ملف الطفل (جانب ولي الأمر)،
+    /// وكذلك عند الضغط على "فتح الملف الطبي" أثناء حجز استشارة.
+    /// يجمع بيانات الطفل والتطعيمات، يولّد ملف PDF بتصميم أجيال، يرفعه إلى التخزين، ويعيد الرابط.
+    /// </remarks>
+    [HttpGet("{childId:guid}/medical-file")]
+    [Authorize(Roles = "Parent")]
+    [ProducesResponseType(typeof(ApiResponse<MedicalFileResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMedicalFile(Guid childId)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid parentUserId))
+        {
+            return Unauthorized(ApiResponse<MedicalFileResponse>.FailureResponse(
+                "غير مصرح", new List<string> { "يجب تسجيل الدخول أولاً" }));
+        }
+
+        var result = await _medicalFileService.GenerateChildMedicalFileAsync(childId, parentUserId);
+        if (result.Success) return Ok(result);
+        if (result.Message.Contains("لم يتم العثور")) return NotFound(result);
+        if (result.Message.Contains("حدث خطأ في الخادم")) return StatusCode(500, result);
+        return BadRequest(result);
     }
 
     /// <summary>

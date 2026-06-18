@@ -51,8 +51,14 @@ public class Booking
     /// <summary>وصف الشكوى الحالية للمريض (اختياري).</summary>
     public string? ComplaintDescription { get; set; }
 
-    /// <summary>مشاركة الملف الطبي للطفل — يُخزّن فقط الآن، يُفعّل في المرحلة الثانية.</summary>
+    /// <summary>مشاركة الملف الطبي للطفل مع الطبيب.</summary>
     public bool ShareMedicalFile { get; set; }
+
+    /// <summary>
+    /// رابط الملف الطبي الموحد للطفل (PDF) المُولّد عند الحجز إذا اختار ولي الأمر مشاركته.
+    /// null إذا لم تُطلب المشاركة أو كان المريض هو ولي الأمر نفسه (بدون طفل).
+    /// </summary>
+    public string? MedicalFileUrl { get; set; }
 
     public BookingStatus Status { get; set; } = BookingStatus.PendingPayment;
     public string? RejectionReason { get; set; }

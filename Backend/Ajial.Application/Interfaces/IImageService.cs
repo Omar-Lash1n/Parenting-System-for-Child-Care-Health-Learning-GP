@@ -34,4 +34,11 @@ public interface IImageService
 
     /// <summary>رفع صورة إيصال دفع إلى حاوية consultation-images</summary>
     Task<string> UploadPaymentReceiptAsync(IFormFile file, Guid parentId);
+
+    /// <summary>
+    /// رفع ملف الـ PDF للملف الطبي الموحد للطفل إلى حاوية medical-files.
+    /// يُخزَّن في مسار ثابت لكل طفل (medical-files/{childId}/passport.pdf) ويُستبدل عند إعادة التوليد.
+    /// يعيد رابطاً يتضمن مُبطّل تخزين مؤقت (?v=timestamp) لضمان جلب أحدث نسخة.
+    /// </summary>
+    Task<string> UploadMedicalFileAsync(byte[] pdfBytes, Guid childId);
 }

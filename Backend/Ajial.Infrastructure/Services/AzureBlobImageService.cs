@@ -454,6 +454,37 @@ public class AzureBlobImageService : IImageService
         return blobClient.Uri.ToString();
     }
 
+    /// <summary>
+    /// رفع ملف الـ PDF للملف الطبي الموحد للطفل إلى حاوية medical-files.
+    /// مسار ثابت لكل طفل (يُستبدل عند إعادة التوليد) + Cache-Control: no-cache،
+    /// ويُعاد الرابط مع مُبطّل تخزين مؤقت لتفادي عرض نسخة قديمة.
+    /// </summary>
+    public async Task<string> UploadMedicalFileAsync(byte[] pdfBytes, Guid childId)
+    {
+        if (pdfBytes == null || pdfBytes.Length == 0)
+            throw new ArgumentException("ملف الـ PDF فارغ");
+
+        var containerName = _configuration["AzureStorage:MedicalFileContainerName"] ?? "medical-files";
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+        var blobName = $"medical-files/{childId}/passport.pdf";
+        var blobClient = containerClient.GetBlobClient(blobName);
+
+        var headers = new BlobHttpHeaders
+        {
+            ContentType = "application/pdf",
+            CacheControl = "no-cache, max-age=0"
+        };
+
+        using var stream = new MemoryStream(pdfBytes);
+        await blobClient.UploadAsync(stream, new BlobUploadOptions { HttpHeaders = headers });
+
+        // مُبطّل تخزين مؤقت يضمن أن يجلب العميل أحدث نسخة بعد إعادة التوليد على نفس المسار
+        var cacheBuster = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+        return $"{blobClient.Uri}?v={cacheBuster}";
+    }
+
     public Task<string> UploadBookingAttachmentAsync(IFormFile file, Guid parentId) =>
         UploadConsultationImageAsync(file, parentId, "attachments");
 

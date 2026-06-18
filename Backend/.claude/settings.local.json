@@ -18,7 +18,12 @@
       "Bash(python -c \"import fitz; doc=fitz.open\\('Ibrahim_Khaled_Medical_Passport.pdf'\\); doc[1].get_pixmap\\(dpi=200\\).save\\('page_2_big.png'\\); print\\('done'\\)\")",
       "Bash(python -c \"import fitz; d=fitz.open\\('Ibrahim_Khaled_Medical_Passport.pdf'\\); print\\('METADATA:', d.metadata\\); print\\('FONTS p1:', [f[3] for f in d[0].get_fonts\\(\\)]\\)\")",
       "Bash(python -c \"import fitz,sys,io; sys.stdout=io.TextIOWrapper\\(sys.stdout.buffer,encoding='utf-8'\\); d=fitz.open\\('Ibrahim_Khaled_Medical_Passport.pdf'\\); print\\('PRODUCER:', d.metadata.get\\('producer'\\), '| CREATOR:', d.metadata.get\\('creator'\\)\\); fonts=set\\(f[3] for f in d[0].get_fonts\\(\\)\\); print\\('FONTS:', fonts\\)\")",
-      "Bash(dotnet --version)"
+      "Bash(dotnet --version)",
+      "Bash(python -c \"import fitz; fitz.open\\('spike.pdf'\\)[0].get_pixmap\\(dpi=150\\).save\\('spike.png'\\); print\\('ok'\\)\")",
+      "Bash(dotnet add *)",
+      "Bash(python -c \"import fitz; d=fitz.open\\('mf_sample.pdf'\\); print\\('pages',d.page_count\\); [p.get_pixmap\\(dpi=150\\).save\\(f'mf_p{i+1}.png'\\) for i,p in enumerate\\(d\\)]; print\\('ok'\\)\")",
+      "Bash(python -c \"import fitz; d=fitz.open\\('mf_sample.pdf'\\); d[0].get_pixmap\\(dpi=150,clip=fitz.Rect\\(0,80,595,260\\)\\).save\\('mf_bloodcheck.png'\\); print\\('ok'\\)\")",
+      "Bash(python -c \"import fitz; d=fitz.open\\('mf_sample.pdf'\\); print\\('PAGES:',d.page_count\\); d[0].get_pixmap\\(dpi=140\\).save\\('mf_p1.png'\\)\")"
     ]
   }
 }

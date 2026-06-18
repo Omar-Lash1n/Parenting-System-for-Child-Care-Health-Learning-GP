@@ -10,6 +10,12 @@
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
 
+    <!-- Bundled Noto Arabic fonts + logo for the Medical Passport PDF (embedded so they ship to Azure regardless of host) -->
+    <ItemGroup>
+        <EmbeddedResource Include="Fonts\*.ttf" />
+        <EmbeddedResource Include="Assets\*.png" />
+    </ItemGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\Ajial.Application\Ajial.Application.csproj" />
         <ProjectReference Include="..\Ajial.Domain\Ajial.Domain.csproj" />
@@ -27,6 +33,7 @@
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="MimeKit" Version="4.15.1" />
+        <PackageReference Include="QuestPDF" Version="2026.6.0" />
     </ItemGroup>
 
 </Project>

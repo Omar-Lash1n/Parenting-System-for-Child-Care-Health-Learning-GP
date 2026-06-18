@@ -14,13 +14,15 @@ public class ConsultationService : IConsultationService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IImageService _imageService;
+    private readonly IMedicalFileService _medicalFileService;
 
     private const int SearchHorizonDays = 60; // أقصى عدد أيام للبحث عن أقرب موعد
 
-    public ConsultationService(IUnitOfWork unitOfWork, IImageService imageService)
+    public ConsultationService(IUnitOfWork unitOfWork, IImageService imageService, IMedicalFileService medicalFileService)
     {
         _unitOfWork = unitOfWork;
         _imageService = imageService;
+        _medicalFileService = medicalFileService;
     }
 
     // ── الاكتشاف ───────────────────────────────────────────────────────────────
@@ -492,6 +494,12 @@ public class ConsultationService : IConsultationService
 
             await _unitOfWork.Bookings.AddAsync(booking);
 
+            // مشاركة الملف الطبي: توليد الملف الطبي للطفل وحفظ رابطه مع الحجز (الطفل فقط، وليس ولي الأمر)
+            if (request.ShareMedicalFile && childId.HasValue)
+            {
+                booking.MedicalFileUrl = await _medicalFileService.TryGenerateShareableUrlAsync(childId.Value, parent!.Id);
+            }
+
             if (request.Attachments != null)
             {
                 foreach (var file in request.Attachments.Where(f => f != null && f.Length > 0))
@@ -927,6 +935,7 @@ public class ConsultationService : IConsultationService
             ChildId = b.ChildId,
             ComplaintDescription = b.ComplaintDescription,
             ShareMedicalFile = b.ShareMedicalFile,
+            MedicalFileUrl = b.MedicalFileUrl,
             CreatedAt = b.CreatedAt,
             CanCancel = b.Status is BookingStatus.PendingPayment or BookingStatus.PendingReview or BookingStatus.Confirmed,
             Attachments = (b.Attachments ?? new List<BookingAttachment>())

@@ -1699,6 +1699,60 @@ class AuthService {
   }
 
   // ============================================================
+  // ============== Medical File API =============================
+  // ============================================================
+
+  /// GET /api/Child/{childId}/medical-file
+  /// Generates the child's unified medical file (PDF) and returns the download URL.
+  Future<(bool success, String urlOrError)> getMedicalFileUrl(String childId) async {
+    final String apiUrl = '$_apiBaseUrl/Child/$childId/medical-file';
+    final String? token = await getToken();
+
+    if (token == null) {
+      return (false, 'غير مصرح. يرجى تسجيل الدخول أولاً.');
+    }
+
+    try {
+      print('📤 Fetching medical file for child $childId...');
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 30));
+
+      print('📥 Medical File Response Code: ${response.statusCode}');
+      print('📥 Medical File Response Body: ${response.body}');
+
+      final responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseBody['success'] == true) {
+        final data = responseBody['data'];
+        final String? fileUrl = data?['fileUrl']?.toString();
+
+        if (fileUrl != null && fileUrl.isNotEmpty) {
+          return (true, fileUrl);
+        }
+        return (false, 'لم يتم إنشاء الملف الطبي بعد');
+      }
+
+      // Parse error message
+      String errorMsg = 'فشل في توليد الملف الطبي';
+      final errors = responseBody['errors'] as List?;
+      if (errors != null && errors.isNotEmpty) {
+        errorMsg = errors.first.toString();
+      } else if (responseBody['message'] != null) {
+        errorMsg = responseBody['message'].toString();
+      }
+      return (false, errorMsg);
+    } catch (e) {
+      print('❌ Error fetching medical file: $e');
+      return (false, 'تأكد من الاتصال بالإنترنت. يرجى المحاولة مرة أخرى.');
+    }
+  }
+
+  // ============================================================
   // ============== Child Profile API Methods ====================
   // ============================================================
 

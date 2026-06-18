@@ -134,6 +134,9 @@ public class BookingDetailResponse
     public Guid? ChildId { get; set; }
     public string? ComplaintDescription { get; set; }
     public bool ShareMedicalFile { get; set; }
+
+    /// <summary>رابط الملف الطبي الموحد للطفل (PDF) إذا اختار ولي الأمر مشاركته عند الحجز.</summary>
+    public string? MedicalFileUrl { get; set; }
     public List<AttachmentDto> Attachments { get; set; } = new();
 
     // الدفع المرتبط (إن وُجد)
