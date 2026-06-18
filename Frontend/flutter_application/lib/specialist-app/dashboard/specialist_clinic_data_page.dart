@@ -54,6 +54,7 @@ class _SpecialistClinicDataPageState extends State<SpecialistClinicDataPage> {
         .where((c) => !(c.status.toLowerCase() == 'draft' && c.submittedAt == null))
         .toList();
     final isLoading = provider.loadingClinics;
+    final hasApproved = clinics.any((c) => c.status.toLowerCase() == 'approved');
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -307,12 +308,13 @@ class _SpecialistClinicDataPageState extends State<SpecialistClinicDataPage> {
                 ),
               
               // Bottom Button
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: OutlinedButton(
+              if (!hasApproved)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton(
                     onPressed: provider.submitting
                         ? null
                         : () {

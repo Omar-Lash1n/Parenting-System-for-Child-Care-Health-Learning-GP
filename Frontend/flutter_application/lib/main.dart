@@ -62,6 +62,7 @@ import 'package:Ajial/prizes/prize_store_provider.dart';
 import 'package:Ajial/prizes/prize_store_page.dart';
 import 'package:Ajial/specialist-app/application-tracking/providers/specialist_application_provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/screens/specialist_application_tracking_page.dart';
+import 'package:Ajial/consultations/screens/parent_consultations_page.dart';
 
 import 'package:Ajial/lessons/providers/lesson_provider.dart';
 import 'package:Ajial/lessons/screens/lessons_list_screen.dart';
@@ -280,6 +281,7 @@ class AjialApp extends StatelessWidget {
         '/lesson-detail': (context) => const LessonDetailScreen(),
         '/lesson-quiz': (context) => const LessonQuizScreen(),
         '/ranking': (context) => const RankingPage(),
+        '/parent-consultations': (context) => const ParentConsultationsPage(),
       },
     );
   }

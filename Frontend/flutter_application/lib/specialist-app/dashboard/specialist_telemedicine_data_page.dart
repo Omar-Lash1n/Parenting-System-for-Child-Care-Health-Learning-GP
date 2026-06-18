@@ -59,6 +59,7 @@ class _SpecialistTelemedicineDataPageState
         .where((c) => !(c.status.toLowerCase() == 'draft' && c.submittedAt == null))
         .toList();
     final isLoading = provider.loadingRemoteConsultations;
+    final hasApproved = consultations.any((c) => c.status.toLowerCase() == 'approved');
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -210,12 +211,13 @@ class _SpecialistTelemedicineDataPageState
                 ),
 
               // Bottom Button
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: OutlinedButton(
+              if (!hasApproved)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton(
                     onPressed: provider.submitting
                         ? null
                         : () {

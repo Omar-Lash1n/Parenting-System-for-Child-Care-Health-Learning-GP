@@ -21,9 +21,7 @@ class QuickActionsSection extends StatelessWidget {
         icon: Icons.chat_bubble_outline_rounded,
         iconColor: const Color(0xFF0EA5E9),
         backgroundColor: const Color(0x0D0EA5E9),
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('قريبًا')),
-        ),
+        onTap: () => Navigator.pushNamed(context, '/parent-consultations'),
       ),
       _QuickActionData(
         label: 'مراكز تطعيم',
