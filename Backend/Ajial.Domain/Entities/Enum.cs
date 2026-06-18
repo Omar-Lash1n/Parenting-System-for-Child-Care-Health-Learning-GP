@@ -66,3 +66,34 @@ public enum RemoteConsultationStatus
     Rejected = 3,   // مرفوض
     Cancelled = 4   // ملغي
 }
+
+// ── Consultation booking (parent side — استشارات طبية) ──
+
+public enum BookingServiceType
+{
+    Clinic = 1,             // كشف داخل العيادة
+    RemoteConsultation = 2  // جلسة اون لاين (الكشف عن بعد)
+}
+
+public enum BookingStatus
+{
+    PendingPayment = 0, // انتظار رفع إيصال الدفع
+    PendingReview = 1,  // جاري مراجعة الحجز (تم رفع الإيصال)
+    Confirmed = 2,      // تم تأكيد الحجز - انتظار موعد الجلسة
+    Rejected = 3,       // مرفوض (رُفض الدفع)
+    Cancelled = 4,      // ملغي
+    Completed = 5       // انتهت الجلسة (المرحلة الثانية)
+}
+
+public enum PaymentMethod
+{
+    VodafoneCash = 1, // فودافون كاش
+    InstaPay = 2      // انستا باي
+}
+
+public enum PaymentStatus
+{
+    Pending = 0,  // قيد المراجعة
+    Approved = 1, // تم القبول
+    Rejected = 2  // مرفوض
+}

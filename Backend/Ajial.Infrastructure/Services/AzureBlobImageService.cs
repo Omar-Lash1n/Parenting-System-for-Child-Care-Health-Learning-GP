@@ -453,4 +453,38 @@ public class AzureBlobImageService : IImageService
 
         return blobClient.Uri.ToString();
     }
+
+    public Task<string> UploadBookingAttachmentAsync(IFormFile file, Guid parentId) =>
+        UploadConsultationImageAsync(file, parentId, "attachments");
+
+    public Task<string> UploadPaymentReceiptAsync(IFormFile file, Guid parentId) =>
+        UploadConsultationImageAsync(file, parentId, "receipts");
+
+    /// <summary>
+    /// رفع صورة استشارة (مرفق حجز أو إيصال دفع) إلى حاوية consultation-images.
+    /// Blob path: {subfolder}/{parentId}/img-{guid}.{ext}
+    /// </summary>
+    private async Task<string> UploadConsultationImageAsync(IFormFile file, Guid parentId, string subfolder)
+    {
+        if (file == null || file.Length == 0)
+            throw new ArgumentException("الملف فارغ");
+
+        ValidateImage(file);
+
+        var containerName = _configuration["AzureStorage:ConsultationContainerName"] ?? "consultation-images";
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (string.IsNullOrEmpty(extension)) extension = ".jpg";
+
+        var blobName = $"{subfolder}/{parentId}/img-{Guid.NewGuid()}{extension}";
+        var blobClient = containerClient.GetBlobClient(blobName);
+
+        var headers = new BlobHttpHeaders { ContentType = file.ContentType, CacheControl = "public, max-age=31536000" };
+        using var stream = file.OpenReadStream();
+        await blobClient.UploadAsync(stream, new BlobUploadOptions { HttpHeaders = headers });
+
+        return blobClient.Uri.ToString();
+    }
 }

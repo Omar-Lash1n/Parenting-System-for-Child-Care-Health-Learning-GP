@@ -40,6 +40,10 @@ public interface IUnitOfWork : IDisposable
     IRepository<RankingEntry> RankingEntries { get; }               // ✅ Ranking Feature
     IRepository<Clinic> Clinics { get; }                            // ✅ Clinic Feature
     IRepository<RemoteConsultation> RemoteConsultations { get; }    // ✅ Remote Consultation Feature
+    IRepository<Booking> Bookings { get; }                          // ✅ Consultation Booking Feature
+    IRepository<BookingAttachment> BookingAttachments { get; }      // ✅ Consultation Booking Feature
+    IRepository<Payment> Payments { get; }                          // ✅ Consultation Booking Feature
+    IRepository<PaymentSetting> PaymentSettings { get; }            // ✅ Consultation Booking Feature
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

@@ -28,4 +28,10 @@ public interface IImageService
 
     /// <summary>رفع مستند عيادة إلى حاوية clinic-documents</summary>
     Task<string> UploadClinicImageAsync(IFormFile file, Guid clinicId, string subfolder);
+
+    /// <summary>رفع صورة مرفقة بحجز (تحاليل/أشعة) إلى حاوية consultation-images</summary>
+    Task<string> UploadBookingAttachmentAsync(IFormFile file, Guid parentId);
+
+    /// <summary>رفع صورة إيصال دفع إلى حاوية consultation-images</summary>
+    Task<string> UploadPaymentReceiptAsync(IFormFile file, Guid parentId);
 }

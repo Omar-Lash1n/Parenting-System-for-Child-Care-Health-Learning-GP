@@ -29,6 +29,14 @@ class _SpecialistAddClinicStep2PageState
 
   List<Map<String, String>> _confirmedPeriods = [];
 
+  // مواعيد العمل الثابتة بصيغة 24 ساعة المعيارية (HH:mm) — تُرسل للـ backend
+  String? _fixedFrom24;
+  String? _fixedTo24;
+
+  /// تحويل TimeOfDay إلى صيغة معيارية "HH:mm" (24 ساعة) ليقرأها الـ backend بسهولة.
+  String _to24(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +49,8 @@ class _SpecialistAddClinicStep2PageState
           try {
             final decoded = jsonDecode(detail.workingHoursJson!);
             if (decoded is Map && decoded['type'] == 'fixed') {
+              _fixedFrom24 = decoded['from']?.toString();
+              _fixedTo24 = decoded['to']?.toString();
               _scheduleController.text = 'يوميا من ${decoded['from']} الى ${decoded['to']}';
             } else if (decoded is Map && decoded['type'] == 'specific') {
               final periods = decoded['periods'] as List? ?? [];
@@ -71,12 +81,9 @@ class _SpecialistAddClinicStep2PageState
       // Build working hours JSON
       String? workingHoursJson;
       if (_scheduleController.text.startsWith('يوميا من')) {
-        // Fixed schedule
-        final parts = _scheduleController.text
-            .replaceFirst('يوميا من ', '')
-            .split(' الى ');
-        if (parts.length == 2) {
-          workingHoursJson = jsonEncode({'type': 'fixed', 'from': parts[0], 'to': parts[1]});
+        // Fixed schedule — نرسل الوقت بصيغة معيارية HH:mm
+        if (_fixedFrom24 != null && _fixedTo24 != null) {
+          workingHoursJson = jsonEncode({'type': 'fixed', 'from': _fixedFrom24, 'to': _fixedTo24});
         }
       } else if (_confirmedPeriods.isNotEmpty) {
         workingHoursJson = jsonEncode({'type': 'specific', 'periods': _confirmedPeriods});
@@ -556,11 +563,14 @@ class _SpecialistAddClinicStep2PageState
                 setState(() => sheetStep = 1);
               }, () {
                 // Confirm Fixed
-                if (fromController.text.isEmpty || toController.text.isEmpty) {
+                if (fromController.text.isEmpty || toController.text.isEmpty ||
+                    fixedFromTime == null || fixedToTime == null) {
                   _showErrorDialog(ctx, 'الرجاء اختيار جميع مواعيد العمل');
                   return;
                 }
                 this.setState(() {
+                  _fixedFrom24 = _to24(fixedFromTime!);
+                  _fixedTo24 = _to24(fixedToTime!);
                   _scheduleController.text =
                       'يوميا من ${fromController.text} الى ${toController.text}';
                 });
@@ -588,11 +598,13 @@ class _SpecialistAddClinicStep2PageState
                 for (var day in dayPeriods.keys) {
                   for (var p in dayPeriods[day]!) {
                     if (p['fromCtrl']!.text.isNotEmpty &&
-                        p['toCtrl']!.text.isNotEmpty) {
+                        p['toCtrl']!.text.isNotEmpty &&
+                        p['fromTime'] != null &&
+                        p['toTime'] != null) {
                       _confirmedPeriods.add({
                         'day': day,
-                        'from': p['fromCtrl']!.text,
-                        'to': p['toCtrl']!.text,
+                        'from': _to24(p['fromTime'] as TimeOfDay),
+                        'to': _to24(p['toTime'] as TimeOfDay),
                       });
                     }
                   }

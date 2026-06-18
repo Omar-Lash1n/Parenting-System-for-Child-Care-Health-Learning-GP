@@ -45,6 +45,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<RankingEntry> RankingEntries { get; set; } = null!;               // ✅ Ranking Feature
     public DbSet<Clinic> Clinics { get; set; } = null!;                            // ✅ Clinic Feature
     public DbSet<RemoteConsultation> RemoteConsultations { get; set; } = null!;    // ✅ Remote Consultation Feature
+    public DbSet<Booking> Bookings { get; set; } = null!;                          // ✅ Consultation Booking Feature
+    public DbSet<BookingAttachment> BookingAttachments { get; set; } = null!;      // ✅ Consultation Booking Feature
+    public DbSet<Payment> Payments { get; set; } = null!;                          // ✅ Consultation Booking Feature
+    public DbSet<PaymentSetting> PaymentSettings { get; set; } = null!;            // ✅ Consultation Booking Feature
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -1427,6 +1431,101 @@ public class ApplicationDbContext : DbContext
             new HealthUnit { Id = 106, NameAr = "مركز تطعيم شبين الكوم", NameEn = "Shibin El Kom Vaccination Center", Type = HealthUnitType.VaccinationCenter, AddressAr = "شارع الجمهورية، شبين الكوم", CityId = 22, Latitude = 30.5590, Longitude = 31.0110, Phone = "0482401234", Notes = "مركز تطعيم رئيسي", DataSource = "Manual Research", IsVerified = true, IsActive = true, CreatedAt = seedDate },
             new HealthUnit { Id = 107, NameAr = "مستشفى شبين الكوم التعليمي", NameEn = "Shibin El Kom Teaching Hospital", Type = HealthUnitType.Hospital, AddressAr = "شارع الجيش، شبين الكوم", CityId = 22, Latitude = 30.5550, Longitude = 31.0080, Phone = "0482201234", Notes = "مستشفى تعليمي", DataSource = "Manual Research", IsVerified = true, IsActive = true, CreatedAt = seedDate }
         );
+
+        // ✅ Consultation Booking Configuration (استشارات طبية)
+        modelBuilder.Entity<Booking>(entity =>
+        {
+            entity.HasKey(b => b.Id);
+
+            entity.Property(b => b.AppointmentDate).HasColumnType("date");
+            entity.Property(b => b.Price).HasColumnType("decimal(18,2)");
+            entity.Property(b => b.ComplaintDescription).HasMaxLength(2000);
+            entity.Property(b => b.RejectionReason).HasMaxLength(1000);
+            entity.Property(b => b.Status).IsRequired();
+
+            entity.HasOne(b => b.Parent)
+                .WithMany()
+                .HasForeignKey(b => b.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(b => b.Child)
+                .WithMany()
+                .HasForeignKey(b => b.ChildId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(b => b.Specialist)
+                .WithMany()
+                .HasForeignKey(b => b.SpecialistId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(b => b.Clinic)
+                .WithMany()
+                .HasForeignKey(b => b.ClinicId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(b => b.RemoteConsultation)
+                .WithMany()
+                .HasForeignKey(b => b.RemoteConsultationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(b => b.ParentId);
+            entity.HasIndex(b => b.SpecialistId);
+            entity.HasIndex(b => b.Status);
+
+            // منع الحجز المزدوج لنفس موعد الجلسة اون لاين (يستثني الملغي/المرفوض)
+            entity.HasIndex(b => new { b.SpecialistId, b.AppointmentDate, b.StartTime })
+                .IsUnique()
+                .HasFilter("[ServiceType] = 2 AND [StartTime] IS NOT NULL AND [Status] IN (0, 1, 2)");
+        });
+
+        modelBuilder.Entity<BookingAttachment>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.ImageUrl).IsRequired().HasMaxLength(1000);
+
+            entity.HasOne(a => a.Booking)
+                .WithMany(b => b.Attachments)
+                .HasForeignKey(a => a.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(a => a.BookingId);
+        });
+
+        modelBuilder.Entity<Payment>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(p => p.ReceiptImageUrl).IsRequired().HasMaxLength(1000);
+            entity.Property(p => p.RejectionReason).HasMaxLength(1000);
+            entity.Property(p => p.Status).IsRequired();
+
+            entity.HasOne(p => p.Booking)
+                .WithOne(b => b.Payment)
+                .HasForeignKey<Payment>(p => p.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(p => p.Parent)
+                .WithMany()
+                .HasForeignKey(p => p.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(p => p.BookingId).IsUnique();
+            entity.HasIndex(p => p.ParentId);
+            entity.HasIndex(p => p.Status);
+        });
+
+        modelBuilder.Entity<PaymentSetting>(entity =>
+        {
+            entity.HasKey(s => s.Id);
+            entity.Property(s => s.Key).IsRequired().HasMaxLength(100);
+            entity.Property(s => s.Value).IsRequired().HasMaxLength(200);
+            entity.HasIndex(s => s.Key).IsUnique();
+
+            entity.HasData(
+                new PaymentSetting { Id = 1, Key = "VodafoneCashNumber", Value = "01146486517" },
+                new PaymentSetting { Id = 2, Key = "InstaPayNumber", Value = "01146486517" }
+            );
+        });
     }
 
 }

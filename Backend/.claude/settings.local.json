@@ -5,7 +5,20 @@
       "Bash(python -c \"import docx; print\\('python-docx ok'\\)\")",
       "Bash(dotnet ef *)",
       "Bash(Get-ChildItem -Recurse -File \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Backend\\\\Ajial.API\\\\Controllers\")",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "PowerShell($pdfPath = \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Backend\\\\docs\\\\Ibrahim_Khaled_Medical_Passport.pdf\"; if \\(Test-Path $pdfPath\\) { \"PDF exists, size: $\\(\\(Get-Item $pdfPath\\).Length\\) bytes\" } else { \"PDF not found\" })",
+      "Bash(where pdftoppm *)",
+      "Bash(where magick *)",
+      "Bash(where python *)",
+      "Bash(pdftotext -layout \"Ibrahim_Khaled_Medical_Passport.pdf\" -)",
+      "Bash(python -c \"import fitz; print\\('pymupdf', fitz.__doc__\\)\")",
+      "Bash(python -c \"import pdf2image; print\\('pdf2image ok'\\)\")",
+      "Bash(python -m pip install --quiet pymupdf)",
+      "Bash(python -c \"import fitz; doc=fitz.open\\('Ibrahim_Khaled_Medical_Passport.pdf'\\); print\\('pages',doc.page_count\\); [p.get_pixmap\\(dpi=130\\).save\\(f'page_{i+1}.png'\\) for i,p in enumerate\\(doc\\)]; print\\('rendered'\\)\")",
+      "Bash(python -c \"import fitz; doc=fitz.open\\('Ibrahim_Khaled_Medical_Passport.pdf'\\); doc[1].get_pixmap\\(dpi=200\\).save\\('page_2_big.png'\\); print\\('done'\\)\")",
+      "Bash(python -c \"import fitz; d=fitz.open\\('Ibrahim_Khaled_Medical_Passport.pdf'\\); print\\('METADATA:', d.metadata\\); print\\('FONTS p1:', [f[3] for f in d[0].get_fonts\\(\\)]\\)\")",
+      "Bash(python -c \"import fitz,sys,io; sys.stdout=io.TextIOWrapper\\(sys.stdout.buffer,encoding='utf-8'\\); d=fitz.open\\('Ibrahim_Khaled_Medical_Passport.pdf'\\); print\\('PRODUCER:', d.metadata.get\\('producer'\\), '| CREATOR:', d.metadata.get\\('creator'\\)\\); fonts=set\\(f[3] for f in d[0].get_fonts\\(\\)\\); print\\('FONTS:', fonts\\)\")",
+      "Bash(dotnet --version)"
     ]
   }
 }

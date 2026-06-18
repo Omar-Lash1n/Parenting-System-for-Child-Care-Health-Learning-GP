@@ -47,6 +47,10 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<RankingEntry> RankingEntries { get; private set; }               // ✅ Ranking Feature
     public IRepository<Clinic> Clinics { get; private set; }                            // ✅ Clinic Feature
     public IRepository<RemoteConsultation> RemoteConsultations { get; private set; }    // ✅ Remote Consultation Feature
+    public IRepository<Booking> Bookings { get; private set; }                          // ✅ Consultation Booking Feature
+    public IRepository<BookingAttachment> BookingAttachments { get; private set; }      // ✅ Consultation Booking Feature
+    public IRepository<Payment> Payments { get; private set; }                          // ✅ Consultation Booking Feature
+    public IRepository<PaymentSetting> PaymentSettings { get; private set; }            // ✅ Consultation Booking Feature
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -87,6 +91,10 @@ public class UnitOfWork : IUnitOfWork
         RankingEntries = new Repository<RankingEntry>(_context);               // ✅ Ranking Feature
         Clinics = new Repository<Clinic>(_context);                            // ✅ Clinic Feature
         RemoteConsultations = new Repository<RemoteConsultation>(_context);    // ✅ Remote Consultation Feature
+        Bookings = new Repository<Booking>(_context);                          // ✅ Consultation Booking Feature
+        BookingAttachments = new Repository<BookingAttachment>(_context);      // ✅ Consultation Booking Feature
+        Payments = new Repository<Payment>(_context);                          // ✅ Consultation Booking Feature
+        PaymentSettings = new Repository<PaymentSetting>(_context);            // ✅ Consultation Booking Feature
     }
 
     public async Task<int> SaveChangesAsync()
