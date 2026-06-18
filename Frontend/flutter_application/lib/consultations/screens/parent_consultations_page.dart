@@ -1,26 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:Ajial/consultations/widgets/consultation_onboarding_dialog.dart';
-
-// --- Mock Data Models ---
-class DoctorMock {
-  final String id;
-  final String name;
-  final String specialization;
-  final String imageUrl;
-  final String description;
-  final double? onlinePrice;
-  final double? clinicPrice;
-
-  DoctorMock({
-    required this.id,
-    required this.name,
-    required this.specialization,
-    required this.imageUrl,
-    required this.description,
-    this.onlinePrice,
-    this.clinicPrice,
-  });
-}
+import 'package:Ajial/api/parent_consultation_service.dart';
 
 class ParentConsultationsPage extends StatefulWidget {
   const ParentConsultationsPage({super.key});
@@ -31,59 +11,13 @@ class ParentConsultationsPage extends StatefulWidget {
 }
 
 class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
-  // Mock Data
-  final List<DoctorMock> _allDoctors = [
-    DoctorMock(
-      id: '1',
-      name: 'د. محمد ابراهيم',
-      specialization: 'اسنان',
-      imageUrl: 'https://i.pravatar.cc/150?img=11',
-      description:
-          'طبيب أسنان الأطفال، نؤمن بأن وقاية أسنان طفلك تبدأ من الصغر. متخصصة في علاج عصب الأسنان اللبنية، تركيبات الأسنان الوقائية للأطفال، وتعديل ....',
-      onlinePrice: 220,
-      clinicPrice: 250,
-    ),
-    DoctorMock(
-      id: '2',
-      name: 'د. احمد سمير',
-      specialization: 'اسنان',
-      imageUrl: 'https://i.pravatar.cc/150?img=12',
-      description:
-          'طبيب أسنان الأطفال، نؤمن بأن وقاية أسنان طفلك تبدأ من الصغر. متخصصة في علاج عصب الأسنان اللبنية، تركيبات الأسنان الوقائية للأطفال، وتعديل ....',
-      onlinePrice: 220,
-      clinicPrice: null,
-    ),
-    DoctorMock(
-      id: '3',
-      name: 'د. سارة محمود',
-      specialization: 'باطنه',
-      imageUrl: 'https://i.pravatar.cc/150?img=5',
-      description:
-          'طبيب باطنة أطفال، خبرة في تشخيص وعلاج أمراض الجهاز الهضمي والتنفسي والمناعة لدى الأطفال منذ الولادة وحتى المراهقة.',
-      onlinePrice: null,
-      clinicPrice: 250,
-    ),
-    DoctorMock(
-      id: '4',
-      name: 'د. نورهان علي',
-      specialization: 'تغذية',
-      imageUrl: 'https://i.pravatar.cc/150?img=9',
-      description:
-          'أخصائية تغذية علاجية للأطفال، متابعة حالات السمنة والنحافة ونقص النمو وتصميم أنظمة غذائية صحية متوازنة.',
-      onlinePrice: 150,
-      clinicPrice: 200,
-    ),
-    DoctorMock(
-      id: '5',
-      name: 'د. مصطفى كمال',
-      specialization: 'تربية و سلوك',
-      imageUrl: 'https://i.pravatar.cc/150?img=14',
-      description:
-          'أخصائي تعديل سلوك وتربية خاصة، مساعدة الأطفال على التخلص من العادات السلبية وتعزيز المهارات الاجتماعية والتواصل.',
-      onlinePrice: 300,
-      clinicPrice: 350,
-    ),
-  ];
+  final ParentConsultationService _apiService = ParentConsultationService();
+
+  List<AvailableDoctor> _doctors = [];
+  List<String> _categories = ['الكل'];
+  
+  bool _isLoading = true;
+  String? _error;
 
   String _searchQuery = '';
   String _selectedCategory = 'الكل';
@@ -91,29 +25,85 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
-  // Mock search history
-  List<String> _searchHistory = [
-    'عيادات تربوية',
-    'عيادات تربوية', // Added duplicate to match screenshot visual if needed, though usually history is distinct
-    'عيادات تربوية',
-    'عيادات سلوكية',
-    'عيادات سلوكية',
-  ];
+  List<String> _searchHistory = [];
 
   @override
   void initState() {
     super.initState();
-    // Ensure distinct history
-    _searchHistory = _searchHistory.toSet().toList();
 
     _searchFocusNode.addListener(() {
-      setState(() {}); // Rebuild to show/hide history dropdown
+      setState(() {}); 
     });
 
-    // Show the onboarding dialog right after the page is built for the first time
+    // Listen to text changes for live search
+    _searchController.addListener(() {
+      setState(() {}); // update clear/mic icon
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showConsultationOnboardingDialog(context);
     });
+
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // Fetch specialties first
+      final specialties = await _apiService.getSpecialties();
+      
+      // Build categories list, avoiding duplicate "الكل"
+      final specNames = specialties
+          .map((s) => s.name)
+          .where((name) => name.isNotEmpty && name != 'الكل')
+          .toList();
+      
+      // Now fetch doctors
+      final doctorList = await _apiService.getDoctors(
+          search: _searchQuery.isNotEmpty ? _searchQuery : null, 
+          specialty: _selectedCategory == 'الكل' ? null : _selectedCategory);
+
+      setState(() {
+        _categories = ['الكل', ...specNames];
+        _doctors = doctorList;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('❌ _loadData error: $e');
+      setState(() {
+        _error = 'حدث خطأ أثناء تحميل البيانات\n$e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchDoctors() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final doctorList = await _apiService.getDoctors(
+          search: _searchQuery.isNotEmpty ? _searchQuery : null, 
+          specialty: _selectedCategory == 'الكل' ? null : _selectedCategory);
+
+      setState(() {
+        _doctors = doctorList;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('❌ _fetchDoctors error: $e');
+      setState(() {
+        _error = 'حدث خطأ أثناء تحميل الأطباء\n$e';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -126,33 +116,22 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
   void _submitSearch(String query) {
     if (query.trim().isNotEmpty) {
       setState(() {
-        // Add to history if not exists, bring to top if exists
         _searchHistory.remove(query.trim());
         _searchHistory.insert(0, query.trim());
         _searchQuery = query.trim();
       });
+    } else {
+      setState(() {
+        _searchQuery = '';
+      });
     }
     _searchFocusNode.unfocus();
+    _fetchDoctors();
   }
 
   void _selectHistoryItem(String item) {
     _searchController.text = item;
     _submitSearch(item);
-  }
-
-  List<String> get _categories {
-    final Set<String> specs = _allDoctors.map((d) => d.specialization).toSet();
-    return ['الكل', ...specs];
-  }
-
-  List<DoctorMock> get _filteredDoctors {
-    return _allDoctors.where((doctor) {
-      final matchesSearch = doctor.name.contains(_searchQuery) ||
-          doctor.specialization.contains(_searchQuery);
-      final matchesCategory = _selectedCategory == 'الكل' ||
-          doctor.specialization == _selectedCategory;
-      return matchesSearch && matchesCategory;
-    }).toList();
   }
 
   Map<String, Color> _getSpecializationColors(String spec) {
@@ -183,7 +162,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: const BoxDecoration(
-                color: Color(0xFFFEE2E2), // Light red background circle
+                color: Color(0xFFFEE2E2), 
                 shape: BoxShape.circle,
               ),
               child: Image.asset(
@@ -262,11 +241,10 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
         ),
         body: Stack(
           children: [
-            // Main Content (Filters and Cards)
             Column(
               children: [
-                const SizedBox(height: 64), // Space for search bar to overlay
-                // Tab Bar (Filters)
+                const SizedBox(height: 64), 
+                // Tab Bar
                 SizedBox(
                   height: 50,
                   child: ListView.builder(
@@ -283,8 +261,9 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                             onTap: () {
                               setState(() {
                                 _selectedCategory = cat;
-                                _searchFocusNode.unfocus(); // Unfocus search when selecting category
+                                _searchFocusNode.unfocus();
                               });
+                              _fetchDoctors();
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -322,58 +301,70 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
 
                 const SizedBox(height: 8),
 
-                // Doctor Cards List or Empty State
+                // Doctor Cards List
                 Expanded(
-                  child: _filteredDoctors.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Image.asset(
-                                'images/consultations/search.png',
-                                width: 80,
-                                height: 80,
-                                // color: const Color(0xFF94A3B8), // Apply gray tint if needed, removing to match original image colors
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'يبدو انه لا يتوفر نتائج بحث للكلمة',
-                                style: TextStyle(
-                                  fontFamily: 'IBM Plex Sans Arabic',
-                                  color: Color(0xFF64748B),
-                                  fontSize: 16,
-                                ),
-                              ),
-                              Text(
-                                '"$_searchQuery"',
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: Color(0xFFBF092F)))
+                      : _error != null
+                          ? Center(
+                              child: Text(
+                                _error!,
                                 style: const TextStyle(
                                   fontFamily: 'IBM Plex Sans Arabic',
-                                  color: Color(0xFF64748B),
+                                  color: Colors.red,
                                   fontSize: 16,
                                 ),
                               ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16.0),
-                          itemCount: _filteredDoctors.length,
-                          itemBuilder: (context, index) {
-                            return _buildDoctorCard(_filteredDoctors[index]);
-                          },
-                        ),
+                            )
+                          : _doctors.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Image.asset(
+                                        'images/consultations/search.png',
+                                        width: 80,
+                                        height: 80,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'يبدو انه لا يتوفر نتائج بحث',
+                                        style: TextStyle(
+                                          fontFamily: 'IBM Plex Sans Arabic',
+                                          color: Color(0xFF64748B),
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      if (_searchQuery.isNotEmpty)
+                                        Text(
+                                          '"$_searchQuery"',
+                                          style: const TextStyle(
+                                            fontFamily: 'IBM Plex Sans Arabic',
+                                            color: Color(0xFF64748B),
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(16.0),
+                                  itemCount: _doctors.length,
+                                  itemBuilder: (context, index) {
+                                    return _buildDoctorCard(_doctors[index]);
+                                  },
+                                ),
                 ),
               ],
             ),
 
-            // Search Bar and History Overlay
+            // Search Bar
             Positioned(
               top: 8,
               left: 16,
               right: 16,
               child: Column(
                 children: [
-                  // Search Bar
                   Container(
                     height: 48,
                     decoration: BoxDecoration(
@@ -401,12 +392,8 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                           child: TextField(
                             controller: _searchController,
                             focusNode: _searchFocusNode,
-                            onChanged: (value) {
-                              setState(() {
-                                _searchQuery = value;
-                              });
-                            },
                             onSubmitted: _submitSearch,
+                            textInputAction: TextInputAction.search,
                             style: const TextStyle(
                               fontFamily: 'IBM Plex Sans Arabic',
                               fontSize: 14,
@@ -424,14 +411,12 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                             ),
                           ),
                         ),
-                        if (_searchQuery.isNotEmpty)
+                        if (_searchController.text.isNotEmpty)
                           IconButton(
                             icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 20),
                             onPressed: () {
                               _searchController.clear();
-                              setState(() {
-                                _searchQuery = '';
-                              });
+                              _submitSearch('');
                             },
                           )
                         else
@@ -442,19 +427,18 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                       ],
                     ),
                   ),
-                  // History Dropdown Overlay
+                  // Search History Dropdown
                   if (_searchFocusNode.hasFocus && _searchHistory.isNotEmpty)
                     Container(
                       constraints: const BoxConstraints(maxHeight: 250),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
                         boxShadow: const [
                           BoxShadow(
-                            color: Color(0x1A000000),
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
+                            color: Color(0x40000000),
+                            blurRadius: 15,
+                            offset: Offset(0, 0),
                           )
                         ],
                       ),
@@ -462,21 +446,44 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                         shrinkWrap: true,
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: _searchHistory.length,
-                        separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                        separatorBuilder: (context, index) => Divider(
+                          height: 1, 
+                          color: Colors.black.withOpacity(0.05),
+                          indent: 16,
+                          endIndent: 16,
+                        ),
                         itemBuilder: (context, index) {
                           final item = _searchHistory[index];
-                          return ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.history, color: Color(0xFF94A3B8), size: 20),
-                            title: Text(
-                              item,
-                              style: const TextStyle(
-                                fontFamily: 'IBM Plex Sans Arabic',
-                                color: Colors.black87,
-                                fontSize: 14,
+                          return InkWell(
+                            onTap: () => _selectHistoryItem(item),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      item,
+                                      textAlign: TextAlign.right,
+                                      style: const TextStyle(
+                                        fontFamily: 'IBM Plex Sans Arabic',
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        letterSpacing: 0.1,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Opacity(
+                                    opacity: 0.5,
+                                    child: Icon(
+                                      Icons.backup_outlined,
+                                      size: 16,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            onTap: () => _selectHistoryItem(item),
                           );
                         },
                       ),
@@ -490,7 +497,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
     );
   }
 
-  Widget _buildDoctorCard(DoctorMock doctor) {
+  Widget _buildDoctorCard(AvailableDoctor doctor) {
     final specColors = _getSpecializationColors(doctor.specialization);
 
     return Container(
@@ -511,32 +518,36 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Doctor Image
               Container(
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: const Color(0xFFE2E8F0)),
-                  image: DecorationImage(
-                    image: NetworkImage(doctor.imageUrl),
-                    fit: BoxFit.cover,
-                  ),
+                  color: Colors.grey[200],
                 ),
+                child: doctor.profileImageUrl != null && doctor.profileImageUrl!.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          doctor.profileImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.person, color: Colors.grey),
+                        ),
+                      )
+                    : const Icon(Icons.person, color: Colors.grey),
               ),
               const SizedBox(width: 12),
-              // Name and Title
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 4),
                     Text(
-                      doctor.name,
+                      doctor.fullName,
                       style: const TextStyle(
                         fontFamily: 'IBM Plex Sans Arabic',
                         fontSize: 16,
@@ -556,7 +567,6 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                   ],
                 ),
               ),
-              // Specialization Chip
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
@@ -576,25 +586,15 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
             ],
           ),
           const SizedBox(height: 16),
-          // Description
-          Text(
-            doctor.description,
-            style: const TextStyle(
-              fontFamily: 'IBM Plex Sans Arabic',
-              fontSize: 12,
-              color: Color(0xFF64748B), // Gray color
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Buttons
           Column(
             children: [
-              if (doctor.onlinePrice != null)
+              if (doctor.hasRemote)
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Navigate to profile or booking page
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFBF092F),
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -604,7 +604,9 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                       elevation: 0,
                     ),
                     child: Text(
-                      'حجز جلسة اون لاين ${doctor.onlinePrice!.toInt()}ج.م',
+                      doctor.remoteSessionPrice != null
+                          ? 'حجز جلسة اون لاين ${doctor.remoteSessionPrice!.toInt()}ج.م'
+                          : 'حجز جلسة اون لاين',
                       style: const TextStyle(
                         fontFamily: 'IBM Plex Sans Arabic',
                         fontSize: 14,
@@ -614,13 +616,15 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                     ),
                   ),
                 ),
-              if (doctor.onlinePrice != null && doctor.clinicPrice != null)
+              if (doctor.hasRemote && doctor.hasClinic)
                 const SizedBox(height: 8),
-              if (doctor.clinicPrice != null)
+              if (doctor.hasClinic)
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Navigate to profile or booking page
+                    },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -629,7 +633,9 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                       side: const BorderSide(color: Colors.black, width: 1),
                     ),
                     child: Text(
-                      'حجز كشف داخل العيادة ${doctor.clinicPrice!.toInt()}ج.م',
+                      doctor.clinicExaminationPrice != null
+                          ? 'حجز كشف داخل العيادة ${doctor.clinicExaminationPrice!.toInt()}ج.م'
+                          : 'حجز كشف داخل العيادة',
                       style: const TextStyle(
                         fontFamily: 'IBM Plex Sans Arabic',
                         fontSize: 14,

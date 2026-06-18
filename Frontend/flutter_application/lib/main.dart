@@ -62,7 +62,6 @@ import 'package:Ajial/prizes/prize_store_provider.dart';
 import 'package:Ajial/prizes/prize_store_page.dart';
 import 'package:Ajial/specialist-app/application-tracking/providers/specialist_application_provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/screens/specialist_application_tracking_page.dart';
-import 'package:Ajial/consultations/screens/parent_consultations_page.dart';
 
 import 'package:Ajial/lessons/providers/lesson_provider.dart';
 import 'package:Ajial/lessons/screens/lessons_list_screen.dart';
@@ -71,6 +70,7 @@ import 'package:Ajial/lessons/screens/lesson_quiz_screen.dart';
 import 'package:Ajial/ranking/providers/ranking_provider.dart';
 import 'package:Ajial/ranking/ranking_page.dart';
 import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
+import 'package:Ajial/consultations/screens/parent_consultations_page.dart';
 
 // Background handler is only supported on mobile (Android/iOS), not on web.
 @pragma('vm:entry-point')
