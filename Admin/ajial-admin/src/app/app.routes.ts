@@ -19,6 +19,9 @@ import { LessonCategoriesComponent } from './pages/lessons/categories/categories
 import { RankingLayoutComponent } from './pages/ranking/ranking-layout/ranking-layout.component';
 import { RankingCurrentComponent } from './pages/ranking/ranking-current/ranking-current.component';
 import { RankingHistoryComponent } from './pages/ranking/ranking-history/ranking-history.component';
+import { ClinicsLayoutComponent } from './pages/clinics/clinics-layout/clinics-layout.component';
+import { ClinicsDashboardComponent } from './pages/clinics/clinics-dashboard/clinics-dashboard.component';
+import { RemoteConsultationsDashboardComponent } from './pages/clinics/remote-consultations-dashboard/remote-consultations-dashboard.component';
 
 export const routes: Routes = [
     { path: '', component: HomeComponent, title: 'أجيال | الرئيسية' },
@@ -71,6 +74,15 @@ export const routes: Routes = [
         children: [
             { path: '', component: RankingCurrentComponent, title: 'أجيال | الترتيب الحالي' },
             { path: 'history', component: RankingHistoryComponent, title: 'أجيال | سجل المواسم' }
+        ]
+    },
+    {
+        path: 'clinics',
+        component: ClinicsLayoutComponent,
+        children: [
+            { path: '', redirectTo: 'list', pathMatch: 'full' },
+            { path: 'list', component: ClinicsDashboardComponent, title: 'أجيال | إدارة العيادات' },
+            { path: 'remote', component: RemoteConsultationsDashboardComponent, title: 'أجيال | الاستشارات عن بُعد' }
         ]
     },
     { path: '**', redirectTo: '' }

@@ -56,6 +56,10 @@
   --ranking-color-light: rgba(245, 158, 11, 0.15);
   --ranking-color-hover: #d97706;
 
+  --clinic-color: #0891b2; /* Cyan-600 — medical teal */
+  --clinic-color-light: rgba(8, 145, 178, 0.15);
+  --clinic-color-hover: #0e7490;
+
   --primary: var(--specialist-color);
   --primary-light: var(--specialist-color-light);
   --primary-hover: var(--specialist-color-hover);
@@ -108,6 +112,12 @@ body.theme-ranking {
   --primary: var(--ranking-color);
   --primary-light: var(--ranking-color-light);
   --primary-hover: var(--ranking-color-hover);
+}
+
+body.theme-clinics {
+  --primary: var(--clinic-color);
+  --primary-light: var(--clinic-color-light);
+  --primary-hover: var(--clinic-color-hover);
 }
 
 * {
@@ -612,6 +622,16 @@ body {
 .status-badge.rejected {
   background: var(--danger-light);
   color: var(--danger);
+}
+
+.status-badge.draft {
+  background: rgba(113, 113, 122, 0.15);
+  color: var(--text-muted);
+}
+
+.status-badge.cancelled {
+  background: rgba(113, 113, 122, 0.15);
+  color: var(--text-muted);
 }
 
 .table-actions {

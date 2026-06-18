@@ -1,0 +1,220 @@
+<!-- Header -->
+<header class="page-header">
+    <div class="header-text">
+        <h1>إدارة العيادات</h1>
+        <p>مراجعة وإدارة طلبات تسجيل عيادات المتخصصين</p>
+    </div>
+    <div class="header-actions">
+        <div class="stats-card pending">
+            <span class="stats-number">{{ pendingCount }}</span>
+            <span class="stats-label">قيد المراجعة</span>
+        </div>
+        <div class="stats-card approved">
+            <span class="stats-number">{{ approvedCount }}</span>
+            <span class="stats-label">مقبول</span>
+        </div>
+        <div class="stats-card rejected">
+            <span class="stats-number">{{ rejectedCount }}</span>
+            <span class="stats-label">مرفوض</span>
+        </div>
+    </div>
+</header>
+
+<!-- Filters -->
+<div class="filters-bar">
+    <div class="filter-tabs">
+        <button class="filter-tab" [class.active]="currentFilter === 'all'" (click)="filterByStatus('all')">الكل</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'pending'" (click)="filterByStatus('pending')">قيد المراجعة</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'approved'" (click)="filterByStatus('approved')">مقبول</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'rejected'" (click)="filterByStatus('rejected')">مرفوض</button>
+    </div>
+    <button class="btn btn-outline" (click)="fetchClinics()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        تحديث
+    </button>
+</div>
+
+<!-- Table -->
+<div class="table-container" *ngIf="!hasError">
+    <div class="loading" *ngIf="isLoading">
+        <div class="spinner"></div>
+        <p>جارٍ التحميل...</p>
+    </div>
+
+    <table class="data-table" *ngIf="!isLoading && filteredClinics.length > 0">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>اسم العيادة</th>
+                <th>الطبيب</th>
+                <th>تاريخ التقديم</th>
+                <th>الحالة</th>
+                <th>إجراء</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let c of filteredClinics; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td><span class="name-link" (click)="openDetail(c.clinicId)">{{ c.clinicName || '(بدون اسم)' }}</span></td>
+                <td>{{ c.doctorName || '—' }}</td>
+                <td>{{ formatDate(c.submittedAt) }}</td>
+                <td><span class="status-badge" [ngClass]="c.status">{{ c.statusAr }}</span></td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn btn-sm btn-outline" (click)="openDetail(c.clinicId)">عرض</button>
+                        <button *ngIf="isPending(c.status)" class="btn btn-sm btn-success" (click)="approve(c.clinicId)">قبول</button>
+                        <button *ngIf="isPending(c.status)" class="btn btn-sm btn-danger" (click)="openRejectModal(c.clinicId)">رفض</button>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="empty-state" *ngIf="!isLoading && filteredClinics.length === 0">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <p>لا توجد عيادات لعرضها</p>
+    </div>
+</div>
+
+<!-- Error State -->
+<div class="error-state-container" *ngIf="hasError">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <h3>فشل الاتصال بالسيرفر</h3>
+    <p>تعذّر تحميل البيانات. تأكد من اتصالك بالإنترنت وحاول لاحقاً.</p>
+    <button class="btn btn-outline" (click)="fetchClinics()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        إعادة المحاولة
+    </button>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" [class.active]="isDetailModalActive" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>تفاصيل العيادة</h2>
+            <button class="modal-close" (click)="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="loading" *ngIf="isLoadingDetail">
+                <div class="spinner"></div>
+                <p>جارٍ تحميل التفاصيل...</p>
+            </div>
+            <ng-container *ngIf="!isLoadingDetail && selectedClinic">
+                <div class="detail-grid">
+                    <div class="detail-field">
+                        <span class="detail-label">اسم العيادة</span>
+                        <span class="detail-value">{{ selectedClinic.name || '—' }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">الطبيب</span>
+                        <span class="detail-value">{{ selectedClinic.doctorName }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">الحالة</span>
+                        <span class="detail-value">
+                            <span class="status-badge" [ngClass]="selectedClinic.status">{{ selectedClinic.statusAr }}</span>
+                        </span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">تاريخ التقديم</span>
+                        <span class="detail-value">{{ formatDate(selectedClinic.submittedAt) }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">المحافظة</span>
+                        <span class="detail-value">{{ selectedClinic.governorateName || '—' }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">الحي / المنطقة</span>
+                        <span class="detail-value">{{ selectedClinic.districtName || '—' }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">العنوان التفصيلي</span>
+                        <span class="detail-value">{{ selectedClinic.address || '—' }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">رقم الهاتف</span>
+                        <span class="detail-value">{{ selectedClinic.phone || '—' }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">سعر الكشف</span>
+                        <span class="detail-value">{{ formatPrice(selectedClinic.examinationPrice) }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">سعر الاستشارة</span>
+                        <span class="detail-value">{{ formatPrice(selectedClinic.consultationPrice) }}</span>
+                    </div>
+                    <div class="detail-field" style="grid-column: span 2">
+                        <span class="detail-label">مواعيد العمل</span>
+                        <span class="detail-value">{{ formatWorkingHours(selectedClinic.workingHoursJson) }}</span>
+                    </div>
+                    <div class="detail-field" style="grid-column: span 2" *ngIf="selectedClinic.rejectionReason">
+                        <span class="detail-label">سبب الرفض</span>
+                        <span class="detail-value" style="color: var(--danger)">{{ selectedClinic.rejectionReason }}</span>
+                    </div>
+                </div>
+
+                <div class="doc-images">
+                    <div class="doc-card">
+                        <div class="doc-card-label">رخصة مزاولة المهنة</div>
+                        <img *ngIf="selectedClinic.licenseImageUrl" [src]="selectedClinic.licenseImageUrl" (click)="openDoc(selectedClinic.licenseImageUrl)" alt="رخصة المهنة">
+                        <div *ngIf="!selectedClinic.licenseImageUrl" class="doc-card-na">غير متوفر</div>
+                    </div>
+                    <div class="doc-card">
+                        <div class="doc-card-label">تسجيل النقابة</div>
+                        <img *ngIf="selectedClinic.syndicateRegistrationImageUrl" [src]="selectedClinic.syndicateRegistrationImageUrl" (click)="openDoc(selectedClinic.syndicateRegistrationImageUrl)" alt="تسجيل النقابة">
+                        <div *ngIf="!selectedClinic.syndicateRegistrationImageUrl" class="doc-card-na">غير متوفر</div>
+                    </div>
+                    <div class="doc-card">
+                        <div class="doc-card-label">التخلص من المخلفات الخطرة</div>
+                        <img *ngIf="selectedClinic.hazardousWasteImageUrl" [src]="selectedClinic.hazardousWasteImageUrl" (click)="openDoc(selectedClinic.hazardousWasteImageUrl)" alt="مخلفات خطرة">
+                        <div *ngIf="!selectedClinic.hazardousWasteImageUrl" class="doc-card-na">غير متوفر</div>
+                    </div>
+                    <div class="doc-card">
+                        <div class="doc-card-label">صورة خارجية للعيادة</div>
+                        <img *ngIf="selectedClinic.exteriorImageUrl" [src]="selectedClinic.exteriorImageUrl" (click)="openDoc(selectedClinic.exteriorImageUrl)" alt="واجهة العيادة">
+                        <div *ngIf="!selectedClinic.exteriorImageUrl" class="doc-card-na">غير متوفر</div>
+                    </div>
+                    <div class="doc-card">
+                        <div class="doc-card-label">صورة داخلية للعيادة</div>
+                        <img *ngIf="selectedClinic.interiorImageUrl" [src]="selectedClinic.interiorImageUrl" (click)="openDoc(selectedClinic.interiorImageUrl)" alt="داخل العيادة">
+                        <div *ngIf="!selectedClinic.interiorImageUrl" class="doc-card-na">غير متوفر</div>
+                    </div>
+                </div>
+            </ng-container>
+        </div>
+        <div class="modal-footer" *ngIf="!isLoadingDetail && selectedClinic">
+            <ng-container *ngIf="isPending(selectedClinic.status)">
+                <button class="btn btn-success" (click)="approve(selectedClinic.clinicId)">قبول الطلب</button>
+                <button class="btn btn-danger" (click)="openRejectModal(selectedClinic.clinicId)">رفض الطلب</button>
+            </ng-container>
+            <button class="btn btn-outline" (click)="closeModal()">إغلاق</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div class="modal-overlay" [class.active]="isRejectModalActive" (click)="closeRejectModal()">
+    <div class="modal modal-small" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>سبب الرفض</h2>
+            <button class="modal-close" (click)="closeRejectModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <textarea [(ngModel)]="rejectionReason" placeholder="اكتب سبب الرفض هنا..." rows="4"></textarea>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" (click)="closeRejectModal()">إلغاء</button>
+            <button class="btn btn-danger" (click)="confirmReject()">تأكيد الرفض</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" [ngClass]="toastType" [class.show]="isToastShow">{{ toastMessage }}</div>

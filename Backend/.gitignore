@@ -16,7 +16,7 @@ Agent/DOMAIN_ENTITIES.md
 Agent/API_ENDPOINTS.md
 *plans/
 *docs/
-
+*keys/
 # User-specific files
 *.rsuser
 *.suo

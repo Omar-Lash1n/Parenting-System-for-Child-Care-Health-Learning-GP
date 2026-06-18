@@ -1,0 +1,173 @@
+<!-- Header -->
+<header class="page-header">
+    <div class="header-text">
+        <h1>إدارة الاستشارات عن بُعد</h1>
+        <p>مراجعة وإدارة طلبات تفعيل الاستشارة عن بُعد للمتخصصين</p>
+    </div>
+    <div class="header-actions">
+        <div class="stats-card pending">
+            <span class="stats-number">{{ pendingCount }}</span>
+            <span class="stats-label">قيد المراجعة</span>
+        </div>
+        <div class="stats-card approved">
+            <span class="stats-number">{{ approvedCount }}</span>
+            <span class="stats-label">مقبول</span>
+        </div>
+        <div class="stats-card rejected">
+            <span class="stats-number">{{ rejectedCount }}</span>
+            <span class="stats-label">مرفوض</span>
+        </div>
+    </div>
+</header>
+
+<!-- Filters -->
+<div class="filters-bar">
+    <div class="filter-tabs">
+        <button class="filter-tab" [class.active]="currentFilter === 'all'" (click)="filterByStatus('all')">الكل</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'pending'" (click)="filterByStatus('pending')">قيد المراجعة</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'approved'" (click)="filterByStatus('approved')">مقبول</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'rejected'" (click)="filterByStatus('rejected')">مرفوض</button>
+    </div>
+    <button class="btn btn-outline" (click)="fetchConsultations()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        تحديث
+    </button>
+</div>
+
+<!-- Table -->
+<div class="table-container" *ngIf="!hasError">
+    <div class="loading" *ngIf="isLoading">
+        <div class="spinner"></div>
+        <p>جارٍ التحميل...</p>
+    </div>
+
+    <table class="data-table" *ngIf="!isLoading && filteredConsultations.length > 0">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>الطبيب</th>
+                <th>تاريخ التقديم</th>
+                <th>الحالة</th>
+                <th>إجراء</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let c of filteredConsultations; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td><span class="name-link" (click)="openDetail(c.consultationId)">{{ c.doctorName || '—' }}</span></td>
+                <td>{{ formatDate(c.submittedAt) }}</td>
+                <td><span class="status-badge" [ngClass]="c.status">{{ c.statusAr }}</span></td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn btn-sm btn-outline" (click)="openDetail(c.consultationId)">عرض</button>
+                        <button *ngIf="isPending(c.status)" class="btn btn-sm btn-success" (click)="approve(c.consultationId)">قبول</button>
+                        <button *ngIf="isPending(c.status)" class="btn btn-sm btn-danger" (click)="openRejectModal(c.consultationId)">رفض</button>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="empty-state" *ngIf="!isLoading && filteredConsultations.length === 0">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.4a16 16 0 0 0 5.69 5.69l.88-.88a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/>
+        </svg>
+        <p>لا توجد استشارات لعرضها</p>
+    </div>
+</div>
+
+<!-- Error State -->
+<div class="error-state-container" *ngIf="hasError">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <h3>فشل الاتصال بالسيرفر</h3>
+    <p>تعذّر تحميل البيانات. تأكد من اتصالك بالإنترنت وحاول لاحقاً.</p>
+    <button class="btn btn-outline" (click)="fetchConsultations()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        إعادة المحاولة
+    </button>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" [class.active]="isDetailModalActive" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>تفاصيل الاستشارة عن بُعد</h2>
+            <button class="modal-close" (click)="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="loading" *ngIf="isLoadingDetail">
+                <div class="spinner"></div>
+                <p>جارٍ تحميل التفاصيل...</p>
+            </div>
+            <ng-container *ngIf="!isLoadingDetail && selectedConsultation">
+                <div class="detail-grid">
+                    <div class="detail-field">
+                        <span class="detail-label">الطبيب</span>
+                        <span class="detail-value">{{ selectedConsultation.doctorName }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">الحالة</span>
+                        <span class="detail-value">
+                            <span class="status-badge" [ngClass]="selectedConsultation.status">{{ selectedConsultation.statusAr }}</span>
+                        </span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">تاريخ التقديم</span>
+                        <span class="detail-value">{{ formatDate(selectedConsultation.submittedAt) }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">سعر الجلسة</span>
+                        <span class="detail-value">{{ formatPrice(selectedConsultation.sessionPrice) }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">مدة الجلسة</span>
+                        <span class="detail-value">{{ formatDuration(selectedConsultation.sessionDurationMinutes) }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">مدة الانتظار</span>
+                        <span class="detail-value">{{ formatDuration(selectedConsultation.waitingPeriodMinutes) }}</span>
+                    </div>
+                    <div class="detail-field" style="grid-column: span 2">
+                        <span class="detail-label">مواعيد العمل</span>
+                        <span class="detail-value">{{ formatWorkingHours(selectedConsultation.workingHoursJson) }}</span>
+                    </div>
+                    <div class="detail-field" style="grid-column: span 2" *ngIf="selectedConsultation.rejectionReason">
+                        <span class="detail-label">سبب الرفض</span>
+                        <span class="detail-value" style="color: var(--danger)">{{ selectedConsultation.rejectionReason }}</span>
+                    </div>
+                </div>
+            </ng-container>
+        </div>
+        <div class="modal-footer" *ngIf="!isLoadingDetail && selectedConsultation">
+            <ng-container *ngIf="isPending(selectedConsultation.status)">
+                <button class="btn btn-success" (click)="approve(selectedConsultation.consultationId)">قبول الطلب</button>
+                <button class="btn btn-danger" (click)="openRejectModal(selectedConsultation.consultationId)">رفض الطلب</button>
+            </ng-container>
+            <button class="btn btn-outline" (click)="closeModal()">إغلاق</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div class="modal-overlay" [class.active]="isRejectModalActive" (click)="closeRejectModal()">
+    <div class="modal modal-small" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>سبب الرفض</h2>
+            <button class="modal-close" (click)="closeRejectModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <textarea [(ngModel)]="rejectionReason" placeholder="اكتب سبب الرفض هنا..." rows="4"></textarea>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" (click)="closeRejectModal()">إلغاء</button>
+            <button class="btn btn-danger" (click)="confirmReject()">تأكيد الرفض</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" [ngClass]="toastType" [class.show]="isToastShow">{{ toastMessage }}</div>

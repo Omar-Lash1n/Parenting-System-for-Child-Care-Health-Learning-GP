@@ -3,7 +3,8 @@
     "allow": [
       "Bash(not exist *)",
       "Bash(npx ng *)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(npx tsc *)"
     ]
   }
 }
