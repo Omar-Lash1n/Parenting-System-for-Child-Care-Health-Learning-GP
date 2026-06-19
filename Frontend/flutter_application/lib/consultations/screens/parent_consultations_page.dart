@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:Ajial/consultations/widgets/consultation_onboarding_dialog.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
+import 'package:Ajial/consultations/screens/doctor_booking_page.dart';
+import 'package:Ajial/consultations/screens/my_bookings_page.dart';
 
 class ParentConsultationsPage extends StatefulWidget {
   const ParentConsultationsPage({super.key});
@@ -15,7 +17,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
 
   List<AvailableDoctor> _doctors = [];
   List<String> _categories = ['الكل'];
-  
+
   bool _isLoading = true;
   String? _error;
 
@@ -32,7 +34,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
     super.initState();
 
     _searchFocusNode.addListener(() {
-      setState(() {}); 
+      setState(() {});
     });
 
     // Listen to text changes for live search
@@ -56,16 +58,16 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
     try {
       // Fetch specialties first
       final specialties = await _apiService.getSpecialties();
-      
+
       // Build categories list, avoiding duplicate "الكل"
       final specNames = specialties
           .map((s) => s.name)
           .where((name) => name.isNotEmpty && name != 'الكل')
           .toList();
-      
+
       // Now fetch doctors
       final doctorList = await _apiService.getDoctors(
-          search: _searchQuery.isNotEmpty ? _searchQuery : null, 
+          search: _searchQuery.isNotEmpty ? _searchQuery : null,
           specialty: _selectedCategory == 'الكل' ? null : _selectedCategory);
 
       setState(() {
@@ -90,7 +92,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
 
     try {
       final doctorList = await _apiService.getDoctors(
-          search: _searchQuery.isNotEmpty ? _searchQuery : null, 
+          search: _searchQuery.isNotEmpty ? _searchQuery : null,
           specialty: _selectedCategory == 'الكل' ? null : _selectedCategory);
 
       setState(() {
@@ -162,7 +164,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: const BoxDecoration(
-                color: Color(0xFFFEE2E2), 
+                color: Color(0xFFFEE2E2),
                 shape: BoxShape.circle,
               ),
               child: Image.asset(
@@ -191,7 +193,14 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                 borderRadius: BorderRadius.circular(16),
               ),
               onSelected: (value) {
-                // TODO: Handle menu selection
+                if (value == 'bookings') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MyBookingsPage(),
+                    ),
+                  );
+                }
               },
               itemBuilder: (context) => [
                 PopupMenuItem(
@@ -243,7 +252,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
           children: [
             Column(
               children: [
-                const SizedBox(height: 64), 
+                const SizedBox(height: 64),
                 // Tab Bar
                 SizedBox(
                   height: 50,
@@ -304,7 +313,9 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                 // Doctor Cards List
                 Expanded(
                   child: _isLoading
-                      ? const Center(child: CircularProgressIndicator(color: Color(0xFFBF092F)))
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                              color: Color(0xFFBF092F)))
                       : _error != null
                           ? Center(
                               child: Text(
@@ -369,9 +380,11 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                     height: 48,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: _searchFocusNode.hasFocus && _searchHistory.isNotEmpty
-                          ? const BorderRadius.vertical(top: Radius.circular(24))
-                          : BorderRadius.circular(24),
+                      borderRadius:
+                          _searchFocusNode.hasFocus && _searchHistory.isNotEmpty
+                              ? const BorderRadius.vertical(
+                                  top: Radius.circular(24))
+                              : BorderRadius.circular(24),
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                       boxShadow: _searchFocusNode.hasFocus
                           ? [
@@ -407,13 +420,15 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                               ),
                               border: InputBorder.none,
                               isDense: true,
-                              contentPadding: EdgeInsets.symmetric(vertical: 12),
+                              contentPadding:
+                                  EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
                         ),
                         if (_searchController.text.isNotEmpty)
                           IconButton(
-                            icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 20),
+                            icon: const Icon(Icons.close,
+                                color: Color(0xFF94A3B8), size: 20),
                             onPressed: () {
                               _searchController.clear();
                               _submitSearch('');
@@ -421,7 +436,8 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                           )
                         else
                           IconButton(
-                            icon: const Icon(Icons.mic_none, color: Color(0xFF94A3B8)),
+                            icon: const Icon(Icons.mic_none,
+                                color: Color(0xFF94A3B8)),
                             onPressed: () {},
                           ),
                       ],
@@ -434,11 +450,11 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color(0x40000000),
+                            color: Colors.black.withValues(alpha: 0.15),
                             blurRadius: 15,
-                            offset: Offset(0, 0),
+                            offset: const Offset(0, 5),
                           )
                         ],
                       ),
@@ -448,7 +464,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                         itemCount: _searchHistory.length,
                         separatorBuilder: (context, index) => Divider(
                           height: 1, 
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           indent: 16,
                           endIndent: 16,
                         ),
@@ -529,7 +545,8 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                   color: Colors.grey[200],
                 ),
-                child: doctor.profileImageUrl != null && doctor.profileImageUrl!.isNotEmpty
+                child: doctor.profileImageUrl != null &&
+                        doctor.profileImageUrl!.isNotEmpty
                     ? ClipOval(
                         child: Image.network(
                           doctor.profileImageUrl!,
@@ -568,7 +585,8 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
                   color: specColors['bg'],
                   borderRadius: BorderRadius.circular(8),
@@ -593,7 +611,15 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      // Navigate to profile or booking page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DoctorBookingPage(
+                            doctor: doctor,
+                            initialServiceType: 'remote',
+                          ),
+                        ),
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFBF092F),
@@ -623,7 +649,15 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                   width: double.infinity,
                   child: OutlinedButton(
                     onPressed: () {
-                      // Navigate to profile or booking page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DoctorBookingPage(
+                            doctor: doctor,
+                            initialServiceType: 'clinic',
+                          ),
+                        ),
+                      );
                     },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
