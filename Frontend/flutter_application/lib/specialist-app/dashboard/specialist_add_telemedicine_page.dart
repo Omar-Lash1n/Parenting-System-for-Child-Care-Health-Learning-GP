@@ -167,6 +167,21 @@ class _SpecialistAddTelemedicinePageState
       );
 
       if (success && mounted) {
+        // الحالة المُرجَعة من تحديث البيانات (PUT) هي المرجع — وليس قيمة محفوظة مسبقاً.
+        // الكشف الموافق عليه يظل موافقاً عليه (بدون إعادة إرسال للمراجعة).
+        final status = provider.remoteConsultationDetail?.status.toLowerCase();
+        if (status == 'approved') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم تحديث بيانات الكشف عن بعد بنجاح',
+                  style: TextStyle(fontFamily: specialistFont)),
+              backgroundColor: specialistGreen,
+            ),
+          );
+          Navigator.of(context).pop();
+          return;
+        }
+
         final submitSuccess = await provider.submitRemoteConsultation(_currentConsultationId);
         if (submitSuccess && mounted) {
           Navigator.of(context).push(

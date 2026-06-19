@@ -23,7 +23,7 @@ public static class ConsultationLabels
         BookingStatus.Confirmed => "انتظار موعد الجلسة",
         BookingStatus.Rejected => "تم رفض الحجز",
         BookingStatus.Cancelled => "ملغي",
-        BookingStatus.Completed => "انتهت الجلسة",
+        BookingStatus.Completed => "جلسة مكتملة",
         _ => "غير معروف"
     };
 

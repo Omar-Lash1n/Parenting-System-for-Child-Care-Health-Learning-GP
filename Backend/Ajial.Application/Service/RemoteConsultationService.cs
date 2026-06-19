@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Ajial.Application.DTOs.Common;
 using Ajial.Application.DTOs.RemoteConsultation;
+using Ajial.Application.Helpers;
 using Ajial.Application.Interfaces;
 using Ajial.Domain.Entities;
 using Ajlal.Application.Interfaces;
@@ -92,21 +93,29 @@ public class RemoteConsultationService : IRemoteConsultationService
             var (rc, error) = await ResolveForDoctor<RemoteConsultationDetailResponse>(consultationId, userId);
             if (error != null) return error;
 
-            if (!IsDraftOrRejected(rc!.Status))
+            // المسودة/المرفوض/الموافق عليه قابلة للتعديل. الموافق عليه يظل موافقاً عليه (بدون إعادة مراجعة).
+            if (!CanEditStatus(rc!.Status))
                 return ApiResponse<RemoteConsultationDetailResponse>.FailureResponse("لا يمكن تعديل البيانات في الحالة الحالية");
 
-            if (request.SessionPrice.HasValue) rc!.SessionPrice = request.SessionPrice.Value;
-            if (request.SessionDurationMinutes.HasValue) rc!.SessionDurationMinutes = request.SessionDurationMinutes.Value;
-            if (request.WaitingPeriodMinutes.HasValue) rc!.WaitingPeriodMinutes = request.WaitingPeriodMinutes.Value;
             if (request.WorkingHoursJson != null)
             {
                 if (!IsValidJson(request.WorkingHoursJson))
                     return ApiResponse<RemoteConsultationDetailResponse>.FailureResponse(
                         "خطأ في البيانات المدخلة", new List<string> { "صيغة مواعيد العمل غير صحيحة" });
-                rc!.WorkingHoursJson = request.WorkingHoursJson;
+
+                // لا يمكن تعديل المواعيد بشكل يلغي موعداً محجوزاً بالفعل من ولي الأمر.
+                var conflict = await GetWorkingHoursBookingConflictAsync(rc, request.WorkingHoursJson);
+                if (conflict != null)
+                    return ApiResponse<RemoteConsultationDetailResponse>.FailureResponse(conflict);
+
+                rc.WorkingHoursJson = request.WorkingHoursJson;
             }
 
-            rc!.UpdatedAt = DateTime.UtcNow;
+            if (request.SessionPrice.HasValue) rc.SessionPrice = request.SessionPrice.Value;
+            if (request.SessionDurationMinutes.HasValue) rc.SessionDurationMinutes = request.SessionDurationMinutes.Value;
+            if (request.WaitingPeriodMinutes.HasValue) rc.WaitingPeriodMinutes = request.WaitingPeriodMinutes.Value;
+
+            rc.UpdatedAt = DateTime.UtcNow;
             await _unitOfWork.RemoteConsultations.UpdateAsync(rc);
             await _unitOfWork.SaveChangesAsync();
 
@@ -358,6 +367,45 @@ public class RemoteConsultationService : IRemoteConsultationService
     private static bool IsDraftOrRejected(RemoteConsultationStatus status) =>
         status == RemoteConsultationStatus.Draft || status == RemoteConsultationStatus.Rejected;
 
+    /// <summary>الحالات التي يُسمح فيها للطبيب بتعديل بيانات الكشف: مسودة، مرفوض، أو موافق عليه.</summary>
+    private static bool CanEditStatus(RemoteConsultationStatus status) =>
+        IsDraftOrRejected(status) || status == RemoteConsultationStatus.Approved;
+
+    /// <summary>
+    /// يتحقق أن مواعيد العمل الجديدة لا تُلغي أي موعد محجوز بالفعل من ولي الأمر.
+    /// يُرجع رسالة الخطأ عند وجود تعارض، أو null إذا كان التعديل آمناً.
+    /// </summary>
+    private async Task<string?> GetWorkingHoursBookingConflictAsync(RemoteConsultation rc, string newWorkingHoursJson)
+    {
+        var activeStatuses = new[] { BookingStatus.PendingPayment, BookingStatus.PendingReview, BookingStatus.Confirmed };
+        var now = WorkingHoursHelper.EgyptNow();
+
+        var bookings = (await _unitOfWork.Bookings.FindAsync(b =>
+            b.RemoteConsultationId == rc.Id &&
+            b.ServiceType == BookingServiceType.RemoteConsultation &&
+            activeStatuses.Contains(b.Status))).ToList();
+
+        foreach (var b in bookings.OrderBy(b => b.AppointmentDate).ThenBy(b => b.StartTime))
+        {
+            if (!b.StartTime.HasValue || !b.EndTime.HasValue) continue;
+
+            // المواعيد التي فاتت لا تقيّد الجدول المستقبلي.
+            var slotStart = b.AppointmentDate.Date + b.StartTime.Value;
+            if (slotStart <= now) continue;
+
+            var periods = WorkingHoursHelper.GetPeriodsForDate(newWorkingHoursJson, b.AppointmentDate);
+            var covered = periods.Any(p => p.From <= b.StartTime.Value && b.EndTime.Value <= p.To);
+            if (!covered)
+            {
+                var dateText = b.AppointmentDate.ToString("yyyy-MM-dd");
+                return $"لا يمكن تعديل المواعيد: يوجد حجز بالفعل بتاريخ {dateText} الساعة {WorkingHoursHelper.Format(b.StartTime.Value)}. " +
+                       "لا يمكنك إزالة أو تغيير موعد تم حجزه من ولي الأمر.";
+            }
+        }
+
+        return null;
+    }
+
     private static List<string> GetSubmitValidationErrors(RemoteConsultation rc)
     {
         var errors = new List<string>();
@@ -381,7 +429,7 @@ public class RemoteConsultationService : IRemoteConsultationService
         StatusAr = GetStatusArabicLabel(rc.Status),
         SubmittedAt = rc.SubmittedAt,
         RejectionReason = rc.RejectionReason,
-        CanEdit = IsDraftOrRejected(rc.Status),
+        CanEdit = CanEditStatus(rc.Status),
         CanCancel = rc.Status is RemoteConsultationStatus.Draft or RemoteConsultationStatus.Pending or RemoteConsultationStatus.Rejected,
         CanSubmit = IsDraftOrRejected(rc.Status)
     };
@@ -397,7 +445,7 @@ public class RemoteConsultationService : IRemoteConsultationService
         SessionDurationMinutes = rc.SessionDurationMinutes,
         WaitingPeriodMinutes = rc.WaitingPeriodMinutes,
         WorkingHoursJson = rc.WorkingHoursJson,
-        CanEdit = IsDraftOrRejected(rc.Status),
+        CanEdit = CanEditStatus(rc.Status),
         CanCancel = rc.Status is RemoteConsultationStatus.Draft or RemoteConsultationStatus.Pending or RemoteConsultationStatus.Rejected,
         CanSubmit = IsDraftOrRejected(rc.Status)
     };

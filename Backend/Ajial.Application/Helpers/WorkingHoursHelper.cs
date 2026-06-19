@@ -15,8 +15,26 @@ namespace Ajial.Application.Helpers;
 /// </summary>
 public static class WorkingHoursHelper
 {
-    /// <summary>التوقيت المحلي لمصر (UTC+2). يُستخدم لمقارنة المواعيد المستقبلية.</summary>
-    public static DateTime EgyptNow() => DateTime.UtcNow.AddHours(2);
+    /// <summary>
+    /// منطقة توقيت مصر مع مراعاة التوقيت الصيفي (UTC+2 شتاءً، UTC+3 صيفاً).
+    /// نحاول معرّف ويندوز ثم معرّف IANA (لينكس) لضمان العمل على كل المنصات.
+    /// </summary>
+    private static readonly TimeZoneInfo EgyptTimeZone = ResolveEgyptTimeZone();
+
+    private static TimeZoneInfo ResolveEgyptTimeZone()
+    {
+        foreach (var id in new[] { "Egypt Standard Time", "Africa/Cairo" })
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
+            catch (TimeZoneNotFoundException) { }
+            catch (InvalidTimeZoneException) { }
+        }
+        // احتياطي: في حال عدم توفر بيانات المناطق الزمنية نستخدم UTC+2 الثابت.
+        return TimeZoneInfo.CreateCustomTimeZone("Egypt-Fallback", TimeSpan.FromHours(2), "Egypt", "Egypt");
+    }
+
+    /// <summary>التوقيت المحلي الحالي لمصر مع التوقيت الصيفي. يُستخدم لمقارنة المواعيد.</summary>
+    public static DateTime EgyptNow() => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, EgyptTimeZone);
 
     private static readonly string[] ArabicWeekdays =
     {
