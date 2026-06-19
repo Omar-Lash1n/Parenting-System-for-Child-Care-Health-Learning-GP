@@ -1,22 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
+import 'package:Ajial/specialist-app/dashboard/models/doctor_consultation_models.dart';
+import 'package:Ajial/specialist-app/dashboard/services/doctor_consultation_api_service.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_telemedicine_booking_details_page.dart';
-
-enum SlotStatus { completed, unbooked, booked }
-
-class BookingSlot {
-  final String timeText;
-  final SlotStatus status;
-  final DateTime startTime;
-  final bool hasSymptomsData;
-
-  BookingSlot({
-    required this.timeText,
-    required this.status,
-    required this.startTime,
-    required this.hasSymptomsData,
-  });
-}
 
 class SpecialistTelemedicineBookingsPage extends StatefulWidget {
   const SpecialistTelemedicineBookingsPage({super.key});
@@ -28,10 +14,21 @@ class SpecialistTelemedicineBookingsPage extends StatefulWidget {
 
 class _SpecialistTelemedicineBookingsPageState
     extends State<SpecialistTelemedicineBookingsPage> {
+  final DoctorConsultationApiService _api = DoctorConsultationApiService();
+
   late DateTime _selectedDate;
   late ScrollController _scrollController;
   final int _initialDayIndex = 50000;
   final double _itemWidth = 73.0; // 65 width + 8 margin
+
+  // --- Slots state for the selected day ---
+  List<DoctorSlot> _slots = [];
+  bool _loadingSlots = false;
+  String? _slotsError;
+
+  // --- Calendar (booked-day dots) state for the visible month ---
+  final Set<String> _bookedDates = <String>{};
+  String? _loadedCalendarMonth;
 
   @override
   void initState() {
@@ -40,6 +37,8 @@ class _SpecialistTelemedicineBookingsPageState
     _scrollController = ScrollController(
       initialScrollOffset: (_initialDayIndex * _itemWidth) - 150,
     );
+    _loadSlots();
+    _loadCalendar();
   }
 
   @override
@@ -47,6 +46,78 @@ class _SpecialistTelemedicineBookingsPageState
     _scrollController.dispose();
     super.dispose();
   }
+
+  // ============================================================
+  // ==================== Data loading ==========================
+  // ============================================================
+
+  String _formatDateKey(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  String _formatMonthKey(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}';
+
+  Future<void> _loadSlots() async {
+    final requestedDate = _selectedDate;
+    setState(() {
+      _loadingSlots = true;
+      _slotsError = null;
+    });
+    try {
+      final result = await _api.getSlots(_formatDateKey(requestedDate));
+      // Ignore stale responses if the user moved to another day meanwhile.
+      if (!mounted || requestedDate != _selectedDate) return;
+      setState(() {
+        _slots = result.isAvailable ? result.slots : <DoctorSlot>[];
+        _loadingSlots = false;
+      });
+    } catch (e) {
+      if (!mounted || requestedDate != _selectedDate) return;
+      setState(() {
+        _slots = [];
+        _slotsError = _cleanError(e);
+        _loadingSlots = false;
+      });
+    }
+  }
+
+  Future<void> _loadCalendar() async {
+    final month = _formatMonthKey(_selectedDate);
+    if (month == _loadedCalendarMonth) return;
+    try {
+      final result = await _api.getCalendar(month);
+      if (!mounted) return;
+      setState(() {
+        _loadedCalendarMonth = month;
+        _bookedDates
+          ..removeWhere((d) => d.startsWith('$month-'))
+          ..addAll(result.bookedDates);
+      });
+    } catch (_) {
+      // Calendar dots are a non-critical enhancement; ignore failures.
+    }
+  }
+
+  void _onDateSelected(DateTime date) {
+    setState(() => _selectedDate = date);
+    _loadSlots();
+    _loadCalendar();
+  }
+
+  String _cleanError(Object error) {
+    final text = error.toString().replaceFirst('Exception: ', '');
+    if (text.contains('SocketException') ||
+        text.contains('connection') ||
+        text.contains('Connection') ||
+        text.contains('DioException')) {
+      return 'تعذر الاتصال بالخادم، حاول مرة أخرى';
+    }
+    return text.isEmpty ? 'تعذر الاتصال بالخادم، حاول مرة أخرى' : text;
+  }
+
+  // ============================================================
+  // ==================== Date helpers ==========================
+  // ============================================================
 
   String _getArabicMonthName(int month) {
     const months = [
@@ -80,6 +151,7 @@ class _SpecialistTelemedicineBookingsPageState
   }
 
   Future<void> _selectDate(BuildContext context) async {
+    final screenWidth = MediaQuery.of(context).size.width;
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
@@ -99,9 +171,8 @@ class _SpecialistTelemedicineBookingsPageState
       },
     );
     if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
+      if (!mounted) return;
+      _onDateSelected(picked);
       final now = DateTime.now();
       final today = DateTime.utc(now.year, now.month, now.day);
       final pickedUtc = DateTime.utc(picked.year, picked.month, picked.day);
@@ -109,7 +180,6 @@ class _SpecialistTelemedicineBookingsPageState
       final targetIndex = _initialDayIndex + diff;
 
       if (_scrollController.hasClients) {
-        final screenWidth = MediaQuery.of(context).size.width;
         final targetOffset =
             (targetIndex * _itemWidth) - (screenWidth / 2) + (_itemWidth / 2) + 16;
         _scrollController.animateTo(
@@ -121,120 +191,74 @@ class _SpecialistTelemedicineBookingsPageState
     }
   }
 
-  List<BookingSlot> _getMockSlotsForDate(DateTime date) {
-    final now = DateTime.now();
-    // Only return mock data for today to demonstrate the UI
-    if (date.year == now.year && date.month == now.month && date.day == now.day) {
-      return [
-        BookingSlot(
-          timeText: 'من 7 م الى 7:45 م',
-          status: SlotStatus.completed,
-          startTime: DateTime(date.year, date.month, date.day, 19, 0),
-          hasSymptomsData: false,
+  // ============================================================
+  // ==================== Slot row widget =======================
+  // ============================================================
+
+  Widget _buildStatusWidget(BuildContext context, DoctorSlot slot) {
+    if (!slot.isBooked || slot.bookingId == null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(50),
         ),
-        BookingSlot(
-          timeText: 'من 8 م الى 8:45 م',
-          status: SlotStatus.booked, // Changed to booked to test the empty state
-          startTime: DateTime(date.year, date.month, date.day, 20, 0),
-          hasSymptomsData: false,
+        child: Text(
+          'لم يتم حجز الموعد',
+          style: TextStyle(
+            fontFamily: specialistFont,
+            color: Colors.black.withValues(alpha: 0.8),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        BookingSlot(
-          timeText: 'موعد الآن',
-          status: SlotStatus.booked,
-          // Set slightly in the past so the timer is 0 and shows 'Start Session Now'
-          startTime: now.subtract(const Duration(minutes: 5)),
-          hasSymptomsData: true,
-        ),
-        BookingSlot(
-          timeText: 'من 9 م الى 9:45 م',
-          status: SlotStatus.booked,
-          // Set to 9 PM today so the timer is dynamic and counts down
-          startTime: DateTime(date.year, date.month, date.day, 21, 0),
-          hasSymptomsData: true,
-        ),
-      ];
+      );
     }
-    return [];
+
+    return InkWell(
+      onTap: () async {
+        final dateText =
+            '${_getArabicDayName(_selectedDate.weekday)} - ${_selectedDate.day} ${_getArabicMonthName(_selectedDate.month)} ${_selectedDate.year}';
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SpecialistTelemedicineBookingDetailsPage(
+              bookingId: slot.bookingId!,
+              dateText: dateText,
+            ),
+          ),
+        );
+        // The session may have ended/completed while in the details page.
+        _loadSlots();
+        _loadedCalendarMonth = null;
+        _loadCalendar();
+      },
+      borderRadius: BorderRadius.circular(50),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: specialistGreen,
+          borderRadius: BorderRadius.circular(50),
+        ),
+        child: const Text(
+          'عرض تفاصيل الحجز',
+          style: TextStyle(
+            fontFamily: specialistFont,
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
   }
 
-  Widget _buildStatusWidget(BuildContext context, BookingSlot slot) {
-    switch (slot.status) {
-      case SlotStatus.completed:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0FAF5),
-            borderRadius: BorderRadius.circular(50),
-          ),
-          child: const Text(
-            'جلسة مكتملة',
-            style: TextStyle(
-              fontFamily: specialistFont,
-              color: specialistGreen,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        );
-      case SlotStatus.unbooked:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
-            borderRadius: BorderRadius.circular(50),
-          ),
-          child: Text(
-            'لم يتم حجز الموعد',
-            style: TextStyle(
-              fontFamily: specialistFont,
-              color: Colors.black.withValues(alpha: 0.8),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        );
-      case SlotStatus.booked:
-        return InkWell(
-          onTap: () {
-            final dateText = '${_getArabicDayName(_selectedDate.weekday)} - ${_selectedDate.day} ${_getArabicMonthName(_selectedDate.month)} ${_selectedDate.year}';
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => SpecialistTelemedicineBookingDetailsPage(
-                  dateText: dateText,
-                  timeText: slot.timeText,
-                  sessionStartTime: slot.startTime,
-                  hasSymptomsData: slot.hasSymptomsData,
-                  isAlreadyCompleted: slot.status == SlotStatus.completed,
-                ),
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(50),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: specialistGreen,
-              borderRadius: BorderRadius.circular(50),
-            ),
-            child: const Text(
-              'عرض تفاصيل الحجز',
-              style: TextStyle(
-                fontFamily: specialistFont,
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        );
-    }
-  }
+  // ============================================================
+  // ==================== Build =================================
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
-    final slots = _getMockSlotsForDate(_selectedDate);
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -335,17 +359,16 @@ class _SpecialistTelemedicineBookingsPageState
                     final now = DateTime.now();
                     final date = DateTime(
                         now.year, now.month, now.day + (index - _initialDayIndex));
-                    
+
                     final isSelected = date.year == _selectedDate.year &&
                         date.month == _selectedDate.month &&
                         date.day == _selectedDate.day;
+                    final hasBooking = _bookedDates.contains(_formatDateKey(date));
 
                     return GestureDetector(
                       onTap: () {
-                        setState(() {
-                          _selectedDate = date;
-                        });
-                        
+                        _onDateSelected(date);
+
                         if (_scrollController.hasClients) {
                           final screenWidth = MediaQuery.of(context).size.width;
                           final targetOffset = (index * _itemWidth) -
@@ -398,12 +421,14 @@ class _SpecialistTelemedicineBookingsPageState
                               ),
                             ),
                             const SizedBox(height: 4),
-                            if (isSelected)
+                            if (isSelected || hasBooking)
                               Container(
                                 width: 4,
                                 height: 4,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : specialistGreen,
                                   shape: BoxShape.circle,
                                 ),
                               )
@@ -418,71 +443,115 @@ class _SpecialistTelemedicineBookingsPageState
               ),
 
               // Body
-              Expanded(
-                child: slots.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              'images/Box.png',
-                              width: 100,
-                              height: 100,
-                              color: Colors.black.withValues(alpha: 0.4),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 32),
-                              child: Text(
-                                'يبدو انه لا يتوفر كشوفات يوم ${_getArabicDayName(_selectedDate.weekday)} ${_selectedDate.day} ${_getArabicMonthName(_selectedDate.month)}\n, جرب التنقل بين الايام',
-                                style: TextStyle(
-                                  fontFamily: specialistFont,
-                                  fontSize: 16,
-                                  color: Colors.black.withValues(alpha: 0.5),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 24),
-                        itemCount: slots.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final slot = slots[index];
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                  color: Colors.black.withValues(alpha: 0.3)),
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  slot.timeText,
-                                  style: const TextStyle(
-                                    fontFamily: specialistFont,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                _buildStatusWidget(context, slot),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-              ),
+              Expanded(child: _buildBody()),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loadingSlots) {
+      return const Center(
+        child: CircularProgressIndicator(color: specialistGreen),
+      );
+    }
+
+    if (_slotsError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline,
+                  size: 64, color: Colors.black.withValues(alpha: 0.3)),
+              const SizedBox(height: 16),
+              Text(
+                _slotsError!,
+                style: TextStyle(
+                  fontFamily: specialistFont,
+                  fontSize: 15,
+                  color: Colors.black.withValues(alpha: 0.6),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: _loadSlots,
+                child: const Text(
+                  'إعادة المحاولة',
+                  style: TextStyle(
+                    fontFamily: specialistFont,
+                    color: specialistGreen,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_slots.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'images/Box.png',
+              width: 100,
+              height: 100,
+              color: Colors.black.withValues(alpha: 0.4),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                'يبدو انه لا يتوفر كشوفات يوم ${_getArabicDayName(_selectedDate.weekday)} ${_selectedDate.day} ${_getArabicMonthName(_selectedDate.month)}\n, جرب التنقل بين الايام',
+                style: TextStyle(
+                  fontFamily: specialistFont,
+                  fontSize: 16,
+                  color: Colors.black.withValues(alpha: 0.5),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      itemCount: _slots.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final slot = _slots[index];
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.black.withValues(alpha: 0.3)),
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                slot.rangeText,
+                style: const TextStyle(
+                  fontFamily: specialistFont,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+              _buildStatusWidget(context, slot),
+            ],
+          ),
+        );
+      },
     );
   }
 }

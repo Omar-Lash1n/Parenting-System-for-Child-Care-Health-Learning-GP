@@ -2,8 +2,8 @@ using Ajial.Application.Interfaces;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Auth.OAuth2.Responses;
-using Google.Apis.Calendar.v3;
-using Google.Apis.Calendar.v3.Data;
+using Google.Apis.Meet.v2;
+using Google.Apis.Meet.v2.Data;
 using Google.Apis.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -11,25 +11,29 @@ using Microsoft.Extensions.Logging;
 namespace Ajial.Infrastructure.Services;
 
 /// <summary>
-/// ينشئ روابط Google Meet عبر Google Calendar API.
+/// ينشئ روابط Google Meet عبر Google Meet REST API (v2) بإنشاء "مساحة" (Space) مفتوحة.
 ///
-/// آلية المصادقة: OAuth2 برمز تحديث (refresh token) لحساب Google عادي (consumer)،
-/// لأن حساب الخدمة (service account) على مشروع غير مرتبط بـ Google Workspace لا يستطيع
-/// توليد روابط Meet. يُنشأ الحدث في تقويم هذا الحساب فيتولّد رابط Meet تلقائياً.
+/// لماذا Meet API وليس Calendar API؟
+///   رابط Meet المتولّد من حدث تقويم تكون صلاحيته الافتراضية "Trusted"، فيُطلب من أي شخص
+///   غير مسجّل دخوله أو مسجّل بحساب مختلف عن حساب المضيف (nassereslam454@gmail.com) أن
+///   "يطرق الباب" وينتظر الموافقة. الـ Calendar API لا يوفّر أي حقل لتغيير ذلك.
+///   عبر Meet API نضبط AccessType = OPEN فيستطيع أي شخص لديه الرابط الانضمام مباشرةً
+///   بلا طرق باب ولا موافقة.
+///
+/// آلية المصادقة: OAuth2 برمز تحديث (refresh token) لحساب Google عادي (consumer).
 ///
 /// الإعدادات المطلوبة في appsettings (قسم GoogleMeet):
 ///   ClientId / ClientSecret  — من OAuth Client (نوع Desktop) في نفس مشروع GCP.
-///   RefreshToken             — يُولّد مرة واحدة عبر موافقة المستخدم (راجع تعليمات الإعداد).
-///   CalendarId               — اختياري، الافتراضي "primary".
+///   RefreshToken             — يجب توليده بنطاق meetings.space.created (راجع التعليمات).
+///
+/// ⚠ ملاحظة إعداد: رمز التحديث القديم (المخصّص للتقويم فقط) لن يعمل مع Meet API.
+///   أعد توليد RefreshToken بموافقة تشمل النطاق:
+///   https://www.googleapis.com/auth/meetings.space.created
 /// </summary>
 public class GoogleMeetService : IMeetingService
 {
-    private const string TimeZoneId = "Africa/Cairo";
-    private static readonly TimeSpan EgyptOffset = TimeSpan.FromHours(2); // متوافق مع WorkingHoursHelper.EgyptNow (UTC+2)
-
     private readonly ILogger<GoogleMeetService> _logger;
-    private readonly string _calendarId;
-    private readonly Lazy<CalendarService> _calendar;
+    private readonly Lazy<MeetService> _meet;
 
     public GoogleMeetService(IConfiguration configuration, ILogger<GoogleMeetService> logger)
     {
@@ -39,10 +43,9 @@ public class GoogleMeetService : IMeetingService
         var clientId = section["ClientId"];
         var clientSecret = section["ClientSecret"];
         var refreshToken = section["RefreshToken"];
-        _calendarId = string.IsNullOrWhiteSpace(section["CalendarId"]) ? "primary" : section["CalendarId"]!;
 
         // البناء كسول: لا نفشل عند الإقلاع إن لم تُضبط الإعدادات بعد — نفشل فقط عند أول استخدام فعلي.
-        _calendar = new Lazy<CalendarService>(() =>
+        _meet = new Lazy<MeetService>(() =>
         {
             if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret) || string.IsNullOrWhiteSpace(refreshToken))
                 throw new InvalidOperationException(
@@ -51,12 +54,13 @@ public class GoogleMeetService : IMeetingService
             var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
             {
                 ClientSecrets = new ClientSecrets { ClientId = clientId, ClientSecret = clientSecret },
-                Scopes = new[] { CalendarService.Scope.Calendar }
+                // النطاق المطلوب لإنشاء مساحات Meet والتحكّم في صلاحية الدخول.
+                Scopes = new[] { MeetService.Scope.MeetingsSpaceCreated }
             });
 
             var credential = new UserCredential(flow, "ajial-meet", new TokenResponse { RefreshToken = refreshToken });
 
-            return new CalendarService(new BaseClientService.Initializer
+            return new MeetService(new BaseClientService.Initializer
             {
                 HttpClientInitializer = credential,
                 ApplicationName = "Ajial"
@@ -71,49 +75,29 @@ public class GoogleMeetService : IMeetingService
         DateTime endEgyptLocal,
         CancellationToken cancellationToken = default)
     {
-        var startOffset = new DateTimeOffset(DateTime.SpecifyKind(startEgyptLocal, DateTimeKind.Unspecified), EgyptOffset);
-        var endOffset = new DateTimeOffset(DateTime.SpecifyKind(endEgyptLocal, DateTimeKind.Unspecified), EgyptOffset);
-
-        var newEvent = new Event
+        // مساحة مفتوحة: أي شخص لديه الرابط ينضم مباشرةً بلا "طرق الباب" أو موافقة المضيف.
+        //   AccessType = OPEN              → لا حاجة لموافقة المضيف على الضيوف.
+        //   EntryPointAccess = ALL         → يمكن الانضمام من أي عميل/تطبيق Meet.
+        var space = new Space
         {
-            Summary = title,
-            Description = description,
-            Start = new EventDateTime { DateTimeRaw = startOffset.ToString("yyyy-MM-ddTHH:mm:sszzz"), TimeZone = TimeZoneId },
-            End = new EventDateTime { DateTimeRaw = endOffset.ToString("yyyy-MM-ddTHH:mm:sszzz"), TimeZone = TimeZoneId },
-            ConferenceData = new ConferenceData
+            Config = new SpaceConfig
             {
-                CreateRequest = new CreateConferenceRequest
-                {
-                    RequestId = Guid.NewGuid().ToString("N"),
-                    ConferenceSolutionKey = new ConferenceSolutionKey { Type = "hangoutsMeet" }
-                }
+                AccessType = "OPEN",
+                EntryPointAccess = "ALL"
             }
         };
 
-        var request = _calendar.Value.Events.Insert(newEvent, _calendarId);
-        request.ConferenceDataVersion = 1;
+        var created = await _meet.Value.Spaces.Create(space).ExecuteAsync(cancellationToken);
 
-        var created = await request.ExecuteAsync(cancellationToken);
-
-        var joinUrl = ExtractMeetLink(created);
-        if (string.IsNullOrWhiteSpace(joinUrl))
+        if (string.IsNullOrWhiteSpace(created.MeetingUri))
         {
-            _logger.LogError("Google Meet link was not generated for event {EventId}. " +
-                             "Verify the configured Google account can create Meet links.", created.Id);
+            _logger.LogError("Google Meet space was created without a meeting URI. Space: {Space}", created.Name);
             throw new InvalidOperationException("لم يتم توليد رابط الاجتماع من Google.");
         }
 
-        _logger.LogInformation("✅ Google Meet created. EventId: {EventId}", created.Id);
-        return new MeetingInfo(joinUrl, created.Id);
-    }
+        _logger.LogInformation("✅ Google Meet space created (OPEN access). Space: {Space}", created.Name);
 
-    private static string? ExtractMeetLink(Event ev)
-    {
-        if (!string.IsNullOrWhiteSpace(ev.HangoutLink))
-            return ev.HangoutLink;
-
-        var video = ev.ConferenceData?.EntryPoints?
-            .FirstOrDefault(e => e.EntryPointType == "video" && !string.IsNullOrWhiteSpace(e.Uri));
-        return video?.Uri;
+        // نُرجع اسم المساحة (spaces/...) كمعرّف بدل معرّف حدث التقويم.
+        return new MeetingInfo(created.MeetingUri, created.Name);
     }
 }

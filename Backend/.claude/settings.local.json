@@ -27,7 +27,9 @@
       "Bash(python -c \"import json; d=json.load\\(open\\('Ajial.API/Keys/ajial-973b5-e0939c05a7cc.json'\\)\\); print\\({k:\\(v if k not in \\('private_key','private_key_id'\\) else '<redacted>'\\) for k,v in d.items\\(\\)}\\)\")",
       "Bash(node -e \"const d=require\\('./Ajial.API/Keys/ajial-973b5-e0939c05a7cc.json'\\); for\\(const k in d\\){console.log\\(k, k.includes\\('private'\\)?'<redacted>':d[k]\\)}\")",
       "WebSearch",
-      "PowerShell(dotnet build *)"
+      "PowerShell(dotnet build *)",
+      "Bash(python -c \"import docx; print\\('python-docx OK'\\)\")",
+      "Bash(python _gen_phase4_docx.py)"
     ]
   }
 }

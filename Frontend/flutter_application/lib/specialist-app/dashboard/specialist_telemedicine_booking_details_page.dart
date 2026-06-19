@@ -1,25 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
+import 'package:Ajial/specialist-app/dashboard/models/doctor_consultation_models.dart';
+import 'package:Ajial/specialist-app/dashboard/services/doctor_consultation_api_service.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_telemedicine_symptoms_page.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_telemedicine_prescription_page.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_telemedicine_diagnosis_page.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_telemedicine_chat_page.dart';
 
 class SpecialistTelemedicineBookingDetailsPage extends StatefulWidget {
+  final String bookingId;
   final String dateText;
-  final String timeText;
-  final DateTime sessionStartTime;
-  final bool hasSymptomsData;
-  final bool isAlreadyCompleted;
 
   const SpecialistTelemedicineBookingDetailsPage({
     super.key,
+    required this.bookingId,
     required this.dateText,
-    required this.timeText,
-    required this.sessionStartTime,
-    required this.hasSymptomsData,
-    required this.isAlreadyCompleted,
   });
 
   @override
@@ -29,57 +26,239 @@ class SpecialistTelemedicineBookingDetailsPage extends StatefulWidget {
 
 class _SpecialistTelemedicineBookingDetailsPageState
     extends State<SpecialistTelemedicineBookingDetailsPage> {
-  Timer? _timer;
-  Duration _remainingTime = Duration.zero;
-  bool _isCompleted = false;
+  final DoctorConsultationApiService _api = DoctorConsultationApiService();
+
+  Timer? _tickTimer; // 1s — drives the countdown label
+  Timer? _pollTimer; // 5s — re-syncs session flags with the server
+
+  bool _loading = true;
+  String? _error;
+  DoctorBookingDetail? _detail;
+  DoctorSessionStatus? _session;
+
+  // Local countdown bookkeeping, synced from the server clock.
+  int _secondsUntilStart = 0;
+  DateTime _lastSyncAt = DateTime.now();
+
+  bool _startingSession = false;
+  bool _endingSession = false;
+
   List<Medicine> _prescriptionMedicines = [];
   String? _diagnosis;
 
   @override
   void initState() {
     super.initState();
-    _isCompleted = widget.isAlreadyCompleted;
-    if (!_isCompleted) {
-      _updateRemainingTime();
-      _startTimer();
-    }
-  }
-
-  void _updateRemainingTime() {
-    final now = DateTime.now();
-    if (widget.sessionStartTime.isAfter(now)) {
-      _remainingTime = widget.sessionStartTime.difference(now);
-    } else {
-      _remainingTime = Duration.zero;
-    }
-  }
-
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _updateRemainingTime();
-        if (_remainingTime.inSeconds <= 0) {
-          _timer?.cancel();
-        }
-      });
-    });
+    _loadDetail();
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _tickTimer?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
   }
 
-  String _formatDuration(Duration duration) {
-    if (duration.inSeconds <= 0) {
-      return 'حان موعد الجلسة';
+  // ============================================================
+  // ==================== Data loading ==========================
+  // ============================================================
+
+  Future<void> _loadDetail() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final detail = await _api.getBookingDetail(widget.bookingId);
+      if (!mounted) return;
+      setState(() {
+        _detail = detail;
+        _loading = false;
+      });
+      _applySession(detail.session);
+      _startTimers();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = _cleanError(e);
+        _loading = false;
+      });
     }
-    int days = duration.inDays;
-    int hours = duration.inHours % 24;
-    int minutes = duration.inMinutes % 60;
-    int seconds = duration.inSeconds % 60;
-    
+  }
+
+  void _applySession(DoctorSessionStatus? session) {
+    if (session == null) return;
+    setState(() {
+      _session = session;
+      _secondsUntilStart = session.secondsUntilStart;
+      _lastSyncAt = DateTime.now();
+    });
+  }
+
+  void _startTimers() {
+    _tickTimer?.cancel();
+    _pollTimer?.cancel();
+
+    // Stop all polling once the session is completed.
+    if (_session?.isCompleted ?? false) return;
+
+    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {}); // re-render the countdown
+    });
+
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _pollSession());
+  }
+
+  Future<void> _pollSession() async {
+    try {
+      final session = await _api.getSessionStatus(widget.bookingId);
+      if (!mounted) return;
+      _applySession(session);
+      if (session.isCompleted) {
+        _tickTimer?.cancel();
+        _pollTimer?.cancel();
+      }
+    } catch (_) {
+      // Transient poll failures are ignored; next tick retries.
+    }
+  }
+
+  /// Seconds left until the session window opens, derived from the last
+  /// server sync plus locally-elapsed time.
+  int get _remainingSeconds {
+    final elapsed = DateTime.now().difference(_lastSyncAt).inSeconds;
+    final remaining = _secondsUntilStart - elapsed;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  String _cleanError(Object error) {
+    final text = error.toString().replaceFirst('Exception: ', '');
+    if (text.contains('SocketException') ||
+        text.contains('connection') ||
+        text.contains('Connection') ||
+        text.contains('DioException')) {
+      return 'تعذر الاتصال بالخادم، حاول مرة أخرى';
+    }
+    return text.isEmpty ? 'تعذر الاتصال بالخادم، حاول مرة أخرى' : text;
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(fontFamily: specialistFont),
+          textAlign: TextAlign.right,
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // ==================== Session actions =======================
+  // ============================================================
+
+  Future<void> _startSession() async {
+    if (_startingSession) return;
+    setState(() => _startingSession = true);
+    try {
+      final result = await _api.startSession(widget.bookingId);
+      await _openMeeting(result.joinUrl);
+      await _pollSession();
+    } catch (e) {
+      _showSnack(_cleanError(e));
+    } finally {
+      if (mounted) setState(() => _startingSession = false);
+    }
+  }
+
+  Future<void> _endSession() async {
+    if (_endingSession) return;
+    final confirmed = await _confirmEndSession();
+    if (confirmed != true) return;
+    setState(() => _endingSession = true);
+    try {
+      final session = await _api.endSession(widget.bookingId);
+      if (!mounted) return;
+      _applySession(session);
+      _tickTimer?.cancel();
+      _pollTimer?.cancel();
+      // Refresh the booking detail so the badge/buttons reflect completion.
+      _loadDetail();
+    } catch (e) {
+      _showSnack(_cleanError(e));
+    } finally {
+      if (mounted) setState(() => _endingSession = false);
+    }
+  }
+
+  Future<bool?> _confirmEndSession() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: Colors.white,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'إنهاء الجلسة',
+            style: TextStyle(
+              fontFamily: specialistFont,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: const Text(
+            'هل أنت متأكد من إنهاء الجلسة؟ لا يمكن التراجع بعد الإنهاء.',
+            style: TextStyle(fontFamily: specialistFont),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text(
+                'إلغاء',
+                style: TextStyle(
+                  fontFamily: specialistFont,
+                  color: Colors.black54,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(
+                'إنهاء',
+                style: TextStyle(
+                  fontFamily: specialistFont,
+                  color: Color(0xFFE53935),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openMeeting(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      _showSnack('رابط الجلسة غير صالح');
+      return;
+    }
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok) _showSnack('تعذر فتح رابط الجلسة');
+  }
+
+  String _formatDuration(int totalSeconds) {
+    if (totalSeconds <= 0) return 'حان موعد الجلسة';
+    final days = totalSeconds ~/ 86400;
+    final hours = (totalSeconds % 86400) ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+
     if (days > 0) {
       return 'متبقي $days يوم : $hours س : $minutes ق : $seconds ث';
     } else if (hours > 0) {
@@ -88,6 +267,10 @@ class _SpecialistTelemedicineBookingDetailsPageState
       return 'متبقي $minutes ق : $seconds ث';
     }
   }
+
+  // ============================================================
+  // ==================== UI ====================================
+  // ============================================================
 
   Widget _buildGridButton({
     required String title,
@@ -155,18 +338,17 @@ class _SpecialistTelemedicineBookingDetailsPageState
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 16.0),
                 child: Row(
                   children: [
                     InkWell(
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
+                      onTap: () => Navigator.pop(context),
                       borderRadius: BorderRadius.circular(50),
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: const BoxDecoration(
-                          color: Color(0xFFE8F7F0), // Light green
+                          color: Color(0xFFE8F7F0),
                           shape: BoxShape.circle,
                         ),
                         child: Image.asset(
@@ -192,135 +374,205 @@ class _SpecialistTelemedicineBookingDetailsPageState
                   ],
                 ),
               ),
+              Expanded(child: _buildContent()),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-              const SizedBox(height: 24),
+  Widget _buildContent() {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: specialistGreen),
+      );
+    }
 
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    children: [
-                      // Info Card
-                      Container(
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                              color: Colors.grey.withValues(alpha: 0.3)),
-                        ),
-                        child: IntrinsicHeight(
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 8,
-                                color: specialistGreen,
-                              ),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    if (_error != null || _detail == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline,
+                  size: 64, color: Colors.black.withValues(alpha: 0.3)),
+              const SizedBox(height: 16),
+              Text(
+                _error ?? 'تعذر تحميل تفاصيل الحجز',
+                style: TextStyle(
+                  fontFamily: specialistFont,
+                  fontSize: 15,
+                  color: Colors.black.withValues(alpha: 0.6),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: _loadDetail,
+                child: const Text(
+                  'إعادة المحاولة',
+                  style: TextStyle(
+                    fontFamily: specialistFont,
+                    color: specialistGreen,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final detail = _detail!;
+    final isCompleted = (_session?.isCompleted ?? detail.isCompleted);
+
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
+              children: [
+                // Info Card
+                Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border:
+                        Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                  ),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        Container(width: 8, color: specialistGreen),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            widget.dateText,
-                                            style: const TextStyle(
-                                              fontFamily: specialistFont,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.black,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${widget.timeText} . 45 دقيقة',
-                                            style: TextStyle(
-                                              fontFamily: specialistFont,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: Colors.grey.shade700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color: _isCompleted ? const Color(0xFFE8F7F0) : const Color(0xFFE5F3FE),
-                                          borderRadius: BorderRadius.circular(50),
+                                      Text(
+                                        widget.dateText,
+                                        style: const TextStyle(
+                                          fontFamily: specialistFont,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.black,
                                         ),
-                                        child: Text(
-                                          _isCompleted ? 'جلسة مكتملة' : 'جاري المعالجة',
-                                          style: TextStyle(
-                                            fontFamily: specialistFont,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: _isCompleted ? specialistGreen : const Color(0xFF0085FF),
-                                          ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${detail.rangeText} . ${detail.durationMinutes} دقيقة',
+                                        style: TextStyle(
+                                          fontFamily: specialistFont,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.grey.shade700,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isCompleted
+                                        ? const Color(0xFFE8F7F0)
+                                        : const Color(0xFFE5F3FE),
+                                    borderRadius: BorderRadius.circular(50),
+                                  ),
+                                  child: Text(
+                                    _session?.statusAr ?? detail.statusAr,
+                                    style: TextStyle(
+                                      fontFamily: specialistFont,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: isCompleted
+                                          ? specialistGreen
+                                          : const Color(0xFF0085FF),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
+                ),
 
-                      const SizedBox(height: 32),
+                const SizedBox(height: 32),
 
-                      // Grid Buttons
-                      Row(
-                        children: [
-                          _buildGridButton(
-                            title: 'الاعراض والشكوي',
-                            iconPath: 'images/synirge green.png',
-                            isEnabled: true,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => SpecialistTelemedicineSymptomsPage(hasData: widget.hasSymptomsData),
-                                ),
-                              );
-                            },
+                // Grid Buttons
+                Row(
+                  children: [
+                    _buildGridButton(
+                      title: 'الاعراض والشكوي',
+                      iconPath: 'images/synirge green.png',
+                      isEnabled: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                SpecialistTelemedicineSymptomsPage(
+                              detail: detail,
+                            ),
                           ),
-                          const SizedBox(width: 16),
-                          _buildGridButton(
-                            title: 'تحدث مع المريض',
-                            iconPath: 'images/chat.png',
-                            isEnabled: _isCompleted,
-                            onTap: _isCompleted ? () {
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 16),
+                    _buildGridButton(
+                      title: 'تحدث مع المريض',
+                      iconPath: 'images/chat.png',
+                      isEnabled: isCompleted,
+                      onTap: isCompleted
+                          ? () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const SpecialistTelemedicineChatPage(
-                                    patientName: 'خالد ابراهيم',
+                                  builder: (context) =>
+                                      SpecialistTelemedicineChatPage(
+                                    patientName: detail.patientName,
                                     patientImage: 'images/pic.png',
                                   ),
                                 ),
                               );
-                            } : null,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          _buildGridButton(
-                            title: 'الروشتة الطبية',
-                            iconPath: 'images/notes.png',
-                            isEnabled: _isCompleted,
-                            onTap: _isCompleted ? () async {
-                              final updatedMedicines = await Navigator.push<List<Medicine>>(
+                            }
+                          : null,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    _buildGridButton(
+                      title: 'الروشتة الطبية',
+                      iconPath: 'images/notes.png',
+                      isEnabled: isCompleted,
+                      onTap: isCompleted
+                          ? () async {
+                              final updatedMedicines =
+                                  await Navigator.push<List<Medicine>>(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => SpecialistTelemedicinePrescriptionPage(
+                                  builder: (context) =>
+                                      SpecialistTelemedicinePrescriptionPage(
                                     initialMedicines: _prescriptionMedicines,
                                   ),
                                 ),
@@ -330,83 +582,131 @@ class _SpecialistTelemedicineBookingDetailsPageState
                                   _prescriptionMedicines = updatedMedicines;
                                 });
                               }
-                            } : null,
-                          ),
-                          const SizedBox(width: 16),
-                          _buildGridButton(
-                            title: 'التشخيص الطبي',
-                            iconPath: 'images/consultation.png',
-                            isEnabled: _isCompleted,
-                            onTap: _isCompleted ? () async {
-                              final updatedDiagnosis = await Navigator.push<String?>(
+                            }
+                          : null,
+                    ),
+                    const SizedBox(width: 16),
+                    _buildGridButton(
+                      title: 'التشخيص الطبي',
+                      iconPath: 'images/consultation.png',
+                      isEnabled: isCompleted,
+                      onTap: isCompleted
+                          ? () async {
+                              final updatedDiagnosis =
+                                  await Navigator.push<String?>(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => SpecialistTelemedicineDiagnosisPage(
+                                  builder: (context) =>
+                                      SpecialistTelemedicineDiagnosisPage(
                                     initialDiagnosis: _diagnosis,
                                   ),
                                 ),
                               );
-                              // Using updatedDiagnosis != null is tricky since null might mean it was deleted.
-                              // So we just update the state regardless.
                               setState(() {
                                 _diagnosis = updatedDiagnosis;
                               });
-                            } : null,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Bottom Countdown Banner
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: InkWell(
-                  onTap: () {
-                    if (!_isCompleted && _remainingTime.inSeconds <= 0) {
-                      setState(() {
-                        _isCompleted = true;
-                      });
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(30),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: _isCompleted 
-                          ? const Color(0xFF81D4A3) // Light green for disabled completed state
-                          : (_remainingTime.inSeconds <= 0 
-                              ? specialistGreen // Active start button
-                              : Colors.grey.shade300), // Countdown state
-                      borderRadius: BorderRadius.circular(30),
+                            }
+                          : null,
                     ),
-                    child: Text(
-                      _isCompleted 
-                          ? 'جلسة مكتملة'
-                          : (_remainingTime.inSeconds <= 0 
-                              ? 'بدء الجلسة الان'
-                              : _formatDuration(_remainingTime)),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: specialistFont,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: _isCompleted 
-                            ? Colors.white
-                            : (_remainingTime.inSeconds <= 0 
-                                ? Colors.white
-                                : Colors.grey.shade700),
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
+
+        // Bottom action button
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: _buildBottomButton(isCompleted),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomButton(bool isCompleted) {
+    // 1) Completed — disabled light-green pill.
+    if (isCompleted) {
+      return _bottomPill(
+        label: 'جلسة مكتملة',
+        background: const Color(0xFF81D4A3),
+        textColor: Colors.white,
+        onTap: null,
+      );
+    }
+
+    final session = _session;
+    final canEnd = session?.canEnd ?? false;
+    final canStart = session?.canStart ?? false;
+
+    // 2) Session in progress — red "End session".
+    if (canEnd) {
+      return _bottomPill(
+        label: _endingSession ? '' : 'إنهاء الجلسة',
+        background: const Color(0xFFE53935),
+        textColor: Colors.white,
+        loading: _endingSession,
+        onTap: _endingSession ? null : _endSession,
+      );
+    }
+
+    // 3) Within the start window — green "Start now".
+    if (canStart) {
+      return _bottomPill(
+        label: _startingSession ? '' : 'بدء الجلسة الان',
+        background: specialistGreen,
+        textColor: Colors.white,
+        loading: _startingSession,
+        onTap: _startingSession ? null : _startSession,
+      );
+    }
+
+    // 4) Before the window opens — grey countdown.
+    return _bottomPill(
+      label: _formatDuration(_remainingSeconds),
+      background: Colors.grey.shade300,
+      textColor: Colors.grey.shade700,
+      onTap: null,
+    );
+  }
+
+  Widget _bottomPill({
+    required String label,
+    required Color background,
+    required Color textColor,
+    required VoidCallback? onTap,
+    bool loading = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(30),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: loading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: specialistFont,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
       ),
     );
   }
