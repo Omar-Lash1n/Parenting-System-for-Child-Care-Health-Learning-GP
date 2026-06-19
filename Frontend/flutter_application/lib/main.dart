@@ -71,6 +71,7 @@ import 'package:Ajial/ranking/providers/ranking_provider.dart';
 import 'package:Ajial/ranking/ranking_page.dart';
 import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
 import 'package:Ajial/consultations/screens/parent_consultations_page.dart';
+import 'package:Ajial/consultations/screens/parent_payments_page.dart';
 
 // Background handler is only supported on mobile (Android/iOS), not on web.
 @pragma('vm:entry-point')
@@ -282,6 +283,7 @@ class AjialApp extends StatelessWidget {
         '/lesson-quiz': (context) => const LessonQuizScreen(),
         '/ranking': (context) => const RankingPage(),
         '/parent-consultations': (context) => const ParentConsultationsPage(),
+        '/parent-payments': (context) => const ParentPaymentsPage(),
       },
     );
   }

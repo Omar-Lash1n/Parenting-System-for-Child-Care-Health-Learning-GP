@@ -114,13 +114,101 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
     }
   }
 
+  bool _isSessionNow() {
+    if (_booking.status != 'confirmed') return false;
+    try {
+      final dateParts = _booking.appointmentDate.split('-');
+      final startParts = _booking.startTime.split(':');
+      final endParts = _booking.endTime.split(':');
+      if (dateParts.length == 3 && startParts.length >= 2 && endParts.length >= 2) {
+        final year = int.parse(dateParts[0]);
+        final month = int.parse(dateParts[1]);
+        final day = int.parse(dateParts[2]);
+        
+        final startHour = int.parse(startParts[0]);
+        final startMinute = int.parse(startParts[1]);
+        
+        final endHour = int.parse(endParts[0]);
+        final endMinute = int.parse(endParts[1]);
+        
+        final now = DateTime.now();
+        final sessionStart = DateTime(year, month, day, startHour, startMinute);
+        final sessionEnd = DateTime(year, month, day, endHour, endMinute);
+        
+        // Show button only during the exact session window (no early buffer)
+        return now.isAfter(sessionStart) && now.isBefore(sessionEnd);
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  String _getTimeLeftForSession() {
+    try {
+      final dateParts = _booking.appointmentDate.split('-');
+      final timeParts = _booking.startTime.split(':');
+      if (dateParts.length == 3 && timeParts.length >= 2) {
+        final year = int.parse(dateParts[0]);
+        final month = int.parse(dateParts[1]);
+        final day = int.parse(dateParts[2]);
+        final hour = int.parse(timeParts[0]);
+        final minute = int.parse(timeParts[1]);
+        
+        final sessionTime = DateTime(year, month, day, hour, minute);
+        final now = DateTime.now();
+        
+        final difference = sessionTime.difference(now);
+        if (difference.isNegative) {
+          return 'بدأت الجلسة بالفعل';
+        }
+        
+        final days = difference.inDays;
+        final hours = difference.inHours % 24;
+        final minutes = difference.inMinutes % 60;
+        
+        List<String> parts = [];
+        if (days > 0) {
+          parts.add('$days يوم');
+        }
+        if (hours > 0) {
+          parts.add('$hours ساعة');
+        }
+        if (minutes > 0) {
+          parts.add('$minutes دقيقة');
+        }
+        
+        if (parts.isEmpty) {
+          return 'أقل من دقيقة على الجلسة';
+        }
+        
+        return 'فاضل ${parts.join(' و ')} على الجلسة';
+      }
+    } catch (_) {}
+    return 'فاضل وقت على الجلسة';
+  }
+
+  String _getActionButtonText() {
+    if (_booking.status == 'pending_review') {
+      return 'في انتظار تأكيد طلب الحجز';
+    } else if (_booking.status == 'confirmed') {
+      return _getTimeLeftForSession();
+    } else if (_booking.status == 'rejected') {
+      return 'تم رفض هذا الحجز';
+    }
+    return 'دخول الجلسة';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final statusColor = _booking.status == 'pending_payment' || _booking.status == 'pending_review'
-        ? const Color(0xFFFE8401)
-        : _booking.status == 'confirmed'
-            ? const Color(0xFF28A745)
-            : const Color(0xFF8E8E93);
+    final isSessionNow = _isSessionNow();
+    final statusColor = isSessionNow
+        ? const Color(0xFF28A745)
+        : _booking.status == 'pending_payment' || _booking.status == 'pending_review'
+            ? const Color(0xFFFE8401)
+            : _booking.status == 'confirmed'
+                ? const Color(0xFF008CFF)
+                : _booking.status == 'rejected'
+                    ? const Color(0xFFD32F2F)
+                    : const Color(0xFF8E8E93);
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -158,7 +246,8 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                                     children: [
                                       _buildBookingCard(statusColor),
                                       const SizedBox(height: 24),
-                                      _buildInstructionsCard(),
+                                      _buildRejectionCard(),
+                                      if (_booking.status != 'rejected') _buildInstructionsCard(),
                                       const SizedBox(height: 140), // Spacing for bottom buttons
                                     ],
                                   ),
@@ -239,7 +328,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
             children: [
               // Tag
               Container(
-                width: 120,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 height: 41,
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.1),
@@ -247,7 +336,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  _booking.statusAr,
+                  _isSessionNow() ? 'الطبيب متاح الآن للبدء' : _booking.statusAr,
                   style: TextStyle(
                     fontFamily: 'IBM Plex Sans Arabic',
                     fontWeight: FontWeight.w400,
@@ -338,6 +427,52 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
     );
   }
 
+  Widget _buildRejectionCard() {
+    if (_booking.status != 'rejected') return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD32F2F).withValues(alpha: 0.05),
+        border: Border.all(color: const Color(0xFFD32F2F).withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.error_outline, color: Color(0xFFD32F2F), size: 24),
+              const SizedBox(width: 8),
+              Text(
+                'سبب الرفض',
+                style: TextStyle(
+                  fontFamily: 'IBM Plex Sans Arabic',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: const Color(0xFFD32F2F),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _booking.rejectionReason ?? 'لم يتم تحديد سبب للرفض',
+            style: const TextStyle(
+              fontFamily: 'IBM Plex Sans Arabic',
+              fontWeight: FontWeight.w400,
+              fontSize: 14,
+              color: Colors.black87,
+              height: 1.5,
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInstructionsCard() {
     return Container(
       width: double.infinity,
@@ -404,31 +539,60 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
   }
 
   Widget _buildBottomButtons() {
+    final sessionNow = _isSessionNow();
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Disabled Primary Button (دخول الجلسة)
-        Container(
-          width: double.infinity,
-          height: 50,
-          decoration: BoxDecoration(
-            color: const Color(0xFFD9D9D9),
-            borderRadius: BorderRadius.circular(50),
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'دخول الجلسة',
-            style: TextStyle(
-              fontFamily: 'IBM Plex Sans Arabic',
-              fontWeight: FontWeight.w500,
-              fontSize: 18,
-              color: Color(0x80000000), // opacity: 0.5
+        if (sessionNow)
+          GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('جاري بدء الجلسة والاتصال بالطبيب...', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+                  backgroundColor: Color(0xFFBF092F),
+                ),
+              );
+            },
+            child: Container(
+              width: double.infinity,
+              height: 50,
+              decoration: BoxDecoration(
+                color: const Color(0xFFBF092F),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              alignment: Alignment.center,
+              child: const Text(
+                'دخول الجلسة',
+                style: TextStyle(
+                  fontFamily: 'IBM Plex Sans Arabic',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 18,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          )
+        else
+          Container(
+            width: double.infinity,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFFD9D9D9),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              _getActionButtonText(),
+              style: const TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontWeight: FontWeight.w500,
+                fontSize: 18,
+                color: Color(0x80000000), // opacity: 0.5
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        // Active Cancel Button (إلغاء الحجز)
-        if (_booking.canCancel)
+        if (_booking.canCancel && !sessionNow) ...[
+          const SizedBox(height: 12),
           GestureDetector(
             onTap: _isCancelling ? null : _handleCancelBooking,
             child: Container(
@@ -453,6 +617,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                     ),
             ),
           ),
+        ],
       ],
     );
   }
