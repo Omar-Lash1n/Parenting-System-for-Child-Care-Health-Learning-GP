@@ -633,32 +633,31 @@ class _TelemedicineRequestCardState extends State<TelemedicineRequestCard> {
                 const SizedBox(height: 12),
 
                 // 2. Edit Data Button (Outlined)
-                if (widget.data.canEdit || widget.data.status.toLowerCase() == 'pending') ...[
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: OutlinedButton(
-                      onPressed: widget.onEdit,
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                            color: Colors.black.withValues(alpha: 0.4)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(50),
-                        ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton(
+                    onPressed: widget.onEdit,
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      side: BorderSide(
+                          color: Colors.black.withValues(alpha: 0.4)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50),
                       ),
-                      child: const Text(
-                        'تعديل البيانات',
-                        style: TextStyle(
-                          fontFamily: specialistFont,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
+                    ),
+                    child: const Text(
+                      'تعديل البيانات',
+                      style: TextStyle(
+                        fontFamily: specialistFont,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                ],
+                ),
+                const SizedBox(height: 12),
 
                 // 3. Cancel Request Button (Text)
                 if (widget.data.canCancel)
