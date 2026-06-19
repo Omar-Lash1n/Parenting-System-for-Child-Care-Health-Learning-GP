@@ -12,6 +12,7 @@ public class DoctorConsultationService : IDoctorConsultationService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMeetingService _meetingService;
+    private readonly IMedicalFileService _medicalFileService;
 
     /// <summary>يُسمح للطبيب ببدء الجلسة قبل موعدها بـ 5 دقائق كحد أقصى.</summary>
     private const int StartLeadMinutes = 5;
@@ -23,10 +24,14 @@ public class DoctorConsultationService : IDoctorConsultationService
     private static readonly BookingStatus[] DoctorVisibleStatuses =
         { BookingStatus.Confirmed, BookingStatus.Completed };
 
-    public DoctorConsultationService(IUnitOfWork unitOfWork, IMeetingService meetingService)
+    public DoctorConsultationService(
+        IUnitOfWork unitOfWork,
+        IMeetingService meetingService,
+        IMedicalFileService medicalFileService)
     {
         _unitOfWork = unitOfWork;
         _meetingService = meetingService;
+        _medicalFileService = medicalFileService;
     }
 
     // ── المواعيد المحجوزة (شاشة مواعيد اليوم + تقويم الشهر) ──────────────────────
@@ -311,7 +316,293 @@ public class DoctorConsultationService : IDoctorConsultationService
         }
     }
 
+    // ── الروشتة الطبية (الأدوية) ────────────────────────────────────────────────
+
+    public async Task<ApiResponse<PrescriptionListResponse>> GetPrescriptionAsync(Guid userId, Guid bookingId)
+    {
+        try
+        {
+            var (booking, error) = await ResolveBookingAsync<PrescriptionListResponse>(userId, bookingId);
+            if (error != null) return error;
+
+            await AutoCompleteEndedRemoteSessionsAsync(new[] { booking! });
+
+            var medicines = (await _unitOfWork.PrescriptionMedicines.FindAsync(m => m.BookingId == booking!.Id))
+                .OrderBy(m => m.CreatedAt)
+                .Select(ToPrescriptionDto)
+                .ToList();
+
+            return ApiResponse<PrescriptionListResponse>.SuccessResponse(new PrescriptionListResponse
+            {
+                BookingId = booking!.Id,
+                CanEdit = IsClinicalRecordWritable(booking),
+                Medicines = medicines
+            }, "تم جلب الروشتة الطبية بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<PrescriptionListResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    public async Task<ApiResponse<PrescriptionMedicineDto>> AddPrescriptionMedicineAsync(
+        Guid userId, Guid bookingId, CreatePrescriptionMedicineRequest request)
+    {
+        try
+        {
+            var (booking, error) = await ResolveWritableBookingAsync<PrescriptionMedicineDto>(userId, bookingId);
+            if (error != null) return error;
+
+            var medicine = new PrescriptionMedicine
+            {
+                Id = Guid.NewGuid(),
+                BookingId = booking!.Id,
+                MedicineName = request.MedicineName.Trim(),
+                Quantity = request.Quantity.Trim(),
+                Timing = request.Timing.Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.PrescriptionMedicines.AddAsync(medicine);
+            await _unitOfWork.SaveChangesAsync();
+
+            await SyncMedicalFileAsync(booking);
+
+            return ApiResponse<PrescriptionMedicineDto>.SuccessResponse(
+                ToPrescriptionDto(medicine), "تم إضافة الدواء بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<PrescriptionMedicineDto>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    public async Task<ApiResponse<PrescriptionMedicineDto>> UpdatePrescriptionMedicineAsync(
+        Guid userId, Guid bookingId, Guid medicineId, UpdatePrescriptionMedicineRequest request)
+    {
+        try
+        {
+            var (booking, error) = await ResolveWritableBookingAsync<PrescriptionMedicineDto>(userId, bookingId);
+            if (error != null) return error;
+
+            var medicine = await _unitOfWork.PrescriptionMedicines.GetByIdAsync(medicineId);
+            if (medicine == null || medicine.BookingId != booking!.Id)
+                return ApiResponse<PrescriptionMedicineDto>.FailureResponse("لم يتم العثور على الدواء");
+
+            medicine.MedicineName = request.MedicineName.Trim();
+            medicine.Quantity = request.Quantity.Trim();
+            medicine.Timing = request.Timing.Trim();
+            medicine.UpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.PrescriptionMedicines.UpdateAsync(medicine);
+            await _unitOfWork.SaveChangesAsync();
+
+            await SyncMedicalFileAsync(booking!);
+
+            return ApiResponse<PrescriptionMedicineDto>.SuccessResponse(
+                ToPrescriptionDto(medicine), "تم تعديل الدواء بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<PrescriptionMedicineDto>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    public async Task<ApiResponse<bool>> DeletePrescriptionMedicineAsync(Guid userId, Guid bookingId, Guid medicineId)
+    {
+        try
+        {
+            var (booking, error) = await ResolveWritableBookingAsync<bool>(userId, bookingId);
+            if (error != null) return error;
+
+            var medicine = await _unitOfWork.PrescriptionMedicines.GetByIdAsync(medicineId);
+            if (medicine == null || medicine.BookingId != booking!.Id)
+                return ApiResponse<bool>.FailureResponse("لم يتم العثور على الدواء");
+
+            await _unitOfWork.PrescriptionMedicines.DeleteAsync(medicine);
+            await _unitOfWork.SaveChangesAsync();
+
+            await SyncMedicalFileAsync(booking!);
+
+            return ApiResponse<bool>.SuccessResponse(true, "تم حذف الدواء بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    // ── التشخيص الطبي ────────────────────────────────────────────────────────────
+
+    public async Task<ApiResponse<DiagnosisResponse>> GetDiagnosisAsync(Guid userId, Guid bookingId)
+    {
+        try
+        {
+            var (booking, error) = await ResolveBookingAsync<DiagnosisResponse>(userId, bookingId);
+            if (error != null) return error;
+
+            await AutoCompleteEndedRemoteSessionsAsync(new[] { booking! });
+
+            var diagnosis = await _unitOfWork.MedicalDiagnoses.GetFirstOrDefaultAsync(d => d.BookingId == booking!.Id);
+
+            return ApiResponse<DiagnosisResponse>.SuccessResponse(new DiagnosisResponse
+            {
+                BookingId = booking!.Id,
+                HasDiagnosis = diagnosis != null,
+                CanEdit = IsClinicalRecordWritable(booking),
+                Diagnosis = diagnosis != null ? ToDiagnosisDto(diagnosis) : null
+            }, "تم جلب التشخيص الطبي بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<DiagnosisResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    public async Task<ApiResponse<MedicalDiagnosisDto>> AddDiagnosisAsync(
+        Guid userId, Guid bookingId, SaveMedicalDiagnosisRequest request)
+    {
+        try
+        {
+            var (booking, error) = await ResolveWritableBookingAsync<MedicalDiagnosisDto>(userId, bookingId);
+            if (error != null) return error;
+
+            var existing = await _unitOfWork.MedicalDiagnoses.GetFirstOrDefaultAsync(d => d.BookingId == booking!.Id);
+            if (existing != null)
+                return ApiResponse<MedicalDiagnosisDto>.FailureResponse("لا يمكن إضافة أكثر من تشخيص لنفس الحجز، يمكنك تعديل التشخيص الحالي");
+
+            var diagnosis = new MedicalDiagnosis
+            {
+                Id = Guid.NewGuid(),
+                BookingId = booking!.Id,
+                Description = request.Description.Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.MedicalDiagnoses.AddAsync(diagnosis);
+            await _unitOfWork.SaveChangesAsync();
+
+            await SyncMedicalFileAsync(booking);
+
+            return ApiResponse<MedicalDiagnosisDto>.SuccessResponse(
+                ToDiagnosisDto(diagnosis), "تم إضافة التشخيص بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<MedicalDiagnosisDto>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    public async Task<ApiResponse<MedicalDiagnosisDto>> UpdateDiagnosisAsync(
+        Guid userId, Guid bookingId, SaveMedicalDiagnosisRequest request)
+    {
+        try
+        {
+            var (booking, error) = await ResolveWritableBookingAsync<MedicalDiagnosisDto>(userId, bookingId);
+            if (error != null) return error;
+
+            var diagnosis = await _unitOfWork.MedicalDiagnoses.GetFirstOrDefaultAsync(d => d.BookingId == booking!.Id);
+            if (diagnosis == null)
+                return ApiResponse<MedicalDiagnosisDto>.FailureResponse("لم يتم العثور على تشخيص لهذا الحجز");
+
+            diagnosis.Description = request.Description.Trim();
+            diagnosis.UpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.MedicalDiagnoses.UpdateAsync(diagnosis);
+            await _unitOfWork.SaveChangesAsync();
+
+            await SyncMedicalFileAsync(booking!);
+
+            return ApiResponse<MedicalDiagnosisDto>.SuccessResponse(
+                ToDiagnosisDto(diagnosis), "تم تعديل التشخيص بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<MedicalDiagnosisDto>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    public async Task<ApiResponse<bool>> DeleteDiagnosisAsync(Guid userId, Guid bookingId)
+    {
+        try
+        {
+            var (booking, error) = await ResolveWritableBookingAsync<bool>(userId, bookingId);
+            if (error != null) return error;
+
+            var diagnosis = await _unitOfWork.MedicalDiagnoses.GetFirstOrDefaultAsync(d => d.BookingId == booking!.Id);
+            if (diagnosis == null)
+                return ApiResponse<bool>.FailureResponse("لم يتم العثور على تشخيص لهذا الحجز");
+
+            await _unitOfWork.MedicalDiagnoses.DeleteAsync(diagnosis);
+            await _unitOfWork.SaveChangesAsync();
+
+            await SyncMedicalFileAsync(booking!);
+
+            return ApiResponse<bool>.SuccessResponse(true, "تم حذف التشخيص بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
+
+    /// <summary>هل يُسمح للطبيب بكتابة/تعديل السجل الإكلينيكي: فقط بعد إنهاء الجلسة (الحالة مكتملة).</summary>
+    private static bool IsClinicalRecordWritable(Booking booking) =>
+        booking.Status == BookingStatus.Completed;
+
+    /// <summary>
+    /// يجلب حجزاً يخص الطبيب ويتحقق أن السجل الإكلينيكي قابل للكتابة (الجلسة منتهية)،
+    /// مع إكمال أي جلسة انتهى وقتها تلقائياً قبل التحقق.
+    /// </summary>
+    private async Task<(Booking? booking, ApiResponse<T>? error)> ResolveWritableBookingAsync<T>(Guid userId, Guid bookingId)
+    {
+        var (booking, error) = await ResolveBookingAsync<T>(userId, bookingId);
+        if (error != null) return (null, error);
+
+        await AutoCompleteEndedRemoteSessionsAsync(new[] { booking! });
+
+        if (!IsClinicalRecordWritable(booking!))
+            return (null, ApiResponse<T>.FailureResponse("لا يمكن تعديل الروشتة أو التشخيص قبل إنهاء الجلسة"));
+
+        return (booking, null);
+    }
+
+    /// <summary>يعيد توليد الملف الطبي الموحد للطفل بعد تعديل السجل الإكلينيكي (best-effort).</summary>
+    private async Task SyncMedicalFileAsync(Booking booking)
+    {
+        if (!booking.ChildId.HasValue) return; // المريض هو ولي الأمر — لا يوجد ملف طبي للطفل
+
+        var newUrl = await _medicalFileService.RegenerateForChildAsync(booking.ChildId.Value);
+
+        // إذا كان الملف مُشاركاً مع الطبيب في هذا الحجز، حدّث الرابط ليعكس أحدث نسخة
+        if (!string.IsNullOrEmpty(newUrl) && !string.IsNullOrEmpty(booking.MedicalFileUrl))
+        {
+            booking.MedicalFileUrl = newUrl;
+            booking.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.Bookings.UpdateAsync(booking);
+            await _unitOfWork.SaveChangesAsync();
+        }
+    }
+
+    private static PrescriptionMedicineDto ToPrescriptionDto(PrescriptionMedicine m) => new()
+    {
+        Id = m.Id,
+        MedicineName = m.MedicineName,
+        Quantity = m.Quantity,
+        Timing = m.Timing,
+        CreatedAt = m.CreatedAt,
+        UpdatedAt = m.UpdatedAt
+    };
+
+    private static MedicalDiagnosisDto ToDiagnosisDto(MedicalDiagnosis d) => new()
+    {
+        Id = d.Id,
+        Description = d.Description,
+        CreatedAt = d.CreatedAt,
+        UpdatedAt = d.UpdatedAt
+    };
 
     private async Task<(Specialist? specialist, ApiResponse<T>? error)> ResolveSpecialistAsync<T>(Guid userId)
     {

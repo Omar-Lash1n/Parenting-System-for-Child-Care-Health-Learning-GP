@@ -49,6 +49,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<BookingAttachment> BookingAttachments { get; set; } = null!;      // ✅ Consultation Booking Feature
     public DbSet<Payment> Payments { get; set; } = null!;                          // ✅ Consultation Booking Feature
     public DbSet<PaymentSetting> PaymentSettings { get; set; } = null!;            // ✅ Consultation Booking Feature
+    public DbSet<PrescriptionMedicine> PrescriptionMedicines { get; set; } = null!; // ✅ Doctor Consultation — الروشتة الطبية
+    public DbSet<MedicalDiagnosis> MedicalDiagnoses { get; set; } = null!;          // ✅ Doctor Consultation — التشخيص الطبي
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -1525,6 +1527,39 @@ public class ApplicationDbContext : DbContext
                 new PaymentSetting { Id = 1, Key = "VodafoneCashNumber", Value = "01146486517" },
                 new PaymentSetting { Id = 2, Key = "InstaPayNumber", Value = "01146486517" }
             );
+        });
+
+        // ✅ PrescriptionMedicine Configuration — الروشتة الطبية (أدوية الحجز)
+        modelBuilder.Entity<PrescriptionMedicine>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.MedicineName).IsRequired().HasMaxLength(200);
+            entity.Property(m => m.Quantity).IsRequired().HasMaxLength(200);
+            entity.Property(m => m.Timing).IsRequired().HasMaxLength(200);
+            entity.Property(m => m.CreatedAt).IsRequired();
+
+            entity.HasOne(m => m.Booking)
+                .WithMany(b => b.PrescriptionMedicines)
+                .HasForeignKey(m => m.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(m => m.BookingId);
+        });
+
+        // ✅ MedicalDiagnosis Configuration — التشخيص الطبي (تشخيص واحد لكل حجز)
+        modelBuilder.Entity<MedicalDiagnosis>(entity =>
+        {
+            entity.HasKey(d => d.Id);
+            entity.Property(d => d.Description).IsRequired().HasMaxLength(2000);
+            entity.Property(d => d.CreatedAt).IsRequired();
+
+            entity.HasOne(d => d.Booking)
+                .WithOne(b => b.Diagnosis)
+                .HasForeignKey<MedicalDiagnosis>(d => d.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // تشخيص واحد لكل حجز
+            entity.HasIndex(d => d.BookingId).IsUnique();
         });
     }
 

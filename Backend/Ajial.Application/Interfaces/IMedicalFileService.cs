@@ -18,4 +18,10 @@ public interface IMedicalFileService
     /// لا يرمي استثناءات — مخصّص للاستدعاء ضمن تدفق الحجز.
     /// </summary>
     Task<string?> TryGenerateShareableUrlAsync(Guid childId, Guid parentId);
+
+    /// <summary>
+    /// يعيد توليد الملف الطبي للطفل ويرفعه (يتضمن أحدث التشخيصات والروشتات) ويعيد الرابط الجديد.
+    /// يُستدعى بعد أن يضيف الطبيب/يعدّل/يحذف تشخيصاً أو دواءً. يعيد null عند الفشل دون رمي استثناء.
+    /// </summary>
+    Task<string?> RegenerateForChildAsync(Guid childId);
 }

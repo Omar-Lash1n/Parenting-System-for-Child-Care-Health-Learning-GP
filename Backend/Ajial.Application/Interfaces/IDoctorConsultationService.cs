@@ -33,4 +33,32 @@ public interface IDoctorConsultationService
     /// idempotent — إنهاء جلسة منتهية يُعيد الحالة الحالية دون خطأ.
     /// </summary>
     Task<ApiResponse<DoctorSessionStatusResponse>> EndSessionAsync(Guid userId, Guid bookingId);
+
+    // ── الروشتة الطبية (الأدوية) — متاحة بعد إنهاء الجلسة (المرحلة الخامسة) ──
+
+    /// <summary>قائمة أدوية الروشتة الطبية لحجز محدد.</summary>
+    Task<ApiResponse<PrescriptionListResponse>> GetPrescriptionAsync(Guid userId, Guid bookingId);
+
+    /// <summary>يضيف دواءً جديداً للروشتة الطبية، ويحدّث الملف الطبي الموحد للطفل.</summary>
+    Task<ApiResponse<PrescriptionMedicineDto>> AddPrescriptionMedicineAsync(Guid userId, Guid bookingId, CreatePrescriptionMedicineRequest request);
+
+    /// <summary>يعدّل دواءً قائماً في الروشتة الطبية، ويحدّث الملف الطبي الموحد للطفل.</summary>
+    Task<ApiResponse<PrescriptionMedicineDto>> UpdatePrescriptionMedicineAsync(Guid userId, Guid bookingId, Guid medicineId, UpdatePrescriptionMedicineRequest request);
+
+    /// <summary>يحذف دواءً من الروشتة الطبية، ويحدّث الملف الطبي الموحد للطفل.</summary>
+    Task<ApiResponse<bool>> DeletePrescriptionMedicineAsync(Guid userId, Guid bookingId, Guid medicineId);
+
+    // ── التشخيص الطبي — متاح بعد إنهاء الجلسة (المرحلة الخامسة) ──
+
+    /// <summary>التشخيص الطبي المسجَّل لحجز محدد (قد لا يوجد بعد).</summary>
+    Task<ApiResponse<DiagnosisResponse>> GetDiagnosisAsync(Guid userId, Guid bookingId);
+
+    /// <summary>يضيف التشخيص الطبي للمريض (تشخيص واحد لكل حجز)، ويحدّث الملف الطبي الموحد للطفل.</summary>
+    Task<ApiResponse<MedicalDiagnosisDto>> AddDiagnosisAsync(Guid userId, Guid bookingId, SaveMedicalDiagnosisRequest request);
+
+    /// <summary>يعدّل التشخيص الطبي المسجَّل، ويحدّث الملف الطبي الموحد للطفل.</summary>
+    Task<ApiResponse<MedicalDiagnosisDto>> UpdateDiagnosisAsync(Guid userId, Guid bookingId, SaveMedicalDiagnosisRequest request);
+
+    /// <summary>يحذف التشخيص الطبي المسجَّل، ويحدّث الملف الطبي الموحد للطفل.</summary>
+    Task<ApiResponse<bool>> DeleteDiagnosisAsync(Guid userId, Guid bookingId);
 }

@@ -84,6 +84,90 @@ public class DoctorConsultationController : ControllerBase
         return ToActionResult(await _service.EndSessionAsync(userId, bookingId));
     }
 
+    // ── الروشتة الطبية (الأدوية) — متاحة بعد إنهاء الجلسة ────────────────────────
+
+    /// <summary>قائمة أدوية الروشتة الطبية لحجز محدد.</summary>
+    [HttpGet("bookings/{bookingId:guid}/prescriptions")]
+    [ProducesResponseType(typeof(ApiResponse<PrescriptionListResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PrescriptionListResponse>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPrescription(Guid bookingId)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<PrescriptionListResponse>();
+        return ToActionResult(await _service.GetPrescriptionAsync(userId, bookingId));
+    }
+
+    /// <summary>إضافة دواء جديد للروشتة الطبية — يُحدِّث الملف الطبي الموحد للطفل تلقائياً.</summary>
+    [HttpPost("bookings/{bookingId:guid}/prescriptions")]
+    [ProducesResponseType(typeof(ApiResponse<PrescriptionMedicineDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PrescriptionMedicineDto>), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AddPrescriptionMedicine(Guid bookingId, [FromBody] CreatePrescriptionMedicineRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<PrescriptionMedicineDto>();
+        return ToActionResult(await _service.AddPrescriptionMedicineAsync(userId, bookingId, request));
+    }
+
+    /// <summary>تعديل دواء قائم في الروشتة الطبية — يُحدِّث الملف الطبي الموحد للطفل تلقائياً.</summary>
+    [HttpPut("bookings/{bookingId:guid}/prescriptions/{medicineId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<PrescriptionMedicineDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PrescriptionMedicineDto>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdatePrescriptionMedicine(Guid bookingId, Guid medicineId, [FromBody] UpdatePrescriptionMedicineRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<PrescriptionMedicineDto>();
+        return ToActionResult(await _service.UpdatePrescriptionMedicineAsync(userId, bookingId, medicineId, request));
+    }
+
+    /// <summary>حذف دواء من الروشتة الطبية — يُحدِّث الملف الطبي الموحد للطفل تلقائياً.</summary>
+    [HttpDelete("bookings/{bookingId:guid}/prescriptions/{medicineId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeletePrescriptionMedicine(Guid bookingId, Guid medicineId)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<bool>();
+        return ToActionResult(await _service.DeletePrescriptionMedicineAsync(userId, bookingId, medicineId));
+    }
+
+    // ── التشخيص الطبي — متاح بعد إنهاء الجلسة ────────────────────────────────────
+
+    /// <summary>التشخيص الطبي المسجَّل لحجز محدد (قد لا يوجد بعد).</summary>
+    [HttpGet("bookings/{bookingId:guid}/diagnosis")]
+    [ProducesResponseType(typeof(ApiResponse<DiagnosisResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<DiagnosisResponse>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDiagnosis(Guid bookingId)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<DiagnosisResponse>();
+        return ToActionResult(await _service.GetDiagnosisAsync(userId, bookingId));
+    }
+
+    /// <summary>إضافة التشخيص الطبي للمريض (تشخيص واحد لكل حجز) — يُحدِّث الملف الطبي الموحد للطفل.</summary>
+    [HttpPost("bookings/{bookingId:guid}/diagnosis")]
+    [ProducesResponseType(typeof(ApiResponse<MedicalDiagnosisDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<MedicalDiagnosisDto>), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AddDiagnosis(Guid bookingId, [FromBody] SaveMedicalDiagnosisRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<MedicalDiagnosisDto>();
+        return ToActionResult(await _service.AddDiagnosisAsync(userId, bookingId, request));
+    }
+
+    /// <summary>تعديل التشخيص الطبي المسجَّل — يُحدِّث الملف الطبي الموحد للطفل تلقائياً.</summary>
+    [HttpPut("bookings/{bookingId:guid}/diagnosis")]
+    [ProducesResponseType(typeof(ApiResponse<MedicalDiagnosisDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<MedicalDiagnosisDto>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateDiagnosis(Guid bookingId, [FromBody] SaveMedicalDiagnosisRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<MedicalDiagnosisDto>();
+        return ToActionResult(await _service.UpdateDiagnosisAsync(userId, bookingId, request));
+    }
+
+    /// <summary>حذف التشخيص الطبي المسجَّل — يُحدِّث الملف الطبي الموحد للطفل تلقائياً.</summary>
+    [HttpDelete("bookings/{bookingId:guid}/diagnosis")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteDiagnosis(Guid bookingId)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<bool>();
+        return ToActionResult(await _service.DeleteDiagnosisAsync(userId, bookingId));
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private bool TryGetUserId(out Guid userId)

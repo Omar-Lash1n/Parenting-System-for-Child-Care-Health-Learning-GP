@@ -301,6 +301,107 @@ class StartSessionResponse {
 }
 
 // ============================================================
+// ============ Prescription (الروشتة الطبية) =================
+// ============================================================
+
+/// A single medicine line in a booking's prescription.
+class PrescriptionMedicine {
+  final String id;
+  final String medicineName;
+  final String quantity;
+  final String timing;
+
+  const PrescriptionMedicine({
+    required this.id,
+    required this.medicineName,
+    required this.quantity,
+    required this.timing,
+  });
+
+  factory PrescriptionMedicine.fromJson(Map<String, dynamic> json) {
+    return PrescriptionMedicine(
+      id: _read(json, 'id').toString(),
+      medicineName: _read(json, 'medicineName').toString(),
+      quantity: _read(json, 'quantity').toString(),
+      timing: _read(json, 'timing').toString(),
+    );
+  }
+}
+
+/// GET /api/doctor/consultations/bookings/{bookingId}/prescriptions
+class PrescriptionListResponse {
+  final String bookingId;
+  final bool canEdit;
+  final List<PrescriptionMedicine> medicines;
+
+  const PrescriptionListResponse({
+    required this.bookingId,
+    required this.canEdit,
+    required this.medicines,
+  });
+
+  factory PrescriptionListResponse.fromJson(Map<String, dynamic> json) {
+    final raw = _read(json, 'medicines');
+    return PrescriptionListResponse(
+      bookingId: _read(json, 'bookingId').toString(),
+      canEdit: _read(json, 'canEdit') == true,
+      medicines: raw is List
+          ? raw
+              .map((e) =>
+                  PrescriptionMedicine.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList()
+          : <PrescriptionMedicine>[],
+    );
+  }
+}
+
+// ============================================================
+// ============ Diagnosis (التشخيص الطبي) =====================
+// ============================================================
+
+/// The medical diagnosis recorded for a booking (one per booking).
+class MedicalDiagnosis {
+  final String id;
+  final String description;
+
+  const MedicalDiagnosis({required this.id, required this.description});
+
+  factory MedicalDiagnosis.fromJson(Map<String, dynamic> json) {
+    return MedicalDiagnosis(
+      id: _read(json, 'id').toString(),
+      description: _read(json, 'description').toString(),
+    );
+  }
+}
+
+/// GET /api/doctor/consultations/bookings/{bookingId}/diagnosis
+class DiagnosisResponse {
+  final String bookingId;
+  final bool hasDiagnosis;
+  final bool canEdit;
+  final MedicalDiagnosis? diagnosis;
+
+  const DiagnosisResponse({
+    required this.bookingId,
+    required this.hasDiagnosis,
+    required this.canEdit,
+    this.diagnosis,
+  });
+
+  factory DiagnosisResponse.fromJson(Map<String, dynamic> json) {
+    final raw = json['diagnosis'] ?? json['Diagnosis'];
+    return DiagnosisResponse(
+      bookingId: _read(json, 'bookingId').toString(),
+      hasDiagnosis: _read(json, 'hasDiagnosis') == true,
+      canEdit: _read(json, 'canEdit') == true,
+      diagnosis: raw is Map
+          ? MedicalDiagnosis.fromJson(Map<String, dynamic>.from(raw))
+          : null,
+    );
+  }
+}
+
+// ============================================================
 // ==================== Helpers ===============================
 // ============================================================
 

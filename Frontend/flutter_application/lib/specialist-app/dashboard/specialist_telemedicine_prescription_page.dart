@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
-
-class Medicine {
-  String name;
-  String quantity;
-  String timing;
-
-  Medicine({required this.name, required this.quantity, required this.timing});
-}
+import 'package:Ajial/specialist-app/dashboard/models/doctor_consultation_models.dart';
+import 'package:Ajial/specialist-app/dashboard/services/doctor_consultation_api_service.dart';
 
 class SpecialistTelemedicinePrescriptionPage extends StatefulWidget {
-  final List<Medicine> initialMedicines;
+  final String bookingId;
 
   const SpecialistTelemedicinePrescriptionPage({
     super.key,
-    required this.initialMedicines,
+    required this.bookingId,
   });
 
   @override
@@ -24,9 +18,15 @@ class SpecialistTelemedicinePrescriptionPage extends StatefulWidget {
 
 class _SpecialistTelemedicinePrescriptionPageState
     extends State<SpecialistTelemedicinePrescriptionPage> {
-  late List<Medicine> _medicines;
+  final DoctorConsultationApiService _api = DoctorConsultationApiService();
+
+  List<PrescriptionMedicine> _medicines = [];
+  bool _loading = true;
+  String? _error;
+
   bool _showForm = false;
-  int? _editingIndex;
+  bool _submitting = false;
+  String? _editingId; // id of the medicine being edited (null = adding)
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
@@ -35,8 +35,7 @@ class _SpecialistTelemedicinePrescriptionPageState
   @override
   void initState() {
     super.initState();
-    // Copy the list so changes are tracked separately
-    _medicines = List.from(widget.initialMedicines);
+    _loadPrescription();
   }
 
   @override
@@ -47,14 +46,38 @@ class _SpecialistTelemedicinePrescriptionPageState
     super.dispose();
   }
 
-  void _openForm({int? editIndex}) {
+  // ============================================================
+  // ==================== Data ==================================
+  // ============================================================
+
+  Future<void> _loadPrescription() async {
     setState(() {
-      _editingIndex = editIndex;
-      if (editIndex != null) {
-        final med = _medicines[editIndex];
-        _nameController.text = med.name;
-        _quantityController.text = med.quantity;
-        _timingController.text = med.timing;
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final result = await _api.getPrescription(widget.bookingId);
+      if (!mounted) return;
+      setState(() {
+        _medicines = result.medicines;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = _cleanError(e);
+        _loading = false;
+      });
+    }
+  }
+
+  void _openForm({PrescriptionMedicine? medicine}) {
+    setState(() {
+      _editingId = medicine?.id;
+      if (medicine != null) {
+        _nameController.text = medicine.medicineName;
+        _quantityController.text = medicine.quantity;
+        _timingController.text = medicine.timing;
       } else {
         _nameController.clear();
         _quantityController.clear();
@@ -67,49 +90,105 @@ class _SpecialistTelemedicinePrescriptionPageState
   void _closeForm() {
     setState(() {
       _showForm = false;
-      _editingIndex = null;
+      _editingId = null;
       _nameController.clear();
       _quantityController.clear();
       _timingController.clear();
     });
   }
 
-  void _submitForm() {
+  Future<void> _submitForm() async {
+    if (_submitting) return;
+
     final name = _nameController.text.trim();
     final quantity = _quantityController.text.trim();
     final timing = _timingController.text.trim();
 
     if (name.isEmpty || quantity.isEmpty || timing.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'الرجاء إدخال جميع بيانات الدواء',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: specialistFont, fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      _showSnack('الرجاء إدخال جميع بيانات الدواء', isError: true);
       return;
     }
 
-    setState(() {
-      if (_editingIndex != null) {
-        _medicines[_editingIndex!] = Medicine(name: name, quantity: quantity, timing: timing);
+    setState(() => _submitting = true);
+    try {
+      final editingId = _editingId;
+      if (editingId != null) {
+        final updated = await _api.updatePrescriptionMedicine(
+          widget.bookingId,
+          editingId,
+          medicineName: name,
+          quantity: quantity,
+          timing: timing,
+        );
+        if (!mounted) return;
+        final index = _medicines.indexWhere((m) => m.id == editingId);
+        setState(() {
+          if (index != -1) _medicines[index] = updated;
+        });
+        _showSnack('تم تعديل الدواء بنجاح');
       } else {
-        _medicines.add(Medicine(name: name, quantity: quantity, timing: timing));
+        final added = await _api.addPrescriptionMedicine(
+          widget.bookingId,
+          medicineName: name,
+          quantity: quantity,
+          timing: timing,
+        );
+        if (!mounted) return;
+        setState(() => _medicines.add(added));
+        _showSnack('تم إضافة الدواء بنجاح');
       }
-      _showForm = false;
-      _editingIndex = null;
-      _nameController.clear();
-      _quantityController.clear();
-      _timingController.clear();
-    });
+      _closeForm();
+    } catch (e) {
+      _showSnack(_cleanError(e), isError: true);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
-  void _showDeleteDialog(int index) {
-    final medicineName = _medicines[index].name.isEmpty ? 'الدواء' : _medicines[index].name;
+  Future<void> _deleteMedicine(PrescriptionMedicine medicine) async {
+    try {
+      await _api.deletePrescriptionMedicine(widget.bookingId, medicine.id);
+      if (!mounted) return;
+      setState(() => _medicines.removeWhere((m) => m.id == medicine.id));
+      _showSnack('تم حذف الدواء بنجاح');
+    } catch (e) {
+      _showSnack(_cleanError(e), isError: true);
+    }
+  }
+
+  String _cleanError(Object error) {
+    final text = error.toString().replaceFirst('Exception: ', '');
+    if (text.contains('SocketException') ||
+        text.contains('connection') ||
+        text.contains('Connection') ||
+        text.contains('DioException')) {
+      return 'تعذر الاتصال بالخادم، حاول مرة أخرى';
+    }
+    return text.isEmpty ? 'تعذر الاتصال بالخادم، حاول مرة أخرى' : text;
+  }
+
+  void _showSnack(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              fontFamily: specialistFont,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white),
+        ),
+        backgroundColor: isError ? Colors.red : specialistGreen,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showDeleteDialog(PrescriptionMedicine medicine) {
+    final medicineName =
+        medicine.medicineName.isEmpty ? 'الدواء' : medicine.medicineName;
 
     showDialog(
       context: context,
@@ -185,9 +264,7 @@ class _SpecialistTelemedicinePrescriptionPageState
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.pop(context);
-                          setState(() {
-                            _medicines.removeAt(index);
-                          });
+                          _deleteMedicine(medicine);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF0000), // Brighter red
@@ -242,7 +319,7 @@ class _SpecialistTelemedicinePrescriptionPageState
     );
   }
 
-  Widget _buildMedicineCard(Medicine med, int index) {
+  Widget _buildMedicineCard(PrescriptionMedicine med, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       clipBehavior: Clip.antiAlias,
@@ -280,7 +357,7 @@ class _SpecialistTelemedicinePrescriptionPageState
                         Row(
                           children: [
                             GestureDetector(
-                              onTap: () => _openForm(editIndex: index),
+                              onTap: () => _openForm(medicine: med),
                               child: Image.asset(
                                 'images/edit.png',
                                 width: 20,
@@ -290,7 +367,7 @@ class _SpecialistTelemedicinePrescriptionPageState
                             ),
                             const SizedBox(width: 10),
                             GestureDetector(
-                              onTap: () => _showDeleteDialog(index),
+                              onTap: () => _showDeleteDialog(med),
                               child: const Icon(Icons.delete_outline_rounded,
                                   color: Colors.red, size: 22),
                             ),
@@ -299,10 +376,10 @@ class _SpecialistTelemedicinePrescriptionPageState
                       ],
                     ),
                     const Divider(height: 20, thickness: 0.5),
-                    if (med.name.isNotEmpty) ...[
+                    if (med.medicineName.isNotEmpty) ...[
                       Align(
                         alignment: Alignment.centerRight,
-                        child: Text(med.name,
+                        child: Text(med.medicineName,
                             style: const TextStyle(fontFamily: specialistFont, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
                       ),
                       const Divider(height: 16, thickness: 0.5),
@@ -422,9 +499,9 @@ class _SpecialistTelemedicinePrescriptionPageState
                   child: const Icon(Icons.close, size: 18, color: Colors.black),
                 ),
               ),
-              const Text(
-                'دواء جديد',
-                style: TextStyle(
+              Text(
+                _editingId != null ? 'تعديل الدواء' : 'دواء جديد',
+                style: const TextStyle(
                   fontFamily: specialistFont,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -457,23 +534,31 @@ class _SpecialistTelemedicinePrescriptionPageState
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _submitForm,
+              onPressed: _submitting ? null : _submitForm,
               style: ElevatedButton.styleFrom(
                 backgroundColor: specialistGreen,
+                disabledBackgroundColor: specialistGreen.withValues(alpha: 0.6),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(50),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: const Text(
-                'اضف الدواء',
-                style: TextStyle(
-                  fontFamily: specialistFont,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
+              child: _submitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2.5, color: Colors.white),
+                    )
+                  : Text(
+                      _editingId != null ? 'حفظ التعديل' : 'اضف الدواء',
+                      style: const TextStyle(
+                        fontFamily: specialistFont,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
           ),
           const SizedBox(height: 12),
@@ -481,7 +566,7 @@ class _SpecialistTelemedicinePrescriptionPageState
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: _closeForm,
+              onPressed: _submitting ? null : _closeForm,
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: Colors.grey.shade400),
                 shape: RoundedRectangleBorder(
@@ -509,150 +594,188 @@ class _SpecialistTelemedicinePrescriptionPageState
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, result) {
-          if (!didPop) {
-            Navigator.pop(context, _medicines);
-          }
-        },
-        child: Scaffold(
-          backgroundColor: const Color(0xFFF8F9FA),
-          body: SafeArea(
-            child: Stack(
-              children: [
-                // Main content
-                Column(
-                  children: [
-                    // Header
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FA),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // Main content
+              Column(
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                    child: Row(
+                      children: [
+                        InkWell(
+                          onTap: () => Navigator.pop(context),
+                          borderRadius: BorderRadius.circular(50),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFE8F7F0),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Image.asset(
+                              'images/back arrow.png',
+                              width: 24,
+                              height: 24,
+                              color: specialistGreen,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Text(
+                            'الروشتة الطبية',
+                            style: TextStyle(
+                              fontFamily: specialistFont,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Content area
+                  Expanded(child: _buildBody()),
+
+                  // Add Medicine Button
+                  if (!_showForm && !_loading && _error == null)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-                      child: Row(
-                        children: [
-                          InkWell(
-                            onTap: () => Navigator.pop(context, _medicines),
-                            borderRadius: BorderRadius.circular(50),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFE8F7F0),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Image.asset(
-                                'images/back arrow.png',
-                                width: 24,
-                                height: 24,
-                                color: specialistGreen,
-                              ),
+                      padding: const EdgeInsets.all(16.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => _openForm(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: specialistGreen,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50),
                             ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          const SizedBox(width: 16),
-                          const Expanded(
-                            child: Text(
-                              'الروشتة الطبية',
-                              style: TextStyle(
-                                fontFamily: specialistFont,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Content area
-                    Expanded(
-                      child: _medicines.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image.asset(
-                                    'images/syringe empty.png',
-                                    width: 140,
-                                    height: 140,
-                                    color: Colors.grey.shade400,
-                                  ),
-                                  const SizedBox(height: 20),
-                                  Text(
-                                    'يبدو انه لا يتوفر ادوية تم اضافتها,\nاضغط على زر اضافة دواء',
-                                    style: TextStyle(
-                                      fontFamily: specialistFont,
-                                      fontSize: 14,
-                                      color: Colors.grey.shade500,
-                                      height: 1.6,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                              itemCount: _medicines.length,
-                              itemBuilder: (context, index) =>
-                                  _buildMedicineCard(_medicines[index], index),
-                            ),
-                    ),
-
-                    // Add Medicine Button
-                    if (!_showForm)
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () => _openForm(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: specialistGreen,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(50),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                            child: const Text(
-                              'اضافة دواء',
-                              style: TextStyle(
-                                fontFamily: specialistFont,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
+                          child: const Text(
+                            'اضافة دواء',
+                            style: TextStyle(
+                              fontFamily: specialistFont,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
+              ),
 
-                // Form overlay (bottom sheet style)
-                if (_showForm)
-                  Positioned.fill(
-                    child: GestureDetector(
-                      onTap: _closeForm,
-                      child: Container(color: Colors.black.withValues(alpha: 0.35)),
+              // Form overlay (bottom sheet style)
+              if (_showForm)
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: _submitting ? null : _closeForm,
+                    child: Container(color: Colors.black.withValues(alpha: 0.35)),
+                  ),
+                ),
+              if (_showForm)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: () {}, // prevent dismiss on form tap
+                    child: SingleChildScrollView(
+                      child: _buildAddMedicineForm(),
                     ),
                   ),
-                if (_showForm)
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: GestureDetector(
-                      onTap: () {}, // prevent dismiss on form tap
-                      child: SingleChildScrollView(
-                        child: _buildAddMedicineForm(),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
     );
   }
-}
 
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: specialistGreen),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline,
+                  size: 56, color: Colors.black.withValues(alpha: 0.3)),
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                style: TextStyle(
+                  fontFamily: specialistFont,
+                  fontSize: 15,
+                  color: Colors.black.withValues(alpha: 0.6),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: _loadPrescription,
+                child: const Text(
+                  'إعادة المحاولة',
+                  style: TextStyle(
+                    fontFamily: specialistFont,
+                    color: specialistGreen,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_medicines.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'images/syringe empty.png',
+              width: 140,
+              height: 140,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'يبدو انه لا يتوفر ادوية تم اضافتها,\nاضغط على زر اضافة دواء',
+              style: TextStyle(
+                fontFamily: specialistFont,
+                fontSize: 14,
+                color: Colors.grey.shade500,
+                height: 1.6,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      itemCount: _medicines.length,
+      itemBuilder: (context, index) =>
+          _buildMedicineCard(_medicines[index], index),
+    );
+  }
+}

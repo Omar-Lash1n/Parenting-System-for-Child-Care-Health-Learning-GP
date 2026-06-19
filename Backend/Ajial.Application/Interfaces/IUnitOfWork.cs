@@ -44,6 +44,8 @@ public interface IUnitOfWork : IDisposable
     IRepository<BookingAttachment> BookingAttachments { get; }      // ✅ Consultation Booking Feature
     IRepository<Payment> Payments { get; }                          // ✅ Consultation Booking Feature
     IRepository<PaymentSetting> PaymentSettings { get; }            // ✅ Consultation Booking Feature
+    IRepository<PrescriptionMedicine> PrescriptionMedicines { get; } // ✅ Doctor Consultation — الروشتة الطبية
+    IRepository<MedicalDiagnosis> MedicalDiagnoses { get; }          // ✅ Doctor Consultation — التشخيص الطبي
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();
