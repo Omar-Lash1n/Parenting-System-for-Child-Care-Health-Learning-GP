@@ -625,6 +625,54 @@ class ParentConsultationService {
       rethrow;
     }
   }
+
+  /// GET /api/parent/consultations/bookings/{bookingId}/prescription
+  /// الروشتة الطبية التي سجّلها الطبيب لهذا الحجز (بطاقة عرض مكتفية بذاتها).
+  Future<ParentPrescription> getPrescription(String bookingId) async {
+    final headers = await _getAuthHeaders();
+    final url = '$_apiBaseUrl/parent/consultations/bookings/$bookingId/prescription';
+    print('📤 GET $url');
+
+    try {
+      final response = await http.get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 15));
+      print('📥 Prescription Response: ${response.statusCode}');
+      print('📥 Prescription Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return ParentPrescription.fromJson(_extractObject(response.body));
+      } else {
+        throw Exception('Failed to load prescription (${response.statusCode})');
+      }
+    } catch (e) {
+      print('❌ Exception in getPrescription: $e');
+      rethrow;
+    }
+  }
+
+  /// GET /api/parent/consultations/bookings/{bookingId}/diagnosis
+  /// التشخيص الطبي الذي سجّله الطبيب لهذا الحجز (بطاقة عرض مكتفية بذاتها).
+  Future<ParentDiagnosis> getDiagnosis(String bookingId) async {
+    final headers = await _getAuthHeaders();
+    final url = '$_apiBaseUrl/parent/consultations/bookings/$bookingId/diagnosis';
+    print('📤 GET $url');
+
+    try {
+      final response = await http.get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 15));
+      print('📥 Diagnosis Response: ${response.statusCode}');
+      print('📥 Diagnosis Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return ParentDiagnosis.fromJson(_extractObject(response.body));
+      } else {
+        throw Exception('Failed to load diagnosis (${response.statusCode})');
+      }
+    } catch (e) {
+      print('❌ Exception in getDiagnosis: $e');
+      rethrow;
+    }
+  }
 }
 
 // ===== Additional Models =====
@@ -1010,6 +1058,127 @@ class PaymentTransaction {
       appointmentDate: json['appointmentDate']?.toString() ?? '',
       createdAt: json['createdAt']?.toString() ?? '',
       rejectionReason: json['rejectionReason']?.toString(),
+    );
+  }
+}
+
+// ===== Clinical Record (parent read-only view) =====
+
+/// دواء واحد ضمن الروشتة الطبية.
+class PrescriptionMedicine {
+  final String id;
+  final String medicineName;
+  final String quantity;
+  final String timing;
+
+  PrescriptionMedicine({
+    required this.id,
+    required this.medicineName,
+    required this.quantity,
+    required this.timing,
+  });
+
+  factory PrescriptionMedicine.fromJson(Map<String, dynamic> json) {
+    return PrescriptionMedicine(
+      id: json['id']?.toString() ?? '',
+      medicineName: json['medicineName']?.toString() ?? '',
+      quantity: json['quantity']?.toString() ?? '',
+      timing: json['timing']?.toString() ?? '',
+    );
+  }
+}
+
+/// الترويسة المشتركة لبطاقات السجل الإكلينيكي (الطبيب + المريض + التاريخ).
+class _ClinicalCardHeader {
+  final String bookingId;
+  final String doctorName;
+  final String specialization;
+  final String? doctorPhotoUrl;
+  final String patientName;
+  final int? patientAge;
+  final String appointmentDate;
+  final bool isCompleted;
+
+  _ClinicalCardHeader({
+    required this.bookingId,
+    required this.doctorName,
+    required this.specialization,
+    required this.doctorPhotoUrl,
+    required this.patientName,
+    required this.patientAge,
+    required this.appointmentDate,
+    required this.isCompleted,
+  });
+}
+
+/// الروشتة الطبية كما يراها ولي الأمر.
+class ParentPrescription extends _ClinicalCardHeader {
+  final List<PrescriptionMedicine> medicines;
+
+  ParentPrescription({
+    required super.bookingId,
+    required super.doctorName,
+    required super.specialization,
+    required super.doctorPhotoUrl,
+    required super.patientName,
+    required super.patientAge,
+    required super.appointmentDate,
+    required super.isCompleted,
+    required this.medicines,
+  });
+
+  bool get hasPrescription => medicines.isNotEmpty;
+
+  factory ParentPrescription.fromJson(Map<String, dynamic> json) {
+    return ParentPrescription(
+      bookingId: json['bookingId']?.toString() ?? '',
+      doctorName: json['doctorName']?.toString() ?? '',
+      specialization: json['specialization']?.toString() ?? '',
+      doctorPhotoUrl: json['doctorPhotoUrl']?.toString(),
+      patientName: json['patientName']?.toString() ?? '',
+      patientAge: json['patientAge'] as int?,
+      appointmentDate: json['appointmentDate']?.toString() ?? '',
+      isCompleted: json['isCompleted'] ?? false,
+      medicines: json['medicines'] != null
+          ? (json['medicines'] as List)
+              .map((m) => PrescriptionMedicine.fromJson(m as Map<String, dynamic>))
+              .toList()
+          : [],
+    );
+  }
+}
+
+/// التشخيص الطبي كما يراه ولي الأمر.
+class ParentDiagnosis extends _ClinicalCardHeader {
+  final bool hasDiagnosis;
+  final String? description;
+
+  ParentDiagnosis({
+    required super.bookingId,
+    required super.doctorName,
+    required super.specialization,
+    required super.doctorPhotoUrl,
+    required super.patientName,
+    required super.patientAge,
+    required super.appointmentDate,
+    required super.isCompleted,
+    required this.hasDiagnosis,
+    required this.description,
+  });
+
+  factory ParentDiagnosis.fromJson(Map<String, dynamic> json) {
+    final diag = json['diagnosis'];
+    return ParentDiagnosis(
+      bookingId: json['bookingId']?.toString() ?? '',
+      doctorName: json['doctorName']?.toString() ?? '',
+      specialization: json['specialization']?.toString() ?? '',
+      doctorPhotoUrl: json['doctorPhotoUrl']?.toString(),
+      patientName: json['patientName']?.toString() ?? '',
+      patientAge: json['patientAge'] as int?,
+      appointmentDate: json['appointmentDate']?.toString() ?? '',
+      isCompleted: json['isCompleted'] ?? false,
+      hasDiagnosis: json['hasDiagnosis'] ?? false,
+      description: diag is Map<String, dynamic> ? diag['description']?.toString() : null,
     );
   }
 }

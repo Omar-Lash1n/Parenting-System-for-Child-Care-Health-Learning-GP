@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
+import 'package:Ajial/consultations/screens/clinical_record_page.dart';
+import 'package:Ajial/consultations/widgets/clinical_record_paper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class BookingDetailPage extends StatefulWidget {
@@ -202,6 +204,11 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    // الجلسة المكتملة لها شاشة خاصة (الروشتة + التشخيص + التقييم).
+    if (_booking.status == 'completed') {
+      return _buildCompletedScaffold();
+    }
+
     final isSessionNow = _isSessionNow();
     final statusColor = isSessionNow
         ? const Color(0xFF28A745)
@@ -273,14 +280,274 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
     );
   }
 
-  Widget _buildHeader() {
+  // ============================================================
+  // شاشة الجلسة المكتملة (الروشتة الطبية + التشخيص + التقييم) — صورة 7
+  // ============================================================
+
+  Widget _buildCompletedScaffold() {
+    const green = Color(0xFF28A745);
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 24),
+              _buildHeader(title: 'جلسة ${_formatArabicDate(_booking.appointmentDate)}'),
+              const SizedBox(height: 24),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      _buildBookingCard(green),
+                      const SizedBox(height: 20),
+                      _buildClinicalGrid(),
+                      const SizedBox(height: 20),
+                      _buildChatCard(),
+                      const SizedBox(height: 24),
+                      _buildCompletedBottomButtons(),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClinicalGrid() {
+    return Row(
+      children: [
+        // التشخيص الطبي (يمين في RTL)
+        Expanded(
+          child: _buildGridTile(
+            label: 'التشخيص الطبي',
+            icon: Icons.description_outlined,
+            color: const Color(0xFFBF092F),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ClinicalRecordPage(
+                  bookingId: _booking.bookingId,
+                  type: ClinicalRecordType.diagnosis,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        // الروشتة الطبية (يسار في RTL)
+        Expanded(
+          child: _buildGridTile(
+            label: 'الروشتة الطبية',
+            icon: Icons.assignment_outlined,
+            color: const Color(0xFF01A449),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ClinicalRecordPage(
+                  bookingId: _booking.bookingId,
+                  type: ClinicalRecordType.prescription,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGridTile({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: color, size: 32),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: const Color(0xFF008CFF).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF008CFF), size: 30),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'تحدث مع الطبيب',
+            style: TextStyle(
+              fontFamily: 'IBM Plex Sans Arabic',
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFBF092F).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'متبقي 02 يوم : 24 س : 24 ق',
+              style: TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                color: Color(0xFFBF092F),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompletedBottomButtons() {
+    return Column(
+      children: [
+        // قيم الجلسة (placeholder — صفحة التقييم لاحقاً)
+        GestureDetector(
+          onTap: () => _showComingSoon('تقييم الجلسة'),
+          child: Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFE8401), Color(0xFFFFA53D)],
+              ),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            alignment: Alignment.center,
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'قيم الجلسة واحصل على 250',
+                  style: TextStyle(
+                    fontFamily: 'IBM Plex Sans Arabic',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.star_border_rounded, color: Colors.white, size: 24),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // طلب الجلسة مرة اخرى (placeholder)
+        GestureDetector(
+          onTap: () => _showComingSoon('طلب الجلسة مرة اخرى'),
+          child: Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(color: Colors.black.withValues(alpha: 0.4)),
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              'طلب الجلسة مرة اخرى',
+              style: TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showComingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature — قريباً', style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+        backgroundColor: const Color(0xFFBF092F),
+      ),
+    );
+  }
+
+  Widget _buildHeader({String title = 'تفاصيل الحجز'}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'تفاصيل الحجز',
+          Text(
+            title,
             style: TextStyle(
               fontFamily: 'IBM Plex Sans Arabic',
               fontWeight: FontWeight.bold,

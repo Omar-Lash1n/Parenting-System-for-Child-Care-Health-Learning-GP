@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
 import 'package:Ajial/consultations/screens/booking_details_page.dart';
+import 'package:Ajial/consultations/screens/clinical_record_page.dart';
+import 'package:Ajial/consultations/widgets/clinical_record_paper.dart';
 
 class MyBookingsPage extends StatefulWidget {
   const MyBookingsPage({super.key});
@@ -14,6 +16,9 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
   bool _isLoading = true;
   List<Booking> _bookings = [];
   String? _error;
+
+  /// هل يوجد روشتة لكل حجز مكتمل: null = قيد التحميل، true/false = النتيجة.
+  final Map<String, bool?> _hasPrescription = {};
 
   @override
   void initState() {
@@ -32,11 +37,29 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
         _bookings = bookings;
         _isLoading = false;
       });
+      _loadPrescriptionFlags();
     } catch (e) {
       setState(() {
         _error = 'حدث خطأ أثناء تحميل الحجوزات\n$e';
         _isLoading = false;
       });
+    }
+  }
+
+  /// يجلب حالة وجود روشتة لكل حجز مكتمل (لإظهار "عرض الروشتة" أو "لا توجد روشتة").
+  Future<void> _loadPrescriptionFlags() async {
+    final completed = _bookings.where((b) => b.status == 'completed').toList();
+    for (final b in completed) {
+      if (_hasPrescription.containsKey(b.bookingId)) continue;
+      _hasPrescription[b.bookingId] = null; // قيد التحميل
+      try {
+        final res = await _apiService.getPrescription(b.bookingId);
+        if (!mounted) return;
+        setState(() => _hasPrescription[b.bookingId] = res.hasPrescription);
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _hasPrescription[b.bookingId] = false);
+      }
     }
   }
 
@@ -134,9 +157,11 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                 ? const Color(0xFFD32F2F)
                 : const Color(0xFF8E8E93);
 
+    final isCompleted = booking.status == 'completed';
+
     return Container(
       width: 343,
-      height: 211.5,
+      height: isCompleted ? 255 : 211.5,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -288,7 +313,72 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
               ),
             ),
           ),
+          // Row 4: عرض الروشتة الطبية (للجلسات المكتملة فقط)
+          if (isCompleted) ...[
+            const SizedBox(height: 10),
+            _buildPrescriptionLink(booking),
+          ],
         ],
+      ),
+    );
+  }
+
+  /// زر "عرض الروشتة الطبية" أسفل بطاقة الجلسة المكتملة.
+  /// مُفعّل عند وجود روشتة، ويظهر "لا توجد روشتة للجلسة" (مُعطّل) إذا لم يُضِف الطبيب روشتة.
+  Widget _buildPrescriptionLink(Booking booking) {
+    final hasPrescription = _hasPrescription[booking.bookingId];
+
+    // قيد التحميل
+    if (hasPrescription == null) {
+      return const Center(
+        child: Text(
+          'عرض الروشتة الطبية',
+          style: TextStyle(
+            fontFamily: 'IBM Plex Sans Arabic',
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: Color(0x55000000),
+          ),
+        ),
+      );
+    }
+
+    // لا توجد روشتة — مُعطّل
+    if (!hasPrescription) {
+      return const Center(
+        child: Text(
+          'لا توجد روشتة للجلسة',
+          style: TextStyle(
+            fontFamily: 'IBM Plex Sans Arabic',
+            fontWeight: FontWeight.w500,
+            fontSize: 16,
+            color: Color(0x80000000),
+          ),
+        ),
+      );
+    }
+
+    // توجد روشتة — مُفعّل
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ClinicalRecordPage(
+            bookingId: booking.bookingId,
+            type: ClinicalRecordType.prescription,
+          ),
+        ),
+      ),
+      child: const Center(
+        child: Text(
+          'عرض الروشتة الطبية',
+          style: TextStyle(
+            fontFamily: 'IBM Plex Sans Arabic',
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: Colors.black,
+          ),
+        ),
       ),
     );
   }
