@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BookingDetailPage extends StatefulWidget {
   final Booking booking;
@@ -136,7 +137,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
         final sessionEnd = DateTime(year, month, day, endHour, endMinute);
         
         // Show button only during the exact session window (no early buffer)
-        return now.isAfter(sessionStart) && now.isBefore(sessionEnd);
+        return !now.isBefore(sessionStart) && now.isBefore(sessionEnd);
       }
     } catch (_) {}
     return false;
@@ -189,6 +190,8 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
   String _getActionButtonText() {
     if (_booking.status == 'pending_review') {
       return 'في انتظار تأكيد طلب الحجز';
+    } else if (_booking.status == 'pending_payment') {
+      return 'في انتظار إتمام الدفع';
     } else if (_booking.status == 'confirmed') {
       return _getTimeLeftForSession();
     } else if (_booking.status == 'rejected') {
@@ -247,8 +250,9 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                                       _buildBookingCard(statusColor),
                                       const SizedBox(height: 24),
                                       _buildRejectionCard(),
+                                      _buildMedicalFileCard(),
                                       if (_booking.status != 'rejected') _buildInstructionsCard(),
-                                      const SizedBox(height: 140), // Spacing for bottom buttons
+                                      const SizedBox(height: 140),
                                     ],
                                   ),
                                 ),
@@ -468,6 +472,93 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
             ),
             textAlign: TextAlign.right,
           ),
+        ],
+      ),
+    );
+  }
+
+  /// بطاقة الملف الطبي — تظهر فقط لو كان هناك ملف طبي URL
+  Widget _buildMedicalFileCard() {
+    final url = _booking.medicalFileUrl;
+    if (url == null || url.isEmpty) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF01A449).withValues(alpha: 0.05),
+        border: Border.all(color: const Color(0xFF01A449).withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          // Open file button
+          GestureDetector(
+            onTap: () async {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('لا يمكن فتح الملف', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF01A449),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.download_rounded, color: Colors.white, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'فتح الملف',
+                    style: TextStyle(
+                      fontFamily: 'IBM Plex Sans Arabic',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Spacer(),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'الملف الطبي للطفل',
+                style: TextStyle(
+                  fontFamily: 'IBM Plex Sans Arabic',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'اضغط لفتح الملف الطبي وتحميله',
+                style: TextStyle(
+                  fontFamily: 'IBM Plex Sans Arabic',
+                  fontSize: 12,
+                  color: Colors.black54,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.medical_services_outlined, color: Color(0xFF01A449), size: 28),
         ],
       ),
     );

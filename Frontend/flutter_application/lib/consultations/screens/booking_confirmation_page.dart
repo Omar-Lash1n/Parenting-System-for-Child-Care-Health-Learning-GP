@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
+import 'package:Ajial/api/auth_service.dart';
 import 'package:Ajial/consultations/screens/payment_page.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BookingConfirmationPage extends StatefulWidget {
   final AvailableDoctor doctor;
@@ -24,6 +27,8 @@ class BookingConfirmationPage extends StatefulWidget {
 
 class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
   final ParentConsultationService _apiService = ParentConsultationService();
+  final AuthService _authService = AuthService();
+  final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _complaintController = TextEditingController();
 
   List<Patient> _patients = [];
@@ -31,6 +36,14 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
   bool _isLoading = true;
   bool _agreeTerms = false;
   bool _shareFile = false;
+
+  // Medical file state
+  bool _isFetchingMedicalFile = false;
+  String? _medicalFileUrl;
+  String? _medicalFileError;
+
+  // Attached lab/radiology image
+  XFile? _attachedImage;
 
   // Arabic day & month names
   static const _arabicDays = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -80,6 +93,62 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
     return widget.doctor.specialization.isNotEmpty
         ? widget.doctor.specialization
         : 'استشارة طبية';
+  }
+
+  /// جلب الملف الطبي للطفل عند تفعيل مشاركة الملف الطبي
+  Future<void> _fetchMedicalFile(String childId) async {
+    setState(() {
+      _isFetchingMedicalFile = true;
+      _medicalFileUrl = null;
+      _medicalFileError = null;
+    });
+    final (success, urlOrError) = await _authService.getMedicalFileUrl(childId);
+    if (!mounted) return;
+    setState(() {
+      _isFetchingMedicalFile = false;
+      if (success) {
+        _medicalFileUrl = urlOrError;
+      } else {
+        _medicalFileError = urlOrError;
+      }
+    });
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(urlOrError, style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// فتح رابط الملف الطبي في المتصفح أو تطبيق خارجي
+  Future<void> _openMedicalFile() async {
+    if (_medicalFileUrl == null) return;
+    final uri = Uri.parse(_medicalFileUrl!);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('لا يمكن فتح الملف', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// اختيار صورة تحاليل أو أشعة من المعرض
+  Future<void> _pickLabImage() async {
+    final XFile? picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (picked != null && mounted) {
+      setState(() { _attachedImage = picked; });
+    }
   }
 
   void _confirmBooking() {
@@ -151,9 +220,11 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                           // Upload Images
                           _buildUploadImagesSection(),
                           const SizedBox(height: 16),
-                          // Upload Medical File
-                          _buildUploadMedicalFileSection(),
-                          const SizedBox(height: 16),
+                          // Upload Medical File — only for children (not isSelf)
+                          if (_selectedPatient == null || _selectedPatient!.childId != null)
+                            _buildUploadMedicalFileSection(),
+                          if (_selectedPatient == null || _selectedPatient!.childId != null)
+                            const SizedBox(height: 16),
                           // Terms Checkbox
                           _buildTermsCheckbox(),
                         ],
@@ -356,7 +427,13 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
               final patient = _patients[index];
               final isSelected = _selectedPatient == patient;
               return GestureDetector(
-                onTap: () => setState(() { _selectedPatient = patient; }),
+                onTap: () {
+                  setState(() { _selectedPatient = patient; });
+                  // إذا كانت مشاركة الملف الطبي مفعّلة وكان الطفل له childId، اجلب ملفه الطبي
+                  if (_shareFile && patient.childId != null) {
+                    _fetchMedicalFile(patient.childId!);
+                  }
+                },
                 child: Column(
                   children: [
                     Container(
@@ -471,49 +548,61 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(50),
-            border: Border.all(color: Colors.black.withValues(alpha: 0.25)),
-          ),
-          child: Row(
-            children: [
-              // Upload button
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(50),
-                    border: Border.all(color: Colors.black.withValues(alpha: 0.5)),
-                  ),
-                  child: const Text(
-                    'تحميل صورة',
-                    style: TextStyle(
-                      fontFamily: 'IBM Plex Sans Arabic',
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                      color: Colors.black,
+        GestureDetector(
+          onTap: _pickLabImage,
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(
+                color: _attachedImage != null
+                    ? const Color(0xFF01A449)
+                    : Colors.black.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(50),
+                      border: Border.all(color: Colors.black.withValues(alpha: 0.5)),
+                    ),
+                    child: const Text(
+                      'تحميل صورة',
+                      style: TextStyle(
+                        fontFamily: 'IBM Plex Sans Arabic',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Text(
-                  'اضغط تحميل الصورة',
-                  style: TextStyle(
-                    fontFamily: 'IBM Plex Sans Arabic',
-                    fontSize: 14,
-                    color: Colors.black.withValues(alpha: 0.5),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: Text(
+                    _attachedImage != null
+                        ? '✅ ${_attachedImage!.name}'
+                        : 'اضغط تحميل الصورة',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'IBM Plex Sans Arabic',
+                      fontSize: 13,
+                      color: _attachedImage != null
+                          ? const Color(0xFF01A449)
+                          : Colors.black.withValues(alpha: 0.5),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -543,66 +632,132 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
           ),
           child: Row(
             children: [
-              // Upload button
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(50),
-                    border: Border.all(color: Colors.black.withValues(alpha: 0.5)),
-                  ),
-                  child: const Text(
-                    'تحميل ملف طبي',
-                    style: TextStyle(
-                      fontFamily: 'IBM Plex Sans Arabic',
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                      color: Colors.black,
-                    ),
+              // Checkbox and Label (Right side)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        'مشاركة الملف الطبي',
+                        style: TextStyle(
+                          fontFamily: 'IBM Plex Sans Arabic',
+                          fontSize: 14,
+                          color: Colors.black.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          final newValue = !_shareFile;
+                          setState(() {
+                            _shareFile = newValue;
+                            if (!newValue) {
+                              _medicalFileUrl = null;
+                              _medicalFileError = null;
+                            }
+                          });
+                          if (newValue && _selectedPatient?.childId != null) {
+                            _fetchMedicalFile(_selectedPatient!.childId!);
+                          } else if (newValue && _selectedPatient == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'يرجى اختيار الطفل أولاً حتى يمكن مشاركة ملفه الطبي',
+                                  style: TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
+                                ),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                            setState(() { _shareFile = false; });
+                          }
+                        },
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _shareFile ? const Color(0xFFBF092F) : const Color(0xFFD9D9D9),
+                              width: 1.5,
+                            ),
+                            color: _shareFile ? const Color(0xFFBF092F) : Colors.white,
+                          ),
+                          child: _shareFile
+                              ? const Icon(Icons.check, color: Colors.white, size: 14)
+                              : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const Spacer(),
-              // Share checkbox + label
+              // Button (Left side)
               Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Row(
-                  children: [
-                    Text(
-                      'مشاركة الملف الطبي',
-                      style: TextStyle(
-                        fontFamily: 'IBM Plex Sans Arabic',
-                        fontSize: 14,
-                        color: Colors.black.withValues(alpha: 0.5),
+                padding: const EdgeInsets.only(left: 8),
+                child: GestureDetector(
+                  onTap: _shareFile && _medicalFileUrl != null ? _openMedicalFile : null,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _shareFile ? Colors.white : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(50),
+                      border: Border.all(
+                        color: _shareFile && _medicalFileUrl != null
+                            ? const Color(0xFF01A449)
+                            : Colors.black.withValues(alpha: 0.5),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => setState(() { _shareFile = !_shareFile; }),
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _shareFile ? const Color(0xFFBF092F) : const Color(0xFFD9D9D9),
-                            width: 1.5,
+                    child: _isFetchingMedicalFile
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFBF092F)),
+                          )
+                        : Text(
+                            'فتح الملف الطبي',
+                            style: TextStyle(
+                              fontFamily: 'IBM Plex Sans Arabic',
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                              color: _shareFile && _medicalFileUrl != null
+                                  ? const Color(0xFF01A449)
+                                  : Colors.black.withValues(alpha: 0.5),
+                            ),
                           ),
-                          color: _shareFile ? const Color(0xFFBF092F) : Colors.white,
-                        ),
-                        child: _shareFile
-                            ? const Icon(Icons.check, color: Colors.white, size: 14)
-                            : null,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
           ),
         ),
+        if (_medicalFileError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              _medicalFileError!,
+              style: const TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontSize: 12,
+                color: Colors.red,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        if (_medicalFileUrl != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              '✅ تم جلب الملف الطبي — اضغط "تحميل ملف طبي" لفتحه',
+              style: const TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontSize: 12,
+                color: Color(0xFF01A449),
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
       ],
     );
   }

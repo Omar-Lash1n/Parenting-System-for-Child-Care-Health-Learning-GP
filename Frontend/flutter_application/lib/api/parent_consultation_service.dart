@@ -847,6 +847,15 @@ class Booking {
   final bool canCancel;
   final List<BookingAttachment> attachments;
   final String? rejectionReason;
+  // Fields added from detailed booking response
+  final String? childId;
+  final String? complaintDescription;
+  final bool shareMedicalFile;
+  final String? medicalFileUrl;
+  final String? paymentStatus;
+  final String? paymentStatusAr;
+  final String? paymentMethod;
+  final String? receiptImageUrl;
 
   Booking({
     required this.bookingId,
@@ -868,6 +877,14 @@ class Booking {
     required this.canCancel,
     required this.attachments,
     this.rejectionReason,
+    this.childId,
+    this.complaintDescription,
+    this.shareMedicalFile = false,
+    this.medicalFileUrl,
+    this.paymentStatus,
+    this.paymentStatusAr,
+    this.paymentMethod,
+    this.receiptImageUrl,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -895,6 +912,14 @@ class Booking {
               .toList()
           : [],
       rejectionReason: json['rejectionReason']?.toString(),
+      childId: json['childId']?.toString(),
+      complaintDescription: json['complaintDescription']?.toString(),
+      shareMedicalFile: json['shareMedicalFile'] ?? false,
+      medicalFileUrl: json['medicalFileUrl']?.toString(),
+      paymentStatus: json['paymentStatus']?.toString(),
+      paymentStatusAr: json['paymentStatusAr']?.toString(),
+      paymentMethod: json['paymentMethod']?.toString(),
+      receiptImageUrl: json['receiptImageUrl']?.toString(),
     );
   }
 }
