@@ -781,6 +781,56 @@ public class ConsultationService : IConsultationService
         }
     }
 
+    // ── جلسة الكشف اون لاين (Google Meet) ──────────────────────────────────────
+
+    public async Task<ApiResponse<SessionStatusResponse>> GetSessionStatusAsync(Guid userId, Guid bookingId)
+    {
+        try
+        {
+            var (parent, _, error) = await ResolveParentAsync<SessionStatusResponse>(userId);
+            if (error != null) return error;
+
+            var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId);
+            if (booking == null || booking.ParentId != parent!.Id)
+                return ApiResponse<SessionStatusResponse>.FailureResponse("لم يتم العثور على الحجز");
+
+            if (booking.ServiceType != BookingServiceType.RemoteConsultation)
+                return ApiResponse<SessionStatusResponse>.FailureResponse("هذا الحجز ليس جلسة اون لاين");
+
+            var specialist = await _unitOfWork.Specialists.GetFirstOrDefaultAsync(s => s.Id == booking.SpecialistId, "User");
+
+            var now = WorkingHoursHelper.EgyptNow();
+            var startLocal = booking.AppointmentDate.Date + (booking.StartTime ?? TimeSpan.Zero);
+            var doctorStarted = booking.SessionStartedAt.HasValue && !string.IsNullOrEmpty(booking.MeetingUrl);
+            var canJoin = doctorStarted && booking.Status == BookingStatus.Confirmed;
+
+            var response = new SessionStatusResponse
+            {
+                BookingId = booking.Id,
+                ServiceType = ConsultationLabels.ServiceTypeKey(booking.ServiceType),
+                Status = ConsultationLabels.BookingStatusKey(booking.Status),
+                StatusAr = ConsultationLabels.BookingStatusAr(booking.Status),
+                DoctorName = specialist?.User?.FullName ?? string.Empty,
+                PhotoUrl = specialist?.PersonalPhotoUrl,
+                Specialization = specialist?.Specialization ?? string.Empty,
+                AppointmentDate = booking.AppointmentDate.ToString("yyyy-MM-dd"),
+                StartTime = booking.StartTime.HasValue ? WorkingHoursHelper.Format(booking.StartTime.Value) : null,
+                EndTime = booking.EndTime.HasValue ? WorkingHoursHelper.Format(booking.EndTime.Value) : null,
+                ServerTimeEgypt = now,
+                SecondsUntilStart = (long)Math.Round((startLocal - now).TotalSeconds),
+                DoctorStarted = doctorStarted,
+                CanJoin = canJoin,
+                JoinUrl = canJoin ? booking.MeetingUrl : null
+            };
+
+            return ApiResponse<SessionStatusResponse>.SuccessResponse(response, "تم جلب حالة الجلسة بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<SessionStatusResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private async Task<(Parent? parent, User? user, ApiResponse<T>? error)> ResolveParentAsync<T>(Guid userId)

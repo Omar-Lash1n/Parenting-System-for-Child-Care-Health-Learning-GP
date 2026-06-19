@@ -63,6 +63,19 @@ public class Booking
     public BookingStatus Status { get; set; } = BookingStatus.PendingPayment;
     public string? RejectionReason { get; set; }
 
+    // ── جلسة الكشف اون لاين (Google Meet) — المرحلة الثالثة ──
+    /// <summary>
+    /// رابط جلسة Google Meet — يُولَّد عندما يضغط الطبيب "بدء الجلسة" بعد حلول الموعد.
+    /// null قبل بدء الطبيب للجلسة. عندها يصبح متاحاً لولي الأمر للانضمام.
+    /// </summary>
+    public string? MeetingUrl { get; set; }
+
+    /// <summary>معرّف حدث Google Calendar المرتبط بالجلسة (لإمكانية الإلغاء/التنظيف لاحقاً).</summary>
+    public string? MeetingEventId { get; set; }
+
+    /// <summary>وقت بدء الطبيب للجلسة فعلياً (UTC). null يعني أن الجلسة لم تبدأ بعد.</summary>
+    public DateTime? SessionStartedAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? CancelledAt { get; set; }

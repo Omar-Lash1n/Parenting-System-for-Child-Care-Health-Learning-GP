@@ -60,6 +60,10 @@
   --clinic-color-light: rgba(8, 145, 178, 0.15);
   --clinic-color-hover: #0e7490;
 
+  --consultation-payment-color: #f97316; /* Orange-500 */
+  --consultation-payment-color-light: rgba(249, 115, 22, 0.15);
+  --consultation-payment-color-hover: #ea580c;
+
   --primary: var(--specialist-color);
   --primary-light: var(--specialist-color-light);
   --primary-hover: var(--specialist-color-hover);
@@ -118,6 +122,12 @@ body.theme-clinics {
   --primary: var(--clinic-color);
   --primary-light: var(--clinic-color-light);
   --primary-hover: var(--clinic-color-hover);
+}
+
+body.theme-consultation-payments {
+  --primary: var(--consultation-payment-color);
+  --primary-light: var(--consultation-payment-color-light);
+  --primary-hover: var(--consultation-payment-color-hover);
 }
 
 * {

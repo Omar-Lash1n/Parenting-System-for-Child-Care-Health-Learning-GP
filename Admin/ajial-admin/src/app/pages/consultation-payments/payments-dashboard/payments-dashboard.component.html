@@ -1,0 +1,239 @@
+<!-- Header -->
+<header class="page-header">
+    <div class="header-text">
+        <h1>مراجعة المدفوعات</h1>
+        <p>مراجعة وقبول ورفض إيصالات الدفع لحجوزات الاستشارات الطبية</p>
+    </div>
+    <div class="header-actions">
+        <div class="stats-card pending">
+            <span class="stats-number">{{ pendingCount }}</span>
+            <span class="stats-label">قيد المراجعة</span>
+        </div>
+        <div class="stats-card approved">
+            <span class="stats-number">{{ approvedCount }}</span>
+            <span class="stats-label">مقبول</span>
+        </div>
+        <div class="stats-card rejected">
+            <span class="stats-number">{{ rejectedCount }}</span>
+            <span class="stats-label">مرفوض</span>
+        </div>
+    </div>
+</header>
+
+<!-- Filters -->
+<div class="filters-bar">
+    <div class="filter-tabs">
+        <button class="filter-tab" [class.active]="currentFilter === 'all'" (click)="filterByStatus('all')">الكل</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'pending'" (click)="filterByStatus('pending')">قيد المراجعة</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'approved'" (click)="filterByStatus('approved')">مقبول</button>
+        <button class="filter-tab" [class.active]="currentFilter === 'rejected'" (click)="filterByStatus('rejected')">مرفوض</button>
+    </div>
+    <button class="btn btn-outline" (click)="fetchPayments()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        تحديث
+    </button>
+</div>
+
+<!-- Table -->
+<div class="table-container" *ngIf="!hasError">
+    <div class="loading" *ngIf="isLoading">
+        <div class="spinner"></div>
+        <p>جارٍ التحميل...</p>
+    </div>
+
+    <table class="data-table" *ngIf="!isLoading && filteredPayments.length > 0">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>ولي الأمر</th>
+                <th>الطبيب</th>
+                <th>نوع الخدمة</th>
+                <th>المبلغ</th>
+                <th>طريقة الدفع</th>
+                <th>التاريخ</th>
+                <th>الحالة</th>
+                <th>إجراء</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let p of filteredPayments; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td><span class="name-link" (click)="openDetail(p.paymentId)">{{ p.parentName || '—' }}</span></td>
+                <td>{{ p.doctorName || '—' }}</td>
+                <td>{{ p.serviceTypeAr || '—' }}</td>
+                <td>{{ formatPrice(p.amount) }}</td>
+                <td>{{ p.methodAr || '—' }}</td>
+                <td>{{ formatDate(p.createdAt) }}</td>
+                <td><span class="status-badge" [ngClass]="p.status.toLowerCase()">{{ p.statusAr }}</span></td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn btn-sm btn-outline" (click)="openDetail(p.paymentId)">عرض</button>
+                        <button *ngIf="isPending(p.status)" class="btn btn-sm btn-success" (click)="approve(p.paymentId)">قبول</button>
+                        <button *ngIf="isPending(p.status)" class="btn btn-sm btn-danger" (click)="openRejectModal(p.paymentId)">رفض</button>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="empty-state" *ngIf="!isLoading && filteredPayments.length === 0">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+            <line x1="1" y1="10" x2="23" y2="10"/>
+        </svg>
+        <p>لا توجد مدفوعات لعرضها</p>
+    </div>
+</div>
+
+<!-- Error State -->
+<div class="error-state-container" *ngIf="hasError">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <h3>فشل الاتصال بالسيرفر</h3>
+    <p>تعذّر تحميل البيانات. تأكد من اتصالك بالإنترنت وحاول لاحقاً.</p>
+    <button class="btn btn-outline" (click)="fetchPayments()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        إعادة المحاولة
+    </button>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" [class.active]="isDetailModalActive" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>تفاصيل عملية الدفع</h2>
+            <button class="modal-close" (click)="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="loading" *ngIf="isLoadingDetail">
+                <div class="spinner"></div>
+                <p>جارٍ تحميل التفاصيل...</p>
+            </div>
+            <ng-container *ngIf="!isLoadingDetail && selectedPayment">
+                <div class="detail-grid">
+                    <div class="detail-field">
+                        <span class="detail-label">ولي الأمر</span>
+                        <span class="detail-value">{{ selectedPayment.parentName }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">المريض</span>
+                        <span class="detail-value">{{ selectedPayment.patientName }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">الطبيب</span>
+                        <span class="detail-value">{{ selectedPayment.doctorName }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">التخصص</span>
+                        <span class="detail-value">{{ selectedPayment.specialization || '—' }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">نوع الخدمة</span>
+                        <span class="detail-value">{{ selectedPayment.serviceTypeAr }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">تاريخ الموعد</span>
+                        <span class="detail-value">{{ selectedPayment.appointmentDate || '—' }}</span>
+                    </div>
+                    <div class="detail-field" *ngIf="selectedPayment.startTime">
+                        <span class="detail-label">وقت البداية</span>
+                        <span class="detail-value">{{ selectedPayment.startTime }}</span>
+                    </div>
+                    <div class="detail-field" *ngIf="selectedPayment.endTime">
+                        <span class="detail-label">وقت النهاية</span>
+                        <span class="detail-value">{{ selectedPayment.endTime }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">المبلغ</span>
+                        <span class="detail-value amount-highlight">{{ formatPrice(selectedPayment.amount) }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">طريقة الدفع</span>
+                        <span class="detail-value">{{ selectedPayment.methodAr }}</span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">حالة الدفع</span>
+                        <span class="detail-value">
+                            <span class="status-badge" [ngClass]="selectedPayment.status.toLowerCase()">{{ selectedPayment.statusAr }}</span>
+                        </span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">حالة الحجز</span>
+                        <span class="detail-value">
+                            <span class="status-badge" [ngClass]="selectedPayment.bookingStatus.toLowerCase()">{{ selectedPayment.bookingStatusAr }}</span>
+                        </span>
+                    </div>
+                    <div class="detail-field">
+                        <span class="detail-label">تاريخ الإنشاء</span>
+                        <span class="detail-value">{{ formatDate(selectedPayment.createdAt) }}</span>
+                    </div>
+                    <div class="detail-field" *ngIf="selectedPayment.rejectionReason" style="grid-column: span 2">
+                        <span class="detail-label">سبب الرفض</span>
+                        <span class="detail-value" style="color: var(--danger)">{{ selectedPayment.rejectionReason }}</span>
+                    </div>
+                </div>
+
+                <!-- Receipt Image -->
+                <div class="receipt-section" *ngIf="selectedPayment.receiptImageUrl">
+                    <h3 class="receipt-title">صورة إيصال الدفع</h3>
+                    <div class="receipt-card" (click)="openReceiptImage(selectedPayment.receiptImageUrl)">
+                        <img [src]="selectedPayment.receiptImageUrl" alt="إيصال الدفع" class="receipt-image">
+                        <div class="receipt-overlay">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                                <line x1="11" y1="8" x2="11" y2="14"/>
+                                <line x1="8" y1="11" x2="14" y2="11"/>
+                            </svg>
+                            <span>عرض بالحجم الكامل</span>
+                        </div>
+                    </div>
+                </div>
+            </ng-container>
+        </div>
+        <div class="modal-footer" *ngIf="!isLoadingDetail && selectedPayment">
+            <ng-container *ngIf="isPending(selectedPayment.status)">
+                <button class="btn btn-success" (click)="approve(selectedPayment.paymentId)">قبول الدفع</button>
+                <button class="btn btn-danger" (click)="openRejectModal(selectedPayment.paymentId)">رفض الدفع</button>
+            </ng-container>
+            <button class="btn btn-outline" (click)="closeModal()">إغلاق</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div class="modal-overlay" [class.active]="isRejectModalActive" (click)="closeRejectModal()">
+    <div class="modal modal-small" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>سبب الرفض</h2>
+            <button class="modal-close" (click)="closeRejectModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <textarea [(ngModel)]="rejectionReason" placeholder="اكتب سبب رفض الدفع هنا..." rows="4"></textarea>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" (click)="closeRejectModal()">إلغاء</button>
+            <button class="btn btn-danger" (click)="confirmReject()">تأكيد الرفض</button>
+        </div>
+    </div>
+</div>
+
+<!-- Full-size Image Modal -->
+<div class="modal-overlay" [class.active]="isImageModalActive" (click)="closeImageModal()">
+    <div class="image-modal" (click)="$event.stopPropagation()">
+        <div class="image-modal-header">
+            <button class="btn btn-sm btn-outline" (click)="openImageInNewTab(imageModalUrl)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                فتح في نافذة جديدة
+            </button>
+            <button class="modal-close" (click)="closeImageModal()">&times;</button>
+        </div>
+        <img [src]="imageModalUrl" alt="إيصال الدفع" class="image-modal-content">
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" [ngClass]="toastType" [class.show]="isToastShow">{{ toastMessage }}</div>

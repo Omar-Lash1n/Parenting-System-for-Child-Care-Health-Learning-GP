@@ -144,6 +144,15 @@ public class ParentConsultationController : ControllerBase
         return ToActionResult(await _service.CancelBookingAsync(userId, bookingId));
     }
 
+    /// <summary>حالة جلسة الكشف اون لاين (عدّ تنازلي + إتاحة زر "بدء الجلسة" والرابط). يُستعلم عنها دورياً.</summary>
+    [HttpGet("bookings/{bookingId:guid}/session")]
+    [ProducesResponseType(typeof(ApiResponse<SessionStatusResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSessionStatus(Guid bookingId)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<SessionStatusResponse>();
+        return ToActionResult(await _service.GetSessionStatusAsync(userId, bookingId));
+    }
+
     /// <summary>المعاملات المالية لولي الأمر.</summary>
     [HttpGet("payments")]
     [ProducesResponseType(typeof(ApiResponse<List<ParentPaymentListItemResponse>>), StatusCodes.Status200OK)]

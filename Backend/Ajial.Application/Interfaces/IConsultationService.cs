@@ -28,4 +28,8 @@ public interface IConsultationService
     Task<ApiResponse<BookingDetailResponse>> GetBookingDetailAsync(Guid userId, Guid bookingId);
     Task<ApiResponse<BookingDetailResponse>> CancelBookingAsync(Guid userId, Guid bookingId);
     Task<ApiResponse<List<ParentPaymentListItemResponse>>> GetMyPaymentsAsync(Guid userId);
+
+    // ── جلسة الكشف اون لاين (Google Meet) ──
+    /// <summary>حالة جلسة الكشف اون لاين لولي الأمر (العدّ التنازلي + إتاحة الانضمام).</summary>
+    Task<ApiResponse<SessionStatusResponse>> GetSessionStatusAsync(Guid userId, Guid bookingId);
 }

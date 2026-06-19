@@ -1,0 +1,81 @@
+<header class="page-header">
+    <div class="header-text">
+        <h1>إعدادات الدفع</h1>
+        <p>إدارة أرقام المحافظ الإلكترونية المعروضة في شاشة الدفع لولي الأمر</p>
+    </div>
+</header>
+
+<!-- Loading -->
+<div class="loading" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p>جارٍ التحميل...</p>
+</div>
+
+<!-- Error -->
+<div class="error-state-container" *ngIf="hasError && !isLoading">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <h3>فشل الاتصال بالسيرفر</h3>
+    <p>تعذّر تحميل الإعدادات. تأكد من اتصالك بالإنترنت وحاول لاحقاً.</p>
+    <button class="btn btn-outline" (click)="fetchSettings()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        إعادة المحاولة
+    </button>
+</div>
+
+<!-- Settings Form -->
+<div class="settings-card" *ngIf="!isLoading && !hasError">
+    <div class="settings-form">
+        <div class="form-group">
+            <label class="form-label" for="vodafone-cash">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.4a16 16 0 0 0 5.69 5.69l.88-.88a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/>
+                </svg>
+                رقم فودافون كاش
+            </label>
+            <input type="text"
+                   id="vodafone-cash"
+                   class="form-input"
+                   [(ngModel)]="vodafoneCashNumber"
+                   placeholder="مثال: 01012345678"
+                   dir="ltr">
+            <span class="form-hint">الرقم الذي سيظهر لولي الأمر لتحويل المبلغ عبر فودافون كاش</span>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="instapay">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                    <line x1="1" y1="10" x2="23" y2="10"/>
+                </svg>
+                رقم انستا باي
+            </label>
+            <input type="text"
+                   id="instapay"
+                   class="form-input"
+                   [(ngModel)]="instaPayNumber"
+                   placeholder="مثال: 01098765432"
+                   dir="ltr">
+            <span class="form-hint">الرقم الذي سيظهر لولي الأمر لتحويل المبلغ عبر انستا باي</span>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" (click)="save()" [disabled]="isSaving">
+                <svg *ngIf="!isSaving" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                <span *ngIf="isSaving" class="btn-spinner"></span>
+                {{ isSaving ? 'جارٍ الحفظ...' : 'حفظ التغييرات' }}
+            </button>
+            <button class="btn btn-outline" (click)="fetchSettings()" [disabled]="isSaving">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" [ngClass]="toastType" [class.show]="isToastShow">{{ toastMessage }}</div>

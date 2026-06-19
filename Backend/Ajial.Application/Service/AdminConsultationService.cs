@@ -54,6 +54,7 @@ public class AdminConsultationService : IAdminConsultationService
                     Amount = p.Amount,
                     Method = ConsultationLabels.PaymentMethodKey(p.Method),
                     MethodAr = ConsultationLabels.PaymentMethodAr(p.Method),
+                    ReceiptImageUrl = p.ReceiptImageUrl,
                     Status = ConsultationLabels.PaymentStatusKey(p.Status),
                     StatusAr = ConsultationLabels.PaymentStatusAr(p.Status),
                     CreatedAt = p.CreatedAt

@@ -121,10 +121,12 @@ builder.Services.AddScoped<IClinicService, ClinicService>();                   /
 builder.Services.AddScoped<IRemoteConsultationService, RemoteConsultationService>(); // ✅ Remote Consultation Feature (الكشف عن بعد)
 builder.Services.AddScoped<IConsultationService, ConsultationService>();        // ✅ Consultation Booking (استشارات طبية - جانب ولي الأمر)
 builder.Services.AddScoped<IAdminConsultationService, AdminConsultationService>(); // ✅ Consultation Booking (مراجعة المدفوعات - الأدمن)
+builder.Services.AddScoped<IDoctorConsultationService, DoctorConsultationService>(); // ✅ Consultation Session (بدء جلسة الكشف اون لاين - جانب الطبيب)
 builder.Services.AddScoped<IMedicalFileService, MedicalFileService>();          // ✅ Medical File (السجل الطبي - الملف الطبي الموحد للطفل)
 // ✅ Infrastructure Services
 builder.Services.AddScoped<IImageService, AzureBlobImageService>(); // ✅ NEW - Image Upload to Azure
 builder.Services.AddSingleton<IMedicalFilePdfGenerator, QuestPdfMedicalFileGenerator>(); // ✅ Medical File PDF generation (QuestPDF)
+builder.Services.AddSingleton<IMeetingService, GoogleMeetService>(); // ✅ Google Meet link generation (Calendar API + OAuth refresh token)
 builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IParentService, ParentService>();
 

@@ -22,6 +22,7 @@ public class AdminPaymentListItemDto
     public decimal Amount { get; set; }
     public string Method { get; set; } = string.Empty;
     public string MethodAr { get; set; } = string.Empty;
+    public string ReceiptImageUrl { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string StatusAr { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }

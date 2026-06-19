@@ -23,7 +23,11 @@
       "Bash(dotnet add *)",
       "Bash(python -c \"import fitz; d=fitz.open\\('mf_sample.pdf'\\); print\\('pages',d.page_count\\); [p.get_pixmap\\(dpi=150\\).save\\(f'mf_p{i+1}.png'\\) for i,p in enumerate\\(d\\)]; print\\('ok'\\)\")",
       "Bash(python -c \"import fitz; d=fitz.open\\('mf_sample.pdf'\\); d[0].get_pixmap\\(dpi=150,clip=fitz.Rect\\(0,80,595,260\\)\\).save\\('mf_bloodcheck.png'\\); print\\('ok'\\)\")",
-      "Bash(python -c \"import fitz; d=fitz.open\\('mf_sample.pdf'\\); print\\('PAGES:',d.page_count\\); d[0].get_pixmap\\(dpi=140\\).save\\('mf_p1.png'\\)\")"
+      "Bash(python -c \"import fitz; d=fitz.open\\('mf_sample.pdf'\\); print\\('PAGES:',d.page_count\\); d[0].get_pixmap\\(dpi=140\\).save\\('mf_p1.png'\\)\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('Ajial.API/Keys/ajial-973b5-e0939c05a7cc.json'\\)\\); print\\({k:\\(v if k not in \\('private_key','private_key_id'\\) else '<redacted>'\\) for k,v in d.items\\(\\)}\\)\")",
+      "Bash(node -e \"const d=require\\('./Ajial.API/Keys/ajial-973b5-e0939c05a7cc.json'\\); for\\(const k in d\\){console.log\\(k, k.includes\\('private'\\)?'<redacted>':d[k]\\)}\")",
+      "WebSearch",
+      "PowerShell(dotnet build *)"
     ]
   }
 }

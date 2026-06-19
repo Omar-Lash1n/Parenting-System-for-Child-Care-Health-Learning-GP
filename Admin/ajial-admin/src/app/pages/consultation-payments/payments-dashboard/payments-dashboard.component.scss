@@ -1,0 +1,129 @@
+/* ── Receipt Section ─────────────────────────── */
+.receipt-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.receipt-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.receipt-card {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  max-width: 400px;
+
+  &:hover {
+    border-color: var(--primary);
+    box-shadow: 0 4px 20px var(--primary-light);
+
+    .receipt-overlay {
+      opacity: 1;
+    }
+
+    .receipt-image {
+      transform: scale(1.02);
+    }
+  }
+}
+
+.receipt-image {
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.receipt-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ── Amount Highlight ────────────────────────── */
+.amount-highlight {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: var(--primary) !important;
+}
+
+/* ── Image Modal ─────────────────────────────── */
+.image-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow);
+  animation: modalIn 0.3s ease;
+  overflow: hidden;
+}
+
+.image-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.image-modal-content {
+  max-width: 100%;
+  max-height: calc(90vh - 60px);
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+/* ── Booking Status Badges ───────────────────── */
+.status-badge.pendingpayment {
+  background: rgba(113, 113, 122, 0.15);
+  color: var(--text-muted);
+}
+
+.status-badge.pendingreview {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.status-badge.confirmed {
+  background: var(--specialist-color-light);
+  color: var(--specialist-color);
+}
+
+.status-badge.completed {
+  background: rgba(16, 185, 129, 0.25);
+  color: #059669;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
