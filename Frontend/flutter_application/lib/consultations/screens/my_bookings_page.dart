@@ -129,8 +129,10 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     final statusColor = booking.status == 'pending_payment' || booking.status == 'pending_review'
         ? const Color(0xFFFE8401)
         : booking.status == 'confirmed'
-            ? const Color(0xFF28A745)
-            : const Color(0xFF8E8E93);
+            ? const Color(0xFF008CFF)
+            : booking.status == 'rejected'
+                ? const Color(0xFFD32F2F)
+                : const Color(0xFF8E8E93);
 
     return Container(
       width: 343,
@@ -275,9 +277,9 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                 border: Border.all(color: Colors.black.withValues(alpha: 0.5)),
               ),
               alignment: Alignment.center,
-              child: const Text(
-                'عرض تفاصيل الجلسة',
-                style: TextStyle(
+              child: Text(
+                booking.status == 'rejected' ? 'عرض سبب الرفض' : 'عرض تفاصيل الجلسة',
+                style: const TextStyle(
                   fontFamily: 'IBM Plex Sans Arabic',
                   fontWeight: FontWeight.w500,
                   fontSize: 16,

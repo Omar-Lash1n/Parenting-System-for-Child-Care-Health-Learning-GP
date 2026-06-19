@@ -107,9 +107,11 @@ class _PaymentPageState extends State<PaymentPage> {
         shareMedicalFile: widget.shareMedicalFile,
       );
 
-      await _apiService.uploadBookingAttachment(
-        bookingId,
-        _receiptImage!,
+      int methodVal = _selectedMethod == 'vodafone' ? 1 : 2;
+      await _apiService.submitBookingPayment(
+        bookingId: bookingId,
+        method: methodVal,
+        receiptFile: _receiptImage!,
       );
 
       if (!mounted) return;

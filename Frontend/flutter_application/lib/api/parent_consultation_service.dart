@@ -572,6 +572,33 @@ class ParentConsultationService {
     }
   }
 
+  /// GET /api/parent/consultations/payments
+  Future<List<PaymentTransaction>> getPaymentTransactions() async {
+    final headers = await _getAuthHeaders();
+    final url = '$_apiBaseUrl/parent/consultations/payments';
+    print('📤 GET $url');
+
+    try {
+      final response = await http.get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 15));
+
+      print('📥 Payments Response: ${response.statusCode}');
+      print('📥 Payments Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final list = _extractList(response.body);
+        return list
+            .map((item) => PaymentTransaction.fromJson(item as Map<String, dynamic>))
+            .toList();
+      } else {
+        throw Exception('Failed to load payments (${response.statusCode})');
+      }
+    } catch (e) {
+      print('❌ Exception in getPaymentTransactions: $e');
+      rethrow;
+    }
+  }
+
   /// GET /api/parent/consultations/patients
   Future<List<Patient>> getPatients() async {
     final headers = await _getAuthHeaders();
@@ -819,6 +846,7 @@ class Booking {
   final String createdAt;
   final bool canCancel;
   final List<BookingAttachment> attachments;
+  final String? rejectionReason;
 
   Booking({
     required this.bookingId,
@@ -839,6 +867,7 @@ class Booking {
     required this.createdAt,
     required this.canCancel,
     required this.attachments,
+    this.rejectionReason,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -865,6 +894,7 @@ class Booking {
               .map((a) => BookingAttachment.fromJson(a as Map<String, dynamic>))
               .toList()
           : [],
+      rejectionReason: json['rejectionReason']?.toString(),
     );
   }
 }
@@ -905,6 +935,56 @@ class PaymentMethods {
     return PaymentMethods(
       vodafoneCashNumber: json['vodafoneCashNumber']?.toString(),
       instaPayNumber: json['instaPayNumber']?.toString(),
+    );
+  }
+}
+
+class PaymentTransaction {
+  final String paymentId;
+  final String bookingId;
+  final String doctorName;
+  final String serviceTypeAr;
+  final double amount;
+  final String method;
+  final String methodAr;
+  final String status;
+  final String statusAr;
+  final String receiptImageUrl;
+  final String appointmentDate;
+  final String createdAt;
+  final String? rejectionReason;
+
+  PaymentTransaction({
+    required this.paymentId,
+    required this.bookingId,
+    required this.doctorName,
+    required this.serviceTypeAr,
+    required this.amount,
+    required this.method,
+    required this.methodAr,
+    required this.status,
+    required this.statusAr,
+    required this.receiptImageUrl,
+    required this.appointmentDate,
+    required this.createdAt,
+    this.rejectionReason,
+  });
+
+  factory PaymentTransaction.fromJson(Map<String, dynamic> json) {
+    return PaymentTransaction(
+      paymentId: json['paymentId']?.toString() ?? '',
+      bookingId: json['bookingId']?.toString() ?? '',
+      doctorName: json['doctorName']?.toString() ?? '',
+      serviceTypeAr: json['serviceTypeAr']?.toString() ?? '',
+      amount: (json['amount'] ?? 0).toDouble(),
+      method: json['method']?.toString() ?? '',
+      methodAr: json['methodAr']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      statusAr: json['statusAr']?.toString() ?? '',
+      receiptImageUrl: json['receiptImageUrl']?.toString() ?? '',
+      appointmentDate: json['appointmentDate']?.toString() ?? '',
+      createdAt: json['createdAt']?.toString() ?? '',
+      rejectionReason: json['rejectionReason']?.toString(),
     );
   }
 }
