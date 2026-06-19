@@ -25,6 +25,7 @@
         <PackageReference Include="Azure.Storage.Blobs" Version="12.26.0" />
         <PackageReference Include="FirebaseAdmin" Version="3.4.0" />
         <PackageReference Include="Google.Apis.Calendar.v3" Version="1.74.0.4154" />
+        <PackageReference Include="Google.Apis.Meet.v2" Version="1.74.0.4128" />
         <PackageReference Include="MailKit" Version="4.14.1" />
         <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="9.0.10" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />

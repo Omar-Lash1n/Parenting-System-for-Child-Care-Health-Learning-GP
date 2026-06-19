@@ -1,10 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
+import 'package:Ajial/specialist-app/dashboard/models/doctor_consultation_models.dart';
 
 class SpecialistTelemedicineSymptomsPage extends StatelessWidget {
-  final bool hasData;
+  final DoctorBookingDetail detail;
 
-  const SpecialistTelemedicineSymptomsPage({super.key, required this.hasData});
+  const SpecialistTelemedicineSymptomsPage({super.key, required this.detail});
+
+  Future<void> _openUrl(BuildContext context, String url) async {
+    // Capture the messenger before the await to avoid using context across the gap.
+    final messenger = ScaffoldMessenger.of(context);
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      _showSnack(messenger, 'الرابط غير صالح');
+      return;
+    }
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok) _showSnack(messenger, 'تعذر فتح الملف');
+  }
+
+  void _showSnack(ScaffoldMessengerState messenger, String message) {
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(fontFamily: specialistFont),
+          textAlign: TextAlign.right,
+        ),
+      ),
+    );
+  }
 
   Widget _buildEmptyBox(String text) {
     return Container(
@@ -121,6 +147,12 @@ class SpecialistTelemedicineSymptomsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final complaint = detail.complaintDescription;
+    final hasComplaint = complaint != null && complaint.trim().isNotEmpty;
+    final attachments = detail.attachments;
+    final hasMedicalFile =
+        detail.shareMedicalFile && detail.medicalFileUrl != null;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -140,7 +172,7 @@ class SpecialistTelemedicineSymptomsPage extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: const BoxDecoration(
-                          color: Color(0xFFE8F7F0), // Light green
+                          color: Color(0xFFE8F7F0),
                           shape: BoxShape.circle,
                         ),
                         child: Image.asset(
@@ -174,22 +206,38 @@ class SpecialistTelemedicineSymptomsPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildSectionTitle('وصف الشكوى الحالية للمريض'),
-                      hasData
-                          ? _buildFilledText(
-                              'نشعر بان الطفل يعانى من الم من بدء ظهور الاسنان حاليا')
+                      hasComplaint
+                          ? _buildFilledText(complaint)
                           : _buildEmptyBox(
                               'يبدو انه لم يتم ارفاق وصف للشكوى او الاعراض'),
                       const SizedBox(height: 24),
                       _buildSectionTitle('صور تحاليل أو أشعة'),
-                      hasData
-                          ? _buildFileRow('تم ارفاق صورة', 'فتح الصورة', () {})
-                          : _buildEmptyBox(
-                              'يبدو انه لم يتم اضافة صورة تحاليل او اشعة'),
+                      if (attachments.isEmpty)
+                        _buildEmptyBox(
+                            'يبدو انه لم يتم اضافة صورة تحاليل او اشعة')
+                      else
+                        ...List.generate(attachments.length, (i) {
+                          final att = attachments[i];
+                          return Padding(
+                            padding: EdgeInsets.only(
+                                bottom: i == attachments.length - 1 ? 0 : 12),
+                            child: _buildFileRow(
+                              attachments.length > 1
+                                  ? 'صورة ${i + 1}'
+                                  : 'تم ارفاق صورة',
+                              'فتح الصورة',
+                              () => _openUrl(context, att.imageUrl),
+                            ),
+                          );
+                        }),
                       const SizedBox(height: 24),
                       _buildSectionTitle('الملف الطبي للطفل'),
-                      hasData
+                      hasMedicalFile
                           ? _buildFileRow(
-                              'تم ارفاق الملف الطبي', 'فتح الملف الطبي', () {})
+                              'تم ارفاق الملف الطبي',
+                              'فتح الملف الطبي',
+                              () => _openUrl(context, detail.medicalFileUrl!),
+                            )
                           : _buildEmptyBox('يبدو انه لم يتم ارفاق الملف الطبي'),
                     ],
                   ),
