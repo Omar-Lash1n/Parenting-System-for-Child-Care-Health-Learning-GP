@@ -7,18 +7,18 @@ enum ClinicalRecordType { prescription, diagnosis }
 /// ============================================================
 /// بطاقة الورقة الطبية (الروشتة / التشخيص) كما تُعرض لولي الأمر.
 ///
-/// تُرسم فوق صورة القالب (template) الرسمية للعيادة. كل الإحداثيات معرّفة
-/// في "مساحة تصميم" ثابتة بأبعاد القالب الأصلية (بكسل)، ويتكفّل [FittedBox]
-/// بتصغيرها لتناسب عرض الشاشة — لذا يكفي ضبط الإحداثيات مرة واحدة لتطابق
-/// صورة القالب بدقة.
+/// تُرسم فوق صورة القالب (template) الرسمية. كل المواضع مُعرّفة كـ "نِسَب"
+/// (0..1) من عرض/ارتفاع القالب، ثم تُضرب في أبعاد القالب الفعلية لكل نوع —
+/// فمجموعة نِسَب واحدة تعمل للقالبين رغم اختلاف أبعادهما بالبكسل.
+/// يتكفّل [FittedBox] بتصغير البطاقة لتناسب عرض الشاشة.
 ///
-/// 🔧 للضبط بعد إضافة صورة القالب الحقيقية: عدّل [_designWidth] / [_designHeight]
-/// لتساوي أبعاد ملف الـ PNG بالبكسل، ثم اضبط ثوابت المواضع أدناه.
+/// 🔧 الضبط الدقيق: عدّل ثوابت النِسَب أدناه (_fDoctorNameTop ...). القيم
+/// مُعايَرة على القالبين المرفقين (prescription 1057×1488، diagnosis 1086×1448).
 /// ============================================================
 class ClinicalRecordPaper extends StatelessWidget {
   final ClinicalRecordType type;
 
-  // بيانات الترويسة (تُرسم فوق المنطقة الفارغة من القالب)
+  // بيانات الترويسة
   final String doctorName;
   final String specialization;
   final String patientName;
@@ -41,48 +41,53 @@ class ClinicalRecordPaper extends StatelessWidget {
     this.diagnosisText,
   });
 
-  // ── أبعاد مساحة التصميم (أبعاد صورة القالب بالبكسل) ──────────────────────────
-  static const double _designWidth = 1000;
-  static const double _designHeight = 1450;
+  // ── أبعاد القوالب الفعلية بالبكسل ───────────────────────────────────────────
+  static const double _prescW = 1057, _prescH = 1488;
+  static const double _diagW = 1086, _diagH = 1448;
 
-  // ── مسارات صور القوالب (ضعها في مجلد images/) ───────────────────────────────
   static const String _prescriptionTemplate = 'images/prescription_template.png';
   static const String _diagnosisTemplate = 'images/diagnosis_template.png';
 
-  // ── مواضع الترويسة (left/top/right بإحداثيات مساحة التصميم) ──────────────────
-  // اسم الطبيب وتخصصه (نص أبيض أعلى يمين القالب فوق منطقة الاسم الفارغة)
-  static const double _doctorNameTop = 150;
-  static const double _doctorNameRight = 110;
-  static const double _doctorSpecTop = 225;
-  static const double _doctorSpecRight = 130;
+  // ── نِسَب المواضع (0..1) — مُعايَرة على القالبين ─────────────────────────────
+  // اسم الطبيب وتخصصه (نص أبيض في الشريط الأحمر العلوي يمين)
+  static const double _fDoctorNameTop = 0.078;
+  static const double _fDoctorNameRight = 0.110;
+  static const double _fDoctorSpecTop = 0.128;
+  static const double _fDoctorSpecRight = 0.120;
 
-  // قيم: اسم المريض / السن / التاريخ (نص أسود)
-  static const double _patientNameTop = 430;
-  static const double _patientNameRight = 430;
-  static const double _ageTop = 500;
-  static const double _ageRight = 600;
-  static const double _dateTop = 500;
-  static const double _dateRight = 250;
+  // قيم: اسم المريض / السن / التاريخ (على نفس سطر التسمية المطبوعة، يسار النقطتين)
+  static const double _fPatientNameTop = 0.178;
+  static const double _fPatientNameRight = 0.470;
+  static const double _fAgeTop = 0.214;
+  static const double _fAgeRight = 0.440;
+  static const double _fDateTop = 0.214;
+  static const double _fDateRight = 0.720;
 
-  // منطقة المحتوى (تحت RX/ أو التشخيص الطبي/)
-  static const double _bodyTop = 600;
-  static const double _bodyBottom = 230;
-  static const double _bodySide = 90;
+  // منطقة المحتوى — تبدأ تحت RX/ أو التشخيص الطبي/ (الأخير أدنى قليلاً)
+  static const double _fBodyTopPresc = 0.322;
+  static const double _fBodyTopDiag = 0.360;
+  static const double _fBodyBottom = 0.205;
+  static const double _fBodySide = 0.075;
 
-  String get _template =>
-      type == ClinicalRecordType.prescription ? _prescriptionTemplate : _diagnosisTemplate;
+  // ارتفاع السطر (للمحاذاة مع الأسطر المنقّطة المطبوعة)
+  static const double _fLineHeight = 0.0335;
+
+  bool get _isPresc => type == ClinicalRecordType.prescription;
+  double get _w => _isPresc ? _prescW : _diagW;
+  double get _h => _isPresc ? _prescH : _diagH;
+  String get _template => _isPresc ? _prescriptionTemplate : _diagnosisTemplate;
 
   @override
   Widget build(BuildContext context) {
+    final w = _w, h = _h;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: FittedBox(
         child: SizedBox(
-          width: _designWidth,
-          height: _designHeight,
+          width: w,
+          height: h,
           child: Stack(
             children: [
-              // خلفية القالب (مع احتياطي يُرسم بالكود إذا غابت الصورة)
               Positioned.fill(
                 child: Image.asset(
                   _template,
@@ -93,28 +98,28 @@ class ClinicalRecordPaper extends StatelessWidget {
 
               // اسم الطبيب
               Positioned(
-                top: _doctorNameTop,
-                right: _doctorNameRight,
+                top: _fDoctorNameTop * h,
+                right: _fDoctorNameRight * w,
                 child: Text(
                   doctorName.isEmpty ? '—' : doctorName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'IBM Plex Sans Arabic',
                     fontWeight: FontWeight.bold,
-                    fontSize: 46,
+                    fontSize: w * 0.037,
                     color: Colors.white,
                   ),
                 ),
               ),
               // تخصص الطبيب
               Positioned(
-                top: _doctorSpecTop,
-                right: _doctorSpecRight,
+                top: _fDoctorSpecTop * h,
+                right: _fDoctorSpecRight * w,
                 child: Text(
                   specialization,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'IBM Plex Sans Arabic',
                     fontWeight: FontWeight.w500,
-                    fontSize: 30,
+                    fontSize: w * 0.024,
                     color: Colors.white,
                   ),
                 ),
@@ -122,32 +127,29 @@ class ClinicalRecordPaper extends StatelessWidget {
 
               // اسم المريض
               Positioned(
-                top: _patientNameTop,
-                right: _patientNameRight,
-                child: _valueText(patientName),
+                top: _fPatientNameTop * h,
+                right: _fPatientNameRight * w,
+                child: _valueText(patientName, w),
               ),
-              // السن
+              // السن (يمين) و التاريخ (يسار)
               Positioned(
-                top: _ageTop,
-                right: _ageRight,
-                child: _valueText(patientAge != null ? '$patientAge سنة' : '—'),
+                top: _fAgeTop * h,
+                right: _fAgeRight * w,
+                child: _valueText(patientAge != null ? '$patientAge سنة' : '—', w),
               ),
-              // التاريخ
               Positioned(
-                top: _dateTop,
-                right: _dateRight,
-                child: _valueText(_formatArabicDate(dateText)),
+                top: _fDateTop * h,
+                right: _fDateRight * w,
+                child: _valueText(_formatArabicDate(dateText), w),
               ),
 
-              // المحتوى (الأدوية أو التشخيص)
+              // المحتوى
               Positioned(
-                top: _bodyTop,
-                bottom: _bodyBottom,
-                right: _bodySide,
-                left: _bodySide,
-                child: type == ClinicalRecordType.prescription
-                    ? _buildMedicines()
-                    : _buildDiagnosis(),
+                top: (_isPresc ? _fBodyTopPresc : _fBodyTopDiag) * h,
+                bottom: _fBodyBottom * h,
+                right: _fBodySide * w,
+                left: _fBodySide * w,
+                child: _isPresc ? _buildMedicines(w, h) : _buildDiagnosis(w),
               ),
             ],
           ),
@@ -156,51 +158,57 @@ class ClinicalRecordPaper extends StatelessWidget {
     );
   }
 
-  Widget _valueText(String text) => Text(
+  Widget _valueText(String text, double w) => Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'IBM Plex Sans Arabic',
           fontWeight: FontWeight.w600,
-          fontSize: 30,
+          fontSize: w * 0.028,
           color: Colors.black87,
         ),
       );
 
-  Widget _buildMedicines() {
-    if (medicines.isEmpty) {
-      return const SizedBox.shrink();
-    }
+  Widget _buildMedicines(double w, double h) {
+    if (medicines.isEmpty) return const SizedBox.shrink();
+    final lineH = _fLineHeight * h;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (int i = 0; i < medicines.length; i++) _medicineRow(medicines[i], i + 1),
+        for (int i = 0; i < medicines.length; i++)
+          SizedBox(
+            height: lineH,
+            child: Align(
+              alignment: Alignment.bottomRight,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: lineH * 0.18),
+                child: Text(
+                  _medicineLine(medicines[i], i + 1),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'IBM Plex Sans Arabic',
+                    fontWeight: FontWeight.w600,
+                    fontSize: w * 0.027,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  Widget _medicineRow(PrescriptionMedicine m, int index) {
+  String _medicineLine(PrescriptionMedicine m, int index) {
     final parts = <String>[
       m.medicineName,
       if (m.quantity.isNotEmpty) m.quantity,
       if (m.timing.isNotEmpty) m.timing,
     ];
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 22),
-      child: Text(
-        '$index. ${parts.join('  -  ')}',
-        textAlign: TextAlign.right,
-        style: const TextStyle(
-          fontFamily: 'IBM Plex Sans Arabic',
-          fontWeight: FontWeight.w600,
-          fontSize: 34,
-          height: 1.4,
-          color: Colors.black87,
-        ),
-      ),
-    );
+    return '$index. ${parts.join('  -  ')}';
   }
 
-  Widget _buildDiagnosis() {
+  Widget _buildDiagnosis(double w) {
     final text = (diagnosisText ?? '').trim();
     if (text.isEmpty) return const SizedBox.shrink();
     return Align(
@@ -208,11 +216,11 @@ class ClinicalRecordPaper extends StatelessWidget {
       child: Text(
         text,
         textAlign: TextAlign.right,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'IBM Plex Sans Arabic',
           fontWeight: FontWeight.w600,
-          fontSize: 34,
-          height: 1.6,
+          fontSize: w * 0.028,
+          height: 1.6, // يقارب تباعد الأسطر المطبوعة
           color: Colors.black87,
         ),
       ),
@@ -251,9 +259,7 @@ class _FallbackFrame extends StatelessWidget {
             height: 360,
             decoration: const BoxDecoration(
               color: red,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(120),
-              ),
+              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(120)),
             ),
           ),
           const Spacer(),
@@ -261,9 +267,7 @@ class _FallbackFrame extends StatelessWidget {
             height: 200,
             decoration: const BoxDecoration(
               color: red,
-              borderRadius: BorderRadius.only(
-                topRight: Radius.circular(120),
-              ),
+              borderRadius: BorderRadius.only(topRight: Radius.circular(120)),
             ),
           ),
         ],
