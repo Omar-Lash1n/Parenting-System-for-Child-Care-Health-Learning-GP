@@ -24,6 +24,10 @@ class ClinicRemoteApiService {
                 receiveTimeout: const Duration(seconds: 20),
                 sendTimeout: const Duration(seconds: 90),
                 headers: {'Accept': 'application/json'},
+                // Treat 4xx (400/403/404/409) as normal responses so the backend's
+                // Arabic ApiResponse message reaches _parseResponse instead of being
+                // collapsed into a generic "تعذر الاتصال بالخادم" DioException.
+                validateStatus: (status) => status != null && status < 500,
               ),
             );
 

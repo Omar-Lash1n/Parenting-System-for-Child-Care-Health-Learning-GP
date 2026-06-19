@@ -647,6 +647,7 @@ public class ConsultationService : IConsultationService
             if (error != null) return error;
 
             var bookings = (await _unitOfWork.Bookings.FindAsync(b => b.ParentId == parent!.Id)).ToList();
+            await AutoCompleteEndedRemoteSessionsAsync(bookings);
             if (status.HasValue)
             {
                 if (!Enum.IsDefined(typeof(BookingStatus), status.Value))
@@ -685,6 +686,8 @@ public class ConsultationService : IConsultationService
                 b => b.Id == bookingId, "Attachments,Payment");
             if (booking == null || booking.ParentId != parent!.Id)
                 return ApiResponse<BookingDetailResponse>.FailureResponse("لم يتم العثور على الحجز");
+
+            await AutoCompleteEndedRemoteSessionsAsync(new[] { booking });
 
             var specialist = await _unitOfWork.Specialists.GetFirstOrDefaultAsync(s => s.Id == booking.SpecialistId, "User");
             var patientName = await ResolvePatientNameAsync(booking, parent, user);
@@ -797,19 +800,34 @@ public class ConsultationService : IConsultationService
             if (booking.ServiceType != BookingServiceType.RemoteConsultation)
                 return ApiResponse<SessionStatusResponse>.FailureResponse("هذا الحجز ليس جلسة اون لاين");
 
+            await AutoCompleteEndedRemoteSessionsAsync(new[] { booking });
+
             var specialist = await _unitOfWork.Specialists.GetFirstOrDefaultAsync(s => s.Id == booking.SpecialistId, "User");
 
             var now = WorkingHoursHelper.EgyptNow();
             var startLocal = booking.AppointmentDate.Date + (booking.StartTime ?? TimeSpan.Zero);
+            var endLocal = booking.EndTime.HasValue
+                ? booking.AppointmentDate.Date + booking.EndTime.Value
+                : startLocal.AddMinutes(booking.DurationMinutes ?? 30);
             var doctorStarted = booking.SessionStartedAt.HasValue && !string.IsNullOrEmpty(booking.MeetingUrl);
-            var canJoin = doctorStarted && booking.Status == BookingStatus.Confirmed;
+            var sessionEnded = now > endLocal;
+            var canJoin = doctorStarted && !sessionEnded && booking.Status == BookingStatus.Confirmed;
+
+            // حالة عرض حسب وقت الجلسة: مكتملة بعد انتهائها، متاحة عند بدء الطبيب، وإلا انتظار الموعد.
+            string statusAr;
+            if (booking.Status == BookingStatus.Confirmed && sessionEnded)
+                statusAr = "جلسة مكتملة";
+            else if (booking.Status == BookingStatus.Confirmed && doctorStarted)
+                statusAr = "الطبيب متاح الان للبدء";
+            else
+                statusAr = ConsultationLabels.BookingStatusAr(booking.Status);
 
             var response = new SessionStatusResponse
             {
                 BookingId = booking.Id,
                 ServiceType = ConsultationLabels.ServiceTypeKey(booking.ServiceType),
                 Status = ConsultationLabels.BookingStatusKey(booking.Status),
-                StatusAr = ConsultationLabels.BookingStatusAr(booking.Status),
+                StatusAr = statusAr,
                 DoctorName = specialist?.User?.FullName ?? string.Empty,
                 PhotoUrl = specialist?.PersonalPhotoUrl,
                 Specialization = specialist?.Specialization ?? string.Empty,
@@ -832,6 +850,38 @@ public class ConsultationService : IConsultationService
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// يُكمِل تلقائياً جلسات الكشف اون لاين المؤكدة التي انتهى وقتها (الحالة → مكتملة) ويحفظ التغيير،
+    /// كي تعرض جميع نقاط النهاية حالة موحّدة. يُرجع عدد الحجوزات التي تم تحديثها.
+    /// </summary>
+    private async Task<int> AutoCompleteEndedRemoteSessionsAsync(IEnumerable<Booking> bookings)
+    {
+        var now = WorkingHoursHelper.EgyptNow();
+        var changed = 0;
+
+        foreach (var b in bookings)
+        {
+            if (b.ServiceType != BookingServiceType.RemoteConsultation) continue;
+            if (b.Status != BookingStatus.Confirmed) continue;
+            if (!b.StartTime.HasValue) continue;
+
+            var startLocal = b.AppointmentDate.Date + b.StartTime.Value;
+            var endLocal = b.EndTime.HasValue
+                ? b.AppointmentDate.Date + b.EndTime.Value
+                : startLocal.AddMinutes(b.DurationMinutes ?? 30);
+
+            if (now <= endLocal) continue;
+
+            b.Status = BookingStatus.Completed;
+            b.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.Bookings.UpdateAsync(b);
+            changed++;
+        }
+
+        if (changed > 0) await _unitOfWork.SaveChangesAsync();
+        return changed;
+    }
 
     private async Task<(Parent? parent, User? user, ApiResponse<T>? error)> ResolveParentAsync<T>(Guid userId)
     {
