@@ -220,11 +220,9 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                           // Upload Images
                           _buildUploadImagesSection(),
                           const SizedBox(height: 16),
-                          // Upload Medical File — only for children (not isSelf)
-                          if (_selectedPatient == null || _selectedPatient!.childId != null)
-                            _buildUploadMedicalFileSection(),
-                          if (_selectedPatient == null || _selectedPatient!.childId != null)
-                            const SizedBox(height: 16),
+                          // Upload Medical File — always show
+                          _buildUploadMedicalFileSection(),
+                          const SizedBox(height: 16),
                           // Terms Checkbox
                           _buildTermsCheckbox(),
                         ],
@@ -428,7 +426,15 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
               final isSelected = _selectedPatient == patient;
               return GestureDetector(
                 onTap: () {
-                  setState(() { _selectedPatient = patient; });
+                  setState(() {
+                    _selectedPatient = patient;
+                    // لو المريض هو الوالد نفسه (مفيش childId)، امسح مشاركة الملف الطبي
+                    if (patient.childId == null) {
+                      _shareFile = false;
+                      _medicalFileUrl = null;
+                      _medicalFileError = null;
+                    }
+                  });
                   // إذا كانت مشاركة الملف الطبي مفعّلة وكان الطفل له childId، اجلب ملفه الطبي
                   if (_shareFile && patient.childId != null) {
                     _fetchMedicalFile(patient.childId!);
@@ -650,6 +656,19 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                       const SizedBox(width: 8),
                       GestureDetector(
                         onTap: () {
+                          // لو المريض هو الوالد أو لم يختر بعد — أظهر تنبيه
+                          if (_selectedPatient == null || _selectedPatient!.childId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'مشاركة الملف الطبي متاحة فقط عند اختيار طفل',
+                                  style: TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
+                                ),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                            return;
+                          }
                           final newValue = !_shareFile;
                           setState(() {
                             _shareFile = newValue;
@@ -658,19 +677,8 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                               _medicalFileError = null;
                             }
                           });
-                          if (newValue && _selectedPatient?.childId != null) {
+                          if (newValue) {
                             _fetchMedicalFile(_selectedPatient!.childId!);
-                          } else if (newValue && _selectedPatient == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'يرجى اختيار الطفل أولاً حتى يمكن مشاركة ملفه الطبي',
-                                  style: TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
-                                ),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
-                            setState(() { _shareFile = false; });
                           }
                         },
                         child: Container(
