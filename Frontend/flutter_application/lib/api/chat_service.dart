@@ -15,6 +15,26 @@ import 'package:signalr_netcore/signalr_client.dart';
 const String _chatHost =
     'https://ajial-api-dev-dvg9hfgtdgewekcv.westeurope-01.azurewebsites.net';
 
+/// Repairs UTF-8 text that was mistakenly decoded as Latin-1 ("mojibake").
+///
+/// `signalr_netcore` 1.4.4 reads the transport body via `http`'s `Response.body`,
+/// which falls back to **Latin-1** when the response has no `charset` (SignalR's
+/// long-polling poll responses don't set one). Arabic then arrives as
+/// `Ø§ÙØ³ÙØ§Ù` instead of `السلام`. Our REST replies carry `charset=utf-8`, so
+/// they're already correct — this function leaves them untouched.
+///
+/// It is safe and idempotent: a correctly-decoded string contains code points
+/// above 0xFF, so `latin1.encode` throws and we return the input unchanged; only
+/// a pure-Latin-1 string that is valid UTF-8 is re-decoded back to its true form.
+String? _repairMojibake(String? text) {
+  if (text == null || text.isEmpty) return text;
+  try {
+    return utf8.decode(latin1.encode(text), allowMalformed: false);
+  } catch (_) {
+    return text; // already valid (real Arabic/emoji) or not Latin-1-encodable
+  }
+}
+
 /// A single chat message as returned by the backend (camelCase JSON).
 class ChatMessageModel {
   final String id;
@@ -53,9 +73,9 @@ class ChatMessageModel {
       senderUserId: json['senderUserId']?.toString() ?? '',
       senderRole: json['senderRole']?.toString() ?? 'doctor',
       type: json['type']?.toString() ?? 'text',
-      content: json['content']?.toString(),
+      content: _repairMojibake(json['content']?.toString()),
       attachmentUrl: json['attachmentUrl']?.toString(),
-      attachmentName: json['attachmentName']?.toString(),
+      attachmentName: _repairMojibake(json['attachmentName']?.toString()),
       createdAt: parsed,
     );
   }
@@ -322,7 +342,7 @@ class ChatHubService {
 
     connection.on('ErrorMessage', (args) {
       if (args == null || args.isEmpty) return;
-      onError?.call(args[0].toString());
+      onError?.call(_repairMojibake(args[0].toString()) ?? args[0].toString());
     });
 
     connection.onreconnected(({connectionId}) async {
