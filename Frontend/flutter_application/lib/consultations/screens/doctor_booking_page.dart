@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
 import 'package:Ajial/consultations/screens/booking_confirmation_page.dart';
+import 'package:Ajial/consultations/screens/report_problem_page.dart';
 
 class DoctorBookingPage extends StatefulWidget {
   final AvailableDoctor doctor;
@@ -443,11 +444,12 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
             ],
             onSelected: (value) {
               if (value == 'report') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'سيتم قريباً تفعيل ميزة الإبلاغ عن مشكلة',
-                      style: TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ReportProblemPage(
+                      specialistId: widget.doctor.id,
+                      doctorName: widget.doctor.fullName,
                     ),
                   ),
                 );

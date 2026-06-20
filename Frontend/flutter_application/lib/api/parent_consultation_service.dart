@@ -758,6 +758,84 @@ class ParentConsultationService {
     }
   }
 
+  /// GET /api/parent/consultations/problem-categories
+  /// أنواع المشكلة الرئيسية لقائمة الاختيار في شاشة الإبلاغ.
+  Future<List<ProblemCategory>> getProblemCategories() async {
+    final headers = await _getAuthHeaders();
+    final url = '$_apiBaseUrl/parent/consultations/problem-categories';
+    print('📤 GET $url');
+
+    try {
+      final response = await http.get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 15));
+      print('📥 ProblemCategories Response: ${response.statusCode}');
+      print('📥 ProblemCategories Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = _extractList(response.body);
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map((item) => ProblemCategory.fromJson(item))
+            .toList();
+      } else {
+        print('❌ Error getting problem categories: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('❌ Exception in getProblemCategories: $e');
+      return [];
+    }
+  }
+
+  /// POST /api/parent/consultations/doctors/{specialistId}/problem-reports
+  /// إرسال بلاغ عن مشكلة تخص طبيباً (نوع المشكلة + وصف اختياري + ربط اختياري بحجز).
+  Future<void> submitProblemReport({
+    required String specialistId,
+    required int category,
+    String? description,
+    String? bookingId,
+  }) async {
+    final token = await _authService.getToken();
+    final url =
+        '$_apiBaseUrl/parent/consultations/doctors/$specialistId/problem-reports';
+    print('📤 POST $url');
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: json.encode({
+          'category': category,
+          'description': description,
+          'bookingId': bookingId,
+        }),
+      ).timeout(const Duration(seconds: 20));
+
+      print('📥 Submit ProblemReport Response: ${response.statusCode}');
+      print('📥 Submit ProblemReport Body: ${response.body}');
+
+      final dynamic decoded =
+          response.body.trim().isEmpty ? null : json.decode(response.body);
+      if (response.statusCode == 200) {
+        if (decoded is Map && decoded['success'] == false) {
+          throw Exception(decoded['message'] ?? 'Failed to submit report');
+        }
+        return;
+      } else {
+        final msg = decoded is Map ? (decoded['message']?.toString() ?? '') : '';
+        throw Exception(
+            msg.isNotEmpty ? msg : 'Failed to submit report (${response.statusCode})');
+      }
+    } catch (e) {
+      print('❌ Exception in submitProblemReport: $e');
+      rethrow;
+    }
+  }
+
   /// GET /api/parent/consultations/bookings/{bookingId}/diagnosis
   /// التشخيص الطبي الذي سجّله الطبيب لهذا الحجز (بطاقة عرض مكتفية بذاتها).
   Future<ParentDiagnosis> getDiagnosis(String bookingId) async {
@@ -1175,6 +1253,26 @@ class SessionRatingStatus {
       issueDescription: json['issueDescription']?.toString(),
       starsAwarded: json['starsAwarded'] ?? 250,
       newStarsBalance: json['newStarsBalance'] ?? 0,
+    );
+  }
+}
+
+class ProblemCategory {
+  final int value;
+  final String key;
+  final String labelAr;
+
+  ProblemCategory({
+    required this.value,
+    required this.key,
+    required this.labelAr,
+  });
+
+  factory ProblemCategory.fromJson(Map<String, dynamic> json) {
+    return ProblemCategory(
+      value: (json['value'] as num?)?.toInt() ?? 0,
+      key: json['key']?.toString() ?? '',
+      labelAr: json['labelAr']?.toString() ?? '',
     );
   }
 }

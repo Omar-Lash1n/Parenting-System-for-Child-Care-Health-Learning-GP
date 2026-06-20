@@ -48,6 +48,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<MedicalDiagnosis> MedicalDiagnoses { get; }          // ✅ Doctor Consultation — التشخيص الطبي
     IRepository<ChatMessage> ChatMessages { get; }                   // ✅ Consultation Chat — محادثة الاستشارة
     IRepository<SessionRating> SessionRatings { get; }               // ✅ Session Rating — تقييم الجلسة
+    IRepository<ProblemReport> ProblemReports { get; }               // ✅ Problem Report — الإبلاغ عن مشكلة
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

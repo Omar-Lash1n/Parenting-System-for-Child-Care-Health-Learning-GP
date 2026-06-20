@@ -1024,6 +1024,87 @@ public class ConsultationService : IConsultationService
         NewStarsBalance = starsBalance
     };
 
+    // ── الإبلاغ عن مشكلة ─────────────────────────────────────────────────────────
+
+    public Task<ApiResponse<List<ProblemCategoryOption>>> GetProblemCategoriesAsync()
+    {
+        var options = Enum.GetValues<ProblemReportCategory>()
+            .Select(c => new ProblemCategoryOption
+            {
+                Value = (int)c,
+                Key = ConsultationLabels.ProblemCategoryKey(c),
+                LabelAr = ConsultationLabels.ProblemCategoryAr(c)
+            })
+            .ToList();
+
+        return Task.FromResult(ApiResponse<List<ProblemCategoryOption>>.SuccessResponse(
+            options, "تم جلب أنواع المشاكل بنجاح"));
+    }
+
+    public async Task<ApiResponse<ProblemReportResponse>> SubmitProblemReportAsync(Guid userId, Guid specialistId, SubmitProblemReportRequest request)
+    {
+        try
+        {
+            var (parent, _, error) = await ResolveParentAsync<ProblemReportResponse>(userId);
+            if (error != null) return error;
+
+            // ── التحقق من نوع المشكلة ──
+            if (!Enum.IsDefined(typeof(ProblemReportCategory), request.Category))
+                return ApiResponse<ProblemReportResponse>.FailureResponse("يرجى اختيار نوع المشكلة الرئيسية");
+            var category = (ProblemReportCategory)request.Category;
+
+            // ── التحقق من الطبيب ──
+            var specialist = await _unitOfWork.Specialists.GetFirstOrDefaultAsync(s => s.Id == specialistId);
+            if (specialist == null)
+                return ApiResponse<ProblemReportResponse>.FailureResponse("لم يتم العثور على الطبيب");
+
+            // ── التحقق من الحجز المرتبط (اختياري) — يجب أن يخص ولي الأمر وهذا الطبيب ──
+            Guid? bookingId = null;
+            if (request.BookingId.HasValue)
+            {
+                var booking = await _unitOfWork.Bookings.GetByIdAsync(request.BookingId.Value);
+                if (booking == null || booking.ParentId != parent!.Id || booking.SpecialistId != specialistId)
+                    return ApiResponse<ProblemReportResponse>.FailureResponse("لم يتم العثور على الحجز المرتبط");
+                bookingId = booking.Id;
+            }
+
+            var description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+
+            var report = new ProblemReport
+            {
+                Id = Guid.NewGuid(),
+                ParentId = parent!.Id,
+                SpecialistId = specialistId,
+                BookingId = bookingId,
+                Category = category,
+                Description = description,
+                Status = ProblemReportStatus.New,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.ProblemReports.AddAsync(report);
+            await _unitOfWork.SaveChangesAsync();
+
+            return ApiResponse<ProblemReportResponse>.SuccessResponse(new ProblemReportResponse
+            {
+                Id = report.Id,
+                SpecialistId = report.SpecialistId,
+                BookingId = report.BookingId,
+                Category = (int)report.Category,
+                CategoryKey = ConsultationLabels.ProblemCategoryKey(report.Category),
+                CategoryAr = ConsultationLabels.ProblemCategoryAr(report.Category),
+                Description = report.Description,
+                Status = ConsultationLabels.ProblemStatusKey(report.Status),
+                StatusAr = ConsultationLabels.ProblemStatusAr(report.Status),
+                CreatedAt = report.CreatedAt
+            }, "تم إرسال البلاغ بنجاح، سيتم مراجعته من قبل الإدارة");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ProblemReportResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
     /// <summary>يملأ ترويسة بطاقة السجل الإكلينيكي (الطبيب + المريض + التاريخ) المشتركة بين الروشتة والتشخيص.</summary>
     private async Task PopulateClinicalCardHeaderAsync(ParentClinicalCardHeader header, Booking booking, Parent parent)
     {

@@ -1,0 +1,52 @@
+:host {
+  display: block;
+}
+
+// صندوق معالجة البلاغ داخل المودال
+.resolve-box {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border, #e5e5e5);
+
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a1a);
+    margin: 0 0 14px;
+  }
+
+  .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary, #555);
+    }
+  }
+
+  .form-control {
+    width: 100%;
+    border: 1px solid var(--border, #d9d9d9);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text-primary, #1a1a1a);
+    background: #fff;
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+  }
+
+  textarea.form-control {
+    resize: vertical;
+    min-height: 70px;
+  }
+}

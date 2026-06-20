@@ -222,3 +222,66 @@ public class AdminDoctorRatingDto
     /// <summary>عدد من أبلغ عن مشكلة أثناء الجلسة او الحجز.</summary>
     public int IssuesCount { get; set; }
 }
+
+// ============================================================
+// لوحة الأدمن — بلاغات المشاكل (الإبلاغ عن مشكلة تخص طبيباً)
+// ============================================================
+
+/// <summary>قائمة بلاغات المشاكل للوحة الأدمن مع ترقيم الصفحات وإحصاء سريع.</summary>
+public class AdminProblemReportListResponse
+{
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+
+    /// <summary>عدد البلاغات الجديدة (لم تُراجع بعد) ضمن كل النتائج المطابقة للفلتر.</summary>
+    public int NewCount { get; set; }
+
+    public List<AdminProblemReportItemDto> Items { get; set; } = new();
+}
+
+/// <summary>بلاغ مشكلة واحد كما يظهر للأدمن.</summary>
+public class AdminProblemReportItemDto
+{
+    public Guid ReportId { get; set; }
+
+    // ── الطبيب المُبلَّغ عنه ──
+    public Guid SpecialistId { get; set; }
+    public string DoctorName { get; set; } = string.Empty;
+    public string Specialization { get; set; } = string.Empty;
+    public string? DoctorPhotoUrl { get; set; }
+
+    // ── المُبلِّغ ──
+    public Guid ParentId { get; set; }
+    public string ParentName { get; set; } = string.Empty;
+
+    // ── الجلسة المرتبطة (اختياري) ──
+    public Guid? BookingId { get; set; }
+    public string? ServiceTypeAr { get; set; }
+    public string? AppointmentDate { get; set; }
+
+    // ── محتوى البلاغ ──
+    public int Category { get; set; }
+    public string CategoryKey { get; set; } = string.Empty;
+    public string CategoryAr { get; set; } = string.Empty;
+    public string? Description { get; set; }
+
+    // ── حالة المعالجة ──
+    public int StatusValue { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string StatusAr { get; set; } = string.Empty;
+    public string? AdminNote { get; set; }
+    public DateTime? ReviewedAt { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>طلب تحديث حالة بلاغ مشكلة من الأدمن.</summary>
+public class UpdateProblemReportStatusRequest
+{
+    /// <summary>الحالة الجديدة (0=جديد، 1=قيد المراجعة، 2=تم الحل).</summary>
+    public int Status { get; set; }
+
+    /// <summary>ملاحظة الأدمن (اختياري).</summary>
+    public string? AdminNote { get; set; }
+}

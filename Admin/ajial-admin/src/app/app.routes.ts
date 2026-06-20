@@ -4,6 +4,7 @@ import { SpecialistsLayoutComponent } from './pages/specialists/specialists-layo
 import { DashboardComponent as SpecialistsDashboardComponent } from './pages/specialists/dashboard/dashboard.component';
 import { MainDashboard as SpecialistsMainDashboardComponent } from './pages/specialists/main-dashboard/main-dashboard';
 import { RatingsComponent as SpecialistRatingsComponent } from './pages/specialists/ratings/ratings.component';
+import { ProblemReportsComponent as SpecialistProblemReportsComponent } from './pages/specialists/problem-reports/problem-reports.component';
 import { ChildrenLayoutComponent } from './pages/children/children-layout/children-layout.component';
 import { DashboardComponent as ChildrenDashboardComponent } from './pages/children/dashboard/dashboard.component';
 import { ParentsLayoutComponent } from './pages/parents/parents-layout/parents-layout.component';
@@ -36,7 +37,8 @@ export const routes: Routes = [
         children: [
             { path: '', redirectTo: 'requests', pathMatch: 'full' },
             { path: 'requests', component: SpecialistsDashboardComponent, title: 'أجيال | المتخصصين - طلبات' },
-            { path: 'ratings', component: SpecialistRatingsComponent, title: 'أجيال | المتخصصين - تقييمات الجلسات' }
+            { path: 'ratings', component: SpecialistRatingsComponent, title: 'أجيال | المتخصصين - تقييمات الجلسات' },
+            { path: 'problem-reports', component: SpecialistProblemReportsComponent, title: 'أجيال | المتخصصين - بلاغات المشاكل' }
         ]
     },
     { 
