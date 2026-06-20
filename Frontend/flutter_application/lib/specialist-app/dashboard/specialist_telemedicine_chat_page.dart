@@ -109,12 +109,14 @@ class _SpecialistTelemedicineChatPageState
         _loading = false;
       });
       _scrollToBottom();
-      await _hub.connect(widget.bookingId);
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
       _showSnack('تعذّر تحميل المحادثة');
+      return;
     }
+    // Live channel is best-effort: messaging still works over REST without it.
+    await _hub.connectQuietly(widget.bookingId);
   }
 
   _UiMessage _map(ChatMessageModel m) => _UiMessage(
@@ -188,9 +190,10 @@ class _SpecialistTelemedicineChatPageState
     _typingSent = false;
     _hub.sendTyping(false);
     try {
-      await _hub.sendMessage(text);
+      final sent = await _api.sendText(widget.bookingId, text);
+      if (sent != null) _onIncomingMessage(sent);
     } catch (e) {
-      _showSnack('تعذّر إرسال الرسالة');
+      _showSnack(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -218,9 +221,10 @@ class _SpecialistTelemedicineChatPageState
 
     setState(() => _sending = true);
     try {
-      await _api.sendAttachment(widget.bookingId, path, fileName);
+      final sent = await _api.sendAttachment(widget.bookingId, path, fileName);
+      if (sent != null) _onIncomingMessage(sent);
     } catch (e) {
-      _showSnack('تعذّر رفع المرفق');
+      _showSnack(e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -253,11 +257,19 @@ class _SpecialistTelemedicineChatPageState
     return '$days يوم : $hours س : $minutes د : $seconds ث';
   }
 
-  ImageProvider _patientAvatar() {
-    if (_patientImageUrl != null && _patientImageUrl!.isNotEmpty) {
-      return NetworkImage(_patientImageUrl!);
-    }
-    return AssetImage(widget.patientImage);
+  /// Avatar that never depends on a bundled asset: a network image when a real
+  /// URL is present, otherwise a person icon. Avoids 404s on missing assets.
+  Widget _safeAvatar(double radius, String? url) {
+    final hasUrl = url != null && url.startsWith('http');
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.grey.shade200,
+      backgroundImage: hasUrl ? NetworkImage(url) : null,
+      onBackgroundImageError: hasUrl ? (_, __) {} : null,
+      child: hasUrl
+          ? null
+          : Icon(Icons.person, size: radius, color: Colors.grey.shade500),
+    );
   }
 
   @override
@@ -304,7 +316,7 @@ class _SpecialistTelemedicineChatPageState
                       children: [
                         Stack(
                           children: [
-                            CircleAvatar(radius: 24, backgroundImage: _patientAvatar()),
+                            _safeAvatar(24, _patientImageUrl),
                             Positioned(
                               bottom: 0,
                               right: 0,
@@ -613,10 +625,7 @@ class _SpecialistTelemedicineChatPageState
               children: [
                 Stack(
                   children: [
-                    const CircleAvatar(
-                      radius: 20,
-                      backgroundImage: AssetImage('images/pic.png'),
-                    ),
+                    _safeAvatar(20, null),
                     Positioned(
                       bottom: -2,
                       left: -2,
@@ -682,7 +691,7 @@ class _SpecialistTelemedicineChatPageState
               children: [
                 Expanded(child: _buildMessageContent(message)),
                 const SizedBox(width: 12),
-                CircleAvatar(radius: 20, backgroundImage: _patientAvatar()),
+                _safeAvatar(20, _patientImageUrl),
               ],
             ),
             const SizedBox(height: 8),
