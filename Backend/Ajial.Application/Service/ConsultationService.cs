@@ -17,6 +17,7 @@ public class ConsultationService : IConsultationService
     private readonly IMedicalFileService _medicalFileService;
 
     private const int SearchHorizonDays = 60; // أقصى عدد أيام للبحث عن أقرب موعد
+    private const int SessionRatingStarsReward = 250; // نجوم المكافأة مقابل تقييم الجلسة
 
     public ConsultationService(IUnitOfWork unitOfWork, IImageService imageService, IMedicalFileService medicalFileService)
     {
@@ -691,9 +692,10 @@ public class ConsultationService : IConsultationService
 
             var specialist = await _unitOfWork.Specialists.GetFirstOrDefaultAsync(s => s.Id == booking.SpecialistId, "User");
             var patientName = await ResolvePatientNameAsync(booking, parent, user);
+            var hasRated = await _unitOfWork.SessionRatings.ExistsAsync(r => r.BookingId == booking.Id);
 
             return ApiResponse<BookingDetailResponse>.SuccessResponse(
-                MapToDetail(booking, specialist, patientName), "تم جلب تفاصيل الحجز بنجاح");
+                MapToDetail(booking, specialist, patientName, hasRated), "تم جلب تفاصيل الحجز بنجاح");
         }
         catch (Exception ex)
         {
@@ -916,6 +918,97 @@ public class ConsultationService : IConsultationService
         }
     }
 
+    // ── تقييم الجلسة (المرحلة الثامنة) ──────────────────────────────────────────
+
+    public async Task<ApiResponse<SessionRatingResponse>> GetSessionRatingAsync(Guid userId, Guid bookingId)
+    {
+        try
+        {
+            var (booking, parent, error) = await ResolveBookingAsync<SessionRatingResponse>(userId, bookingId);
+            if (error != null) return error;
+
+            await AutoCompleteEndedRemoteSessionsAsync(new[] { booking! });
+
+            var rating = await _unitOfWork.SessionRatings.GetFirstOrDefaultAsync(r => r.BookingId == booking!.Id);
+            return ApiResponse<SessionRatingResponse>.SuccessResponse(
+                BuildRatingResponse(booking!, rating, parent!.StarsBalance), "تم جلب حالة تقييم الجلسة بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<SessionRatingResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    public async Task<ApiResponse<SessionRatingResponse>> SubmitSessionRatingAsync(Guid userId, Guid bookingId, SubmitSessionRatingRequest request)
+    {
+        try
+        {
+            var (booking, parent, error) = await ResolveBookingAsync<SessionRatingResponse>(userId, bookingId);
+            if (error != null) return error;
+
+            // ── التحقق من المدخلات ──
+            if (request.Rating < 1 || request.Rating > 5)
+                return ApiResponse<SessionRatingResponse>.FailureResponse("التقييم يجب أن يكون من 1 الى 5 نجوم");
+
+            if (request.HadIssue && string.IsNullOrWhiteSpace(request.IssueDescription))
+                return ApiResponse<SessionRatingResponse>.FailureResponse("يرجى كتابة وصف المشكلة التي واجهتها");
+
+            // ── البوابة: لا يمكن التقييم إلا بعد اكتمال الجلسة ──
+            await AutoCompleteEndedRemoteSessionsAsync(new[] { booking! });
+            if (booking!.Status != BookingStatus.Completed)
+                return ApiResponse<SessionRatingResponse>.FailureResponse("لا يمكن تقييم الجلسة قبل اكتمالها");
+
+            // ── منع التقييم المكرر (وبالتالي تكرار منح النجوم) ──
+            var existing = await _unitOfWork.SessionRatings.GetFirstOrDefaultAsync(r => r.BookingId == booking.Id);
+            if (existing != null)
+                return ApiResponse<SessionRatingResponse>.FailureResponse("لا يمكن تقييم الجلسة أكثر من مرة");
+
+            var rating = new SessionRating
+            {
+                Id = Guid.NewGuid(),
+                BookingId = booking.Id,
+                ParentId = parent!.Id,
+                Rating = request.Rating,
+                WouldBookAgain = request.WouldBookAgain,
+                HadIssue = request.HadIssue,
+                IssueDescription = request.HadIssue ? request.IssueDescription!.Trim() : null,
+                StarsAwarded = SessionRatingStarsReward,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // ── منح نجوم المكافأة لرصيد ولي الأمر (مرة واحدة) ──
+            parent.StarsBalance += SessionRatingStarsReward;
+            parent.UpdatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.SessionRatings.AddAsync(rating);
+            await _unitOfWork.Parents.UpdateAsync(parent);
+            await _unitOfWork.SaveChangesAsync();
+
+            return ApiResponse<SessionRatingResponse>.SuccessResponse(
+                BuildRatingResponse(booking, rating, parent.StarsBalance),
+                $"تم اضافة {SessionRatingStarsReward} نجمة الى رصيدك");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<SessionRatingResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    /// <summary>يبني استجابة حالة تقييم الجلسة (مع/بدون تقييم موجود).</summary>
+    private static SessionRatingResponse BuildRatingResponse(Booking booking, SessionRating? rating, int starsBalance) => new()
+    {
+        BookingId = booking.Id,
+        HasRated = rating != null,
+        CanRate = booking.Status == BookingStatus.Completed && rating == null,
+        Rating = rating?.Rating,
+        WouldBookAgain = rating?.WouldBookAgain,
+        HadIssue = rating?.HadIssue,
+        IssueDescription = rating?.IssueDescription,
+        RatedAt = rating?.CreatedAt,
+        StarsAwarded = rating?.StarsAwarded ?? SessionRatingStarsReward,
+        NewStarsBalance = starsBalance
+    };
+
     /// <summary>يملأ ترويسة بطاقة السجل الإكلينيكي (الطبيب + المريض + التاريخ) المشتركة بين الروشتة والتشخيص.</summary>
     private async Task PopulateClinicalCardHeaderAsync(ParentClinicalCardHeader header, Booking booking, Parent parent)
     {
@@ -1115,10 +1208,12 @@ public class ConsultationService : IConsultationService
         CanCancel = b.Status is BookingStatus.PendingPayment or BookingStatus.PendingReview or BookingStatus.Confirmed
     };
 
-    private static BookingDetailResponse MapToDetail(Booking b, Specialist? specialist, string patientName)
+    private static BookingDetailResponse MapToDetail(Booking b, Specialist? specialist, string patientName, bool hasRated = false)
     {
         var detail = new BookingDetailResponse
         {
+            HasRated = hasRated,
+            CanRate = b.Status == BookingStatus.Completed && !hasRated,
             BookingId = b.Id,
             Status = ConsultationLabels.BookingStatusKey(b.Status),
             StatusAr = ConsultationLabels.BookingStatusAr(b.Status),

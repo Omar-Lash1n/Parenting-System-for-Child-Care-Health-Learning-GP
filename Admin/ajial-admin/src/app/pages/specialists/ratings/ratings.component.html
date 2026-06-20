@@ -1,0 +1,245 @@
+<!-- Header -->
+<header class="page-header">
+    <div class="header-text">
+        <h1>تقييمات الجلسات</h1>
+        <p>تقييمات أولياء الأمور للأطباء بعد اكتمال جلسات الاستشارة الطبية</p>
+    </div>
+    <div class="header-actions">
+        <div class="stats-card">
+            <span class="stats-number">{{ avg(overallAverageRating) }} ★</span>
+            <span class="stats-label">متوسط التقييم العام</span>
+        </div>
+        <div class="stats-card approved">
+            <span class="stats-number">{{ totalRatings }}</span>
+            <span class="stats-label">عدد التقييمات</span>
+        </div>
+        <div class="stats-card">
+            <span class="stats-number">{{ doctorCount }}</span>
+            <span class="stats-label">الأطباء المُقيَّمون</span>
+        </div>
+    </div>
+</header>
+
+<!-- View toggle -->
+<div class="filters-bar">
+    <div class="filter-tabs">
+        <button class="filter-tab" [class.active]="view === 'doctors'" (click)="switchView('doctors')">ملخص الأطباء</button>
+        <button class="filter-tab" [class.active]="view === 'all'" (click)="switchView('all')">كل التقييمات</button>
+    </div>
+    <button class="btn btn-outline" (click)="view === 'doctors' ? fetchDoctors() : fetchRatings()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        تحديث
+    </button>
+</div>
+
+<!-- ===================== View: ملخص الأطباء ===================== -->
+<div class="table-container" *ngIf="view === 'doctors' && !hasDoctorsError">
+    <div class="loading" *ngIf="isLoadingDoctors">
+        <div class="spinner"></div>
+        <p>جارٍ التحميل...</p>
+    </div>
+
+    <table class="data-table" *ngIf="!isLoadingDoctors && doctors.length > 0">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>الطبيب</th>
+                <th>التخصص</th>
+                <th>متوسط التقييم</th>
+                <th>عدد التقييمات</th>
+                <th>توزيع النجوم</th>
+                <th>سيعاود الحجز</th>
+                <th>مشاكل</th>
+                <th>إجراء</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let d of doctors; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td>{{ d.doctorName || '—' }}</td>
+                <td>{{ d.specialization || '—' }}</td>
+                <td>
+                    <span class="rating-inline">
+                        <span class="star filled">★</span>
+                        <strong>{{ avg(d.averageRating) }}</strong>
+                    </span>
+                </td>
+                <td>{{ d.totalRatings }}</td>
+                <td>
+                    <span class="dist">
+                        <span class="dist-cell">5★ {{ d.fiveStars }}</span>
+                        <span class="dist-cell">4★ {{ d.fourStars }}</span>
+                        <span class="dist-cell">3★ {{ d.threeStars }}</span>
+                        <span class="dist-cell">2★ {{ d.twoStars }}</span>
+                        <span class="dist-cell">1★ {{ d.oneStar }}</span>
+                    </span>
+                </td>
+                <td><span class="status-badge approved">{{ d.wouldBookAgainCount }}</span></td>
+                <td>
+                    <span class="status-badge" [ngClass]="d.issuesCount > 0 ? 'rejected' : 'pending'">{{ d.issuesCount }}</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline" (click)="viewDoctorRatings(d)">عرض التقييمات</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="empty-state" *ngIf="!isLoadingDoctors && doctors.length === 0">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        <p>لا توجد تقييمات لعرضها</p>
+    </div>
+</div>
+
+<!-- ===================== View: كل التقييمات ===================== -->
+<div *ngIf="view === 'all'">
+    <!-- Sub-filters -->
+    <div class="filters-bar sub-filters">
+        <div class="filter-tabs">
+            <button class="filter-tab" [class.active]="issueFilter === 'all'" (click)="setIssueFilter('all')">الكل</button>
+            <button class="filter-tab" [class.active]="issueFilter === 'issues'" (click)="setIssueFilter('issues')">من أبلغوا عن مشكلة</button>
+        </div>
+        <div class="filter-meta">
+            <span class="filter-chip" *ngIf="specialistFilterId">
+                الطبيب: {{ specialistFilterName }}
+                <button class="chip-clear" (click)="clearSpecialistFilter()">&times;</button>
+            </span>
+            <span class="list-avg" *ngIf="!isLoadingRatings && ratings.length > 0">المتوسط: {{ avg(listAverage) }} ★</span>
+        </div>
+    </div>
+
+    <div class="table-container" *ngIf="!hasRatingsError">
+        <div class="loading" *ngIf="isLoadingRatings">
+            <div class="spinner"></div>
+            <p>جارٍ التحميل...</p>
+        </div>
+
+        <table class="data-table" *ngIf="!isLoadingRatings && ratings.length > 0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>الطبيب</th>
+                    <th>ولي الأمر</th>
+                    <th>المريض</th>
+                    <th>الخدمة</th>
+                    <th>التاريخ</th>
+                    <th>التقييم</th>
+                    <th>سيعاود الحجز</th>
+                    <th>مشكلة</th>
+                    <th>إجراء</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let r of ratings; let i = index">
+                    <td>{{ i + 1 }}</td>
+                    <td>{{ r.doctorName || '—' }}</td>
+                    <td>{{ r.parentName || '—' }}</td>
+                    <td>{{ r.patientName || '—' }}</td>
+                    <td>{{ r.serviceTypeAr || '—' }}</td>
+                    <td>{{ formatDate(r.createdAt) }}</td>
+                    <td>
+                        <span class="stars">
+                            <span class="star" *ngFor="let f of starArray(r.rating)" [class.filled]="f">★</span>
+                        </span>
+                    </td>
+                    <td><span class="status-badge" [ngClass]="r.wouldBookAgain ? 'approved' : 'rejected'">{{ r.wouldBookAgain ? 'نعم' : 'لا' }}</span></td>
+                    <td><span class="status-badge" [ngClass]="r.hadIssue ? 'rejected' : 'pending'">{{ r.hadIssue ? 'نعم' : 'لا' }}</span></td>
+                    <td><button class="btn btn-sm btn-outline" (click)="openDetail(r)">عرض</button></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="empty-state" *ngIf="!isLoadingRatings && ratings.length === 0">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <p>لا توجد تقييمات لعرضها</p>
+        </div>
+    </div>
+</div>
+
+<!-- Error State -->
+<div class="error-state-container" *ngIf="(view === 'doctors' && hasDoctorsError) || (view === 'all' && hasRatingsError)">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <h3>فشل الاتصال بالسيرفر</h3>
+    <p>تعذّر تحميل البيانات. تأكد من اتصالك بالإنترنت وحاول لاحقاً.</p>
+    <button class="btn btn-outline" (click)="view === 'doctors' ? fetchDoctors() : fetchRatings()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        إعادة المحاولة
+    </button>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" [class.active]="isDetailModalActive" (click)="closeDetail()">
+    <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>تفاصيل التقييم</h2>
+            <button class="modal-close" (click)="closeDetail()">&times;</button>
+        </div>
+        <div class="modal-body" *ngIf="selectedRating">
+            <div class="detail-stars">
+                <span class="stars big">
+                    <span class="star" *ngFor="let f of starArray(selectedRating.rating)" [class.filled]="f">★</span>
+                </span>
+                <span class="detail-stars-value">{{ selectedRating.rating }}/5</span>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-field">
+                    <span class="detail-label">الطبيب</span>
+                    <span class="detail-value">{{ selectedRating.doctorName }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">التخصص</span>
+                    <span class="detail-value">{{ selectedRating.specialization || '—' }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">ولي الأمر</span>
+                    <span class="detail-value">{{ selectedRating.parentName }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">المريض</span>
+                    <span class="detail-value">{{ selectedRating.patientName }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">نوع الخدمة</span>
+                    <span class="detail-value">{{ selectedRating.serviceTypeAr }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">تاريخ الموعد</span>
+                    <span class="detail-value">{{ selectedRating.appointmentDate || '—' }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">هل سيعاود الحجز؟</span>
+                    <span class="detail-value">{{ selectedRating.wouldBookAgainAr }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">النجوم الممنوحة</span>
+                    <span class="detail-value">{{ selectedRating.starsAwarded }} نجمة</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">واجه مشكلة؟</span>
+                    <span class="detail-value">
+                        <span class="status-badge" [ngClass]="selectedRating.hadIssue ? 'rejected' : 'pending'">{{ selectedRating.hadIssue ? 'نعم' : 'لا' }}</span>
+                    </span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">تاريخ التقييم</span>
+                    <span class="detail-value">{{ formatDate(selectedRating.createdAt) }}</span>
+                </div>
+                <div class="detail-field" *ngIf="selectedRating.hadIssue && selectedRating.issueDescription" style="grid-column: span 2">
+                    <span class="detail-label">وصف المشكلة</span>
+                    <span class="detail-value" style="color: var(--danger)">{{ selectedRating.issueDescription }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" (click)="closeDetail()">إغلاق</button>
+        </div>
+    </div>
+</div>

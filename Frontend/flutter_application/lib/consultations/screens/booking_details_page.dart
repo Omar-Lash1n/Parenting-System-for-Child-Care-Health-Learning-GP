@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
 import 'package:Ajial/consultations/screens/clinical_record_page.dart';
 import 'package:Ajial/consultations/screens/parent_telemedicine_chat_page.dart';
+import 'package:Ajial/consultations/screens/session_rating_page.dart';
 import 'package:Ajial/consultations/widgets/clinical_record_paper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -20,6 +21,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
   bool _isLoading = true;
   String? _error;
   bool _isCancelling = false;
+  bool _isJoiningSession = false;
 
   Timer? _chatTimer;
   Duration _chatTimeLeft = Duration.zero;
@@ -168,6 +170,50 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
       setState(() { _isCancelling = false; });
     }
   }
+
+  /// استدعاء API الجلسة ثم فتح رابط Google Meet لو canJoin = true
+  Future<void> _handleJoinSession() async {
+    setState(() { _isJoiningSession = true; });
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final session = await _apiService.getSessionStatus(_booking.bookingId);
+      if (!mounted) return;
+      if (session.canJoin && session.joinUrl != null) {
+        final uri = Uri.parse(session.joinUrl!);
+        final launched = await canLaunchUrl(uri);
+        if (launched) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('لا يمكن فتح رابط الجلسة', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        // الطبيب لم يبدأ الجلسة بعد
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('الطبيب لم يبدأ الجلسة بعد، يرجى الانتظار قليلاً ثم المحاولة مجدداً', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('حدث خطأ: $e', style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() { _isJoiningSession = false; });
+    }
+  }
+
 
   bool _isSessionNow() {
     if (_booking.status != 'confirmed') return false;
@@ -571,35 +617,43 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
   }
 
   Widget _buildCompletedBottomButtons() {
+    final bool rated = _booking.hasRated;
     return Column(
       children: [
-        // قيم الجلسة (placeholder — صفحة التقييم لاحقاً)
+        // قيم الجلسة واحصل على 250 — يظهر مرة واحدة (يصبح مُعطّلاً بعد التقييم)
         GestureDetector(
-          onTap: () => _showComingSoon('تقييم الجلسة'),
+          onTap: rated ? null : _openRatingPage,
           child: Container(
             width: double.infinity,
             height: 56,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFE8401), Color(0xFFFFA53D)],
-              ),
+              gradient: rated
+                  ? null
+                  : const LinearGradient(
+                      colors: [Color(0xFFFE8401), Color(0xFFFFA53D)],
+                    ),
+              color: rated ? const Color(0xFFE9E9E9) : null,
               borderRadius: BorderRadius.circular(50),
             ),
             alignment: Alignment.center,
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'قيم الجلسة واحصل على 250',
+                  rated ? 'تم تقييم الجلسة' : 'قيم الجلسة واحصل على 250',
                   style: TextStyle(
                     fontFamily: 'IBM Plex Sans Arabic',
                     fontWeight: FontWeight.w700,
                     fontSize: 17,
-                    color: Colors.white,
+                    color: rated ? Colors.black54 : Colors.white,
                   ),
                 ),
-                SizedBox(width: 8),
-                Icon(Icons.star_border_rounded, color: Colors.white, size: 24),
+                const SizedBox(width: 8),
+                Icon(
+                  rated ? Icons.check_circle_outline_rounded : Icons.star_border_rounded,
+                  color: rated ? Colors.black54 : Colors.white,
+                  size: 24,
+                ),
               ],
             ),
           ),
@@ -630,6 +684,22 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
         ),
       ],
     );
+  }
+
+  Future<void> _openRatingPage() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SessionRatingPage(
+          bookingId: _booking.bookingId,
+          doctorName: _booking.doctorName,
+        ),
+      ),
+    );
+    if (result == true) {
+      // أُرسل التقييم بنجاح — أعد تحميل التفاصيل كي يتحدث زر التقييم الى "تم تقييم الجلسة"
+      await _loadBookingDetails();
+    }
   }
 
   void _showComingSoon(String feature) {
@@ -1004,14 +1074,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
       children: [
         if (sessionNow)
           GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('جاري بدء الجلسة والاتصال بالطبيب...', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
-                  backgroundColor: Color(0xFFBF092F),
-                ),
-              );
-            },
+            onTap: _isJoiningSession ? null : _handleJoinSession,
             child: Container(
               width: double.infinity,
               height: 50,
@@ -1020,15 +1083,21 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                 borderRadius: BorderRadius.circular(50),
               ),
               alignment: Alignment.center,
-              child: const Text(
-                'دخول الجلسة',
-                style: TextStyle(
-                  fontFamily: 'IBM Plex Sans Arabic',
-                  fontWeight: FontWeight.w500,
-                  fontSize: 18,
-                  color: Colors.white,
-                ),
-              ),
+              child: _isJoiningSession
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text(
+                      'دخول الجلسة',
+                      style: TextStyle(
+                        fontFamily: 'IBM Plex Sans Arabic',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 18,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
           )
         else

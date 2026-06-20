@@ -594,7 +594,7 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                   padding: const EdgeInsets.only(right: 16),
                   child: Text(
                     _attachedImage != null
-                        ? '✅ ${_attachedImage!.name}'
+                        ? _attachedImage!.name
                         : 'اضغط تحميل الصورة',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -749,19 +749,6 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                 fontFamily: 'IBM Plex Sans Arabic',
                 fontSize: 12,
                 color: Colors.red,
-              ),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        if (_medicalFileUrl != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              '✅ تم جلب الملف الطبي — اضغط "تحميل ملف طبي" لفتحه',
-              style: const TextStyle(
-                fontFamily: 'IBM Plex Sans Arabic',
-                fontSize: 12,
-                color: Color(0xFF01A449),
               ),
               textAlign: TextAlign.right,
             ),

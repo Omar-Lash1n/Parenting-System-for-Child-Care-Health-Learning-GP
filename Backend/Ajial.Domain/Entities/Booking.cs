@@ -89,4 +89,8 @@ public class Booking
 
     /// <summary>التشخيص الطبي للمريض في هذا الحجز (واحد لكل حجز، أو null إذا لم يُسجَّل بعد).</summary>
     public MedicalDiagnosis? Diagnosis { get; set; }
+
+    // ── تقييم الجلسة (المرحلة الثامنة) — يضيفه ولي الأمر بعد اكتمال الجلسة ──
+    /// <summary>تقييم ولي الأمر لهذه الجلسة (واحد لكل حجز، أو null إذا لم يُقيَّم بعد).</summary>
+    public SessionRating? Rating { get; set; }
 }

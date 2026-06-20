@@ -626,6 +626,28 @@ class ParentConsultationService {
     }
   }
 
+  /// GET /api/parent/consultations/bookings/{bookingId}/session
+  /// Returns session status including canJoin and joinUrl (Google Meet link)
+  Future<SessionStatus> getSessionStatus(String bookingId) async {
+    final headers = await _getAuthHeaders();
+    final url = '$_apiBaseUrl/parent/consultations/bookings/$bookingId/session';
+
+    try {
+      final response = await http.get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        final data = body['data'] as Map<String, dynamic>;
+        return SessionStatus.fromJson(data);
+      } else {
+        throw Exception('Failed to get session status (${response.statusCode})');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// GET /api/parent/consultations/bookings/{bookingId}/prescription
   /// الروشتة الطبية التي سجّلها الطبيب لهذا الحجز (بطاقة عرض مكتفية بذاتها).
   Future<ParentPrescription> getPrescription(String bookingId) async {
@@ -646,6 +668,81 @@ class ParentConsultationService {
       }
     } catch (e) {
       print('❌ Exception in getPrescription: $e');
+      rethrow;
+    }
+  }
+
+  /// GET /api/parent/consultations/bookings/{bookingId}/rating
+  /// حالة تقييم الجلسة (هل قُيّمت + هل يمكن تقييمها الان + تفاصيل التقييم).
+  Future<SessionRatingStatus> getSessionRating(String bookingId) async {
+    final headers = await _getAuthHeaders();
+    final url = '$_apiBaseUrl/parent/consultations/bookings/$bookingId/rating';
+    print('📤 GET $url');
+
+    try {
+      final response = await http.get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 15));
+      print('📥 SessionRating Response: ${response.statusCode}');
+      print('📥 SessionRating Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return SessionRatingStatus.fromJson(_extractObject(response.body));
+      } else {
+        throw Exception('Failed to load session rating (${response.statusCode})');
+      }
+    } catch (e) {
+      print('❌ Exception in getSessionRating: $e');
+      rethrow;
+    }
+  }
+
+  /// POST /api/parent/consultations/bookings/{bookingId}/rating
+  /// إرسال تقييم الجلسة (الاستبيان) ومنح ولي الأمر 250 نجمة (مرة واحدة لكل حجز).
+  Future<SessionRatingStatus> submitSessionRating({
+    required String bookingId,
+    required int rating,
+    required bool wouldBookAgain,
+    required bool hadIssue,
+    String? issueDescription,
+  }) async {
+    final token = await _authService.getToken();
+    final url = '$_apiBaseUrl/parent/consultations/bookings/$bookingId/rating';
+    print('📤 POST $url');
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: json.encode({
+          'rating': rating,
+          'wouldBookAgain': wouldBookAgain,
+          'hadIssue': hadIssue,
+          'issueDescription': issueDescription,
+        }),
+      ).timeout(const Duration(seconds: 20));
+
+      print('📥 Submit Rating Response: ${response.statusCode}');
+      print('📥 Submit Rating Body: ${response.body}');
+
+      final dynamic decoded = json.decode(response.body);
+      if (response.statusCode == 200) {
+        if (decoded is Map && decoded['success'] == false) {
+          throw Exception(decoded['message'] ?? 'Failed to submit rating');
+        }
+        final data = decoded is Map && decoded['data'] is Map
+            ? decoded['data'] as Map<String, dynamic>
+            : decoded as Map<String, dynamic>;
+        return SessionRatingStatus.fromJson(data);
+      } else {
+        final msg = decoded is Map ? (decoded['message']?.toString() ?? '') : '';
+        throw Exception(msg.isNotEmpty ? msg : 'Failed to submit rating (${response.statusCode})');
+      }
+    } catch (e) {
+      print('❌ Exception in submitSessionRating: $e');
       rethrow;
     }
   }
@@ -674,6 +771,7 @@ class ParentConsultationService {
     }
   }
 }
+
 
 // ===== Additional Models =====
 
@@ -904,6 +1002,9 @@ class Booking {
   final String? paymentStatusAr;
   final String? paymentMethod;
   final String? receiptImageUrl;
+  // تقييم الجلسة (المرحلة الثامنة)
+  final bool hasRated;
+  final bool canRate;
 
   Booking({
     required this.bookingId,
@@ -933,6 +1034,8 @@ class Booking {
     this.paymentStatusAr,
     this.paymentMethod,
     this.receiptImageUrl,
+    this.hasRated = false,
+    this.canRate = false,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -968,6 +1071,47 @@ class Booking {
       paymentStatusAr: json['paymentStatusAr']?.toString(),
       paymentMethod: json['paymentMethod']?.toString(),
       receiptImageUrl: json['receiptImageUrl']?.toString(),
+      hasRated: json['hasRated'] ?? false,
+      canRate: json['canRate'] ?? false,
+    );
+  }
+}
+
+/// حالة تقييم الجلسة كما يعيدها الباك إند (status + تفاصيل + رصيد النجوم).
+class SessionRatingStatus {
+  final String bookingId;
+  final bool hasRated;
+  final bool canRate;
+  final int? rating;
+  final bool? wouldBookAgain;
+  final bool? hadIssue;
+  final String? issueDescription;
+  final int starsAwarded;
+  final int newStarsBalance;
+
+  SessionRatingStatus({
+    required this.bookingId,
+    required this.hasRated,
+    required this.canRate,
+    this.rating,
+    this.wouldBookAgain,
+    this.hadIssue,
+    this.issueDescription,
+    required this.starsAwarded,
+    required this.newStarsBalance,
+  });
+
+  factory SessionRatingStatus.fromJson(Map<String, dynamic> json) {
+    return SessionRatingStatus(
+      bookingId: json['bookingId']?.toString() ?? '',
+      hasRated: json['hasRated'] ?? false,
+      canRate: json['canRate'] ?? false,
+      rating: json['rating'] as int?,
+      wouldBookAgain: json['wouldBookAgain'] as bool?,
+      hadIssue: json['hadIssue'] as bool?,
+      issueDescription: json['issueDescription']?.toString(),
+      starsAwarded: json['starsAwarded'] ?? 250,
+      newStarsBalance: json['newStarsBalance'] ?? 0,
     );
   }
 }
@@ -1058,6 +1202,34 @@ class PaymentTransaction {
       appointmentDate: json['appointmentDate']?.toString() ?? '',
       createdAt: json['createdAt']?.toString() ?? '',
       rejectionReason: json['rejectionReason']?.toString(),
+    );
+  }
+}
+
+// ── Session Status ─────────────────────────────────────────────────────────
+
+class SessionStatus {
+  final String bookingId;
+  final bool canJoin;
+  final String? joinUrl;
+  final bool doctorStarted;
+  final int secondsUntilStart;
+
+  SessionStatus({
+    required this.bookingId,
+    required this.canJoin,
+    this.joinUrl,
+    required this.doctorStarted,
+    required this.secondsUntilStart,
+  });
+
+  factory SessionStatus.fromJson(Map<String, dynamic> json) {
+    return SessionStatus(
+      bookingId: json['bookingId']?.toString() ?? '',
+      canJoin: json['canJoin'] ?? false,
+      joinUrl: json['joinUrl']?.toString(),
+      doctorStarted: json['doctorStarted'] ?? false,
+      secondsUntilStart: (json['secondsUntilStart'] as num?)?.toInt() ?? 0,
     );
   }
 }

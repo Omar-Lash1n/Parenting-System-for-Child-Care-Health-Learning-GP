@@ -228,6 +228,177 @@ public class AdminConsultationService : IAdminConsultationService
         }
     }
 
+    // ── تقييمات الجلسات ───────────────────────────────────────────────────────
+
+    public async Task<ApiResponse<AdminRatingListResponse>> GetRatingsAsync(Guid? specialistId, bool? hadIssue, int page, int pageSize)
+    {
+        try
+        {
+            var normalizedPage = Math.Max(page, 1);
+            var normalizedSize = Math.Clamp(pageSize, 1, 100);
+
+            var ratings = (await _unitOfWork.SessionRatings.GetAllAsync()).ToList();
+            if (ratings.Count == 0)
+                return ApiResponse<AdminRatingListResponse>.SuccessResponse(new AdminRatingListResponse
+                {
+                    Page = normalizedPage,
+                    PageSize = normalizedSize
+                }, "لا توجد تقييمات");
+
+            var bookingIds = ratings.Select(r => r.BookingId).ToHashSet();
+            var bookings = (await _unitOfWork.Bookings.FindAsync(b => bookingIds.Contains(b.Id))).ToDictionary(b => b.Id);
+
+            // فلتر بالطبيب
+            if (specialistId.HasValue)
+                ratings = ratings.Where(r => bookings.TryGetValue(r.BookingId, out var b) && b.SpecialistId == specialistId.Value).ToList();
+
+            // فلتر من أبلغ عن مشكلة
+            if (hadIssue.HasValue)
+                ratings = ratings.Where(r => r.HadIssue == hadIssue.Value).ToList();
+
+            var ordered = ratings.OrderByDescending(r => r.CreatedAt).ToList();
+            var total = ordered.Count;
+            var average = total > 0 ? Math.Round(ordered.Average(r => r.Rating), 2) : 0;
+            var pageItems = ordered.Skip((normalizedPage - 1) * normalizedSize).Take(normalizedSize).ToList();
+
+            var items = await BuildRatingItemsAsync(pageItems, bookings);
+
+            return ApiResponse<AdminRatingListResponse>.SuccessResponse(new AdminRatingListResponse
+            {
+                TotalCount = total,
+                Page = normalizedPage,
+                PageSize = normalizedSize,
+                AverageRating = average,
+                Items = items
+            }, "تم جلب تقييمات الجلسات بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<AdminRatingListResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    public async Task<ApiResponse<AdminDoctorRatingSummaryResponse>> GetDoctorRatingsSummaryAsync()
+    {
+        try
+        {
+            var ratings = (await _unitOfWork.SessionRatings.GetAllAsync()).ToList();
+            if (ratings.Count == 0)
+                return ApiResponse<AdminDoctorRatingSummaryResponse>.SuccessResponse(
+                    new AdminDoctorRatingSummaryResponse(), "لا توجد تقييمات");
+
+            var bookingIds = ratings.Select(r => r.BookingId).ToHashSet();
+            var bookings = (await _unitOfWork.Bookings.FindAsync(b => bookingIds.Contains(b.Id))).ToDictionary(b => b.Id);
+
+            // اربط كل تقييم بطبيبه عبر الحجز
+            var byDoctor = ratings
+                .Select(r => (Rating: r, SpecialistId: bookings.TryGetValue(r.BookingId, out var b) ? b.SpecialistId : (Guid?)null))
+                .Where(x => x.SpecialistId.HasValue)
+                .GroupBy(x => x.SpecialistId!.Value)
+                .ToList();
+
+            var specialistIds = byDoctor.Select(g => g.Key).ToHashSet();
+            var specialists = (await _unitOfWork.Specialists.GetAllAsync(q => q.Include(s => s.User)))
+                .Where(s => specialistIds.Contains(s.Id))
+                .ToDictionary(s => s.Id);
+
+            var doctors = byDoctor.Select(g =>
+            {
+                var rs = g.Select(x => x.Rating).ToList();
+                specialists.TryGetValue(g.Key, out var sp);
+                return new AdminDoctorRatingDto
+                {
+                    SpecialistId = g.Key,
+                    DoctorName = sp?.User?.FullName ?? string.Empty,
+                    Specialization = sp?.Specialization ?? string.Empty,
+                    PhotoUrl = sp?.PersonalPhotoUrl,
+                    AverageRating = Math.Round(rs.Average(r => r.Rating), 2),
+                    TotalRatings = rs.Count,
+                    FiveStars = rs.Count(r => r.Rating == 5),
+                    FourStars = rs.Count(r => r.Rating == 4),
+                    ThreeStars = rs.Count(r => r.Rating == 3),
+                    TwoStars = rs.Count(r => r.Rating == 2),
+                    OneStar = rs.Count(r => r.Rating == 1),
+                    WouldBookAgainCount = rs.Count(r => r.WouldBookAgain),
+                    IssuesCount = rs.Count(r => r.HadIssue)
+                };
+            })
+            .OrderByDescending(d => d.AverageRating)
+            .ThenByDescending(d => d.TotalRatings)
+            .ToList();
+
+            return ApiResponse<AdminDoctorRatingSummaryResponse>.SuccessResponse(new AdminDoctorRatingSummaryResponse
+            {
+                DoctorCount = doctors.Count,
+                TotalRatings = ratings.Count,
+                OverallAverageRating = Math.Round(ratings.Average(r => r.Rating), 2),
+                Doctors = doctors
+            }, "تم جلب ملخص تقييمات الأطباء بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<AdminDoctorRatingSummaryResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    /// <summary>يحوّل قائمة تقييمات الى DTOs مع أسماء الطبيب/ولي الأمر/المريض (تحميل مجمّع للأسماء).</summary>
+    private async Task<List<AdminRatingItemDto>> BuildRatingItemsAsync(List<SessionRating> ratings, Dictionary<Guid, Booking> bookings)
+    {
+        var relatedBookings = ratings
+            .Select(r => bookings.GetValueOrDefault(r.BookingId))
+            .Where(b => b != null)
+            .Select(b => b!)
+            .ToList();
+
+        var specialistIds = relatedBookings.Select(b => b.SpecialistId).ToHashSet();
+        var specialists = (await _unitOfWork.Specialists.GetAllAsync(q => q.Include(s => s.User)))
+            .Where(s => specialistIds.Contains(s.Id))
+            .ToDictionary(s => s.Id);
+
+        // أسماء أولياء الأمور
+        var parentIds = ratings.Select(r => r.ParentId).ToHashSet();
+        var parents = (await _unitOfWork.Parents.FindAsync(p => parentIds.Contains(p.Id))).ToList();
+        var parentUserIds = parents.Select(p => p.UserId).ToHashSet();
+        var users = (await _unitOfWork.Users.GetAllAsync()).Where(u => parentUserIds.Contains(u.Id)).ToDictionary(u => u.Id);
+        var parentNames = parents.ToDictionary(p => p.Id, p => users.GetValueOrDefault(p.UserId)?.FullName ?? string.Empty);
+
+        // أسماء المرضى (الأطفال)
+        var childIds = relatedBookings.Where(b => b.ChildId.HasValue).Select(b => b.ChildId!.Value).ToHashSet();
+        var children = childIds.Count > 0
+            ? (await _unitOfWork.Children.FindAsync(c => childIds.Contains(c.Id))).ToDictionary(c => c.Id, c => c.FullName)
+            : new Dictionary<Guid, string>();
+
+        return ratings.Select(r =>
+        {
+            bookings.TryGetValue(r.BookingId, out var b);
+            Specialist? sp = b != null && specialists.TryGetValue(b.SpecialistId, out var s) ? s : null;
+            var parentName = parentNames.GetValueOrDefault(r.ParentId, string.Empty);
+            var patientName = b == null
+                ? string.Empty
+                : b.ChildId.HasValue ? children.GetValueOrDefault(b.ChildId.Value, string.Empty) : parentName;
+
+            return new AdminRatingItemDto
+            {
+                RatingId = r.Id,
+                BookingId = r.BookingId,
+                SpecialistId = b?.SpecialistId ?? Guid.Empty,
+                DoctorName = sp?.User?.FullName ?? string.Empty,
+                Specialization = sp?.Specialization ?? string.Empty,
+                ParentName = parentName,
+                PatientName = patientName,
+                ServiceTypeAr = b != null ? ConsultationLabels.ServiceTypeAr(b.ServiceType) : string.Empty,
+                AppointmentDate = b != null ? b.AppointmentDate.ToString("yyyy-MM-dd") : string.Empty,
+                Rating = r.Rating,
+                WouldBookAgain = r.WouldBookAgain,
+                WouldBookAgainAr = r.WouldBookAgain ? "نعم, عند الحاجة" : "لا, جلسة ضعيفة ولم نستفد منها",
+                HadIssue = r.HadIssue,
+                IssueDescription = r.IssueDescription,
+                StarsAwarded = r.StarsAwarded,
+                CreatedAt = r.CreatedAt
+            };
+        }).ToList();
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private async Task UpsertSettingAsync(string key, string value, Guid adminUserId)

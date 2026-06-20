@@ -123,13 +123,14 @@ class _ParentTelemedicineChatPageState extends State<ParentTelemedicineChatPage>
         _loading = false;
       });
       _scrollToBottom();
-      // Connect the live channel after history is in place.
-      await _hub.connect(widget.bookingId);
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
       _showSnack('تعذّر تحميل المحادثة');
+      return;
     }
+    // Live channel is best-effort: messaging still works over REST without it.
+    await _hub.connectQuietly(widget.bookingId);
   }
 
   _UiMessage _map(ChatMessageModel m) => _UiMessage(
@@ -212,9 +213,12 @@ class _ParentTelemedicineChatPageState extends State<ParentTelemedicineChatPage>
     _typingSent = false;
     _hub.sendTyping(false);
     try {
-      await _hub.sendMessage(text); // rendered when it echoes back
+      // Send over REST (reliable + broadcasts to the doctor). Render our own
+      // copy now; the hub echo (if connected) is deduped by id.
+      final sent = await _api.sendText(widget.bookingId, text);
+      if (sent != null) _onIncomingMessage(sent);
     } catch (e) {
-      _showSnack('تعذّر إرسال الرسالة');
+      _showSnack(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -242,10 +246,10 @@ class _ParentTelemedicineChatPageState extends State<ParentTelemedicineChatPage>
 
     setState(() => _sending = true);
     try {
-      await _api.sendAttachment(widget.bookingId, path, fileName);
-      // rendered when it echoes back over the hub
+      final sent = await _api.sendAttachment(widget.bookingId, path, fileName);
+      if (sent != null) _onIncomingMessage(sent);
     } catch (e) {
-      _showSnack('تعذّر رفع المرفق');
+      _showSnack(e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -750,12 +754,7 @@ class _ParentTelemedicineChatPageState extends State<ParentTelemedicineChatPage>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: _patientImage != null && _patientImage!.isNotEmpty
-                  ? NetworkImage(_patientImage!)
-                  : const AssetImage('images/pic.png') as ImageProvider,
-            ),
+            _safeAvatar(20, _patientImage),
             const SizedBox(width: 12),
             Flexible(
               child: Column(
@@ -916,5 +915,20 @@ class _ParentTelemedicineChatPageState extends State<ParentTelemedicineChatPage>
     final hour12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
     final period = t.hour >= 12 ? 'م' : 'ص';
     return '$hour12:${t.minute.toString().padLeft(2, '0')} $period';
+  }
+
+  /// Avatar that never depends on a bundled asset: a network image when a real
+  /// URL is present, otherwise a person icon. Avoids 404s on missing assets.
+  Widget _safeAvatar(double radius, String? url) {
+    final hasUrl = url != null && url.startsWith('http');
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.grey.shade200,
+      backgroundImage: hasUrl ? NetworkImage(url) : null,
+      onBackgroundImageError: hasUrl ? (_, __) {} : null,
+      child: hasUrl
+          ? null
+          : Icon(Icons.person, size: radius, color: Colors.grey.shade500),
+    );
   }
 }

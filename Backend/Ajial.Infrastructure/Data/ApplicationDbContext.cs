@@ -52,6 +52,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PrescriptionMedicine> PrescriptionMedicines { get; set; } = null!; // ✅ Doctor Consultation — الروشتة الطبية
     public DbSet<MedicalDiagnosis> MedicalDiagnoses { get; set; } = null!;          // ✅ Doctor Consultation — التشخيص الطبي
     public DbSet<ChatMessage> ChatMessages { get; set; } = null!;                   // ✅ Consultation Chat — محادثة الاستشارة
+    public DbSet<SessionRating> SessionRatings { get; set; } = null!;               // ✅ Session Rating — تقييم الجلسة
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -1581,6 +1582,28 @@ public class ApplicationDbContext : DbContext
 
             // الجلب الأساسي: رسائل حجز مرتّبة زمنياً
             entity.HasIndex(m => new { m.BookingId, m.CreatedAt });
+        });
+
+        // ✅ SessionRating Configuration — تقييم الجلسة (تقييم واحد لكل حجز)
+        modelBuilder.Entity<SessionRating>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Rating).IsRequired();
+            entity.Property(r => r.IssueDescription).HasMaxLength(2000);
+            entity.Property(r => r.CreatedAt).IsRequired();
+
+            entity.HasOne(r => r.Booking)
+                .WithOne(b => b.Rating)
+                .HasForeignKey<SessionRating>(r => r.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(r => r.Parent)
+                .WithMany()
+                .HasForeignKey(r => r.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // تقييم واحد لكل حجز
+            entity.HasIndex(r => r.BookingId).IsUnique();
         });
     }
 

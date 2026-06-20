@@ -5,6 +5,7 @@
 // caller supplies its own JWT via [tokenProvider] and its own role via [myRole].
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
@@ -200,7 +201,8 @@ class ChatApiService {
   }
 
   /// POST /api/chat/bookings/{bookingId}/attachments — send an image/file.
-  Future<void> sendAttachment(
+  /// Returns the created message so the caller can render it immediately.
+  Future<ChatMessageModel?> sendAttachment(
     String bookingId,
     String filePath,
     String fileName, {
@@ -226,13 +228,14 @@ class ChatApiService {
 
     final streamed = await request.send().timeout(const Duration(seconds: 60));
     final response = await http.Response.fromStream(streamed);
-    if (response.statusCode != 200) {
-      try {
-        final decoded = json.decode(response.body);
-        throw Exception(decoded['message']?.toString() ?? 'فشل رفع المرفق');
-      } catch (_) {
-        throw Exception('فشل رفع المرفق (${response.statusCode})');
-      }
+    if (response.statusCode == 200) {
+      return ChatMessageModel.fromJson(_extractData(response.body));
+    }
+    try {
+      final decoded = json.decode(response.body);
+      throw Exception(decoded['message']?.toString() ?? 'فشل رفع المرفق');
+    } catch (_) {
+      throw Exception('فشل رفع المرفق (${response.statusCode})');
     }
   }
 }
@@ -263,14 +266,37 @@ class ChatHubService {
 
   ChatHubService(this.tokenProvider);
 
+  /// Connects but never throws — the chat still works over REST if the live
+  /// channel is unavailable. Returns true on success.
+  Future<bool> connectQuietly(String bookingId) async {
+    try {
+      await connect(bookingId);
+      return true;
+    } catch (_) {
+      onConnectionChange?.call(false);
+      return false;
+    }
+  }
+
   Future<void> connect(String bookingId) async {
     _bookingId = bookingId;
 
+    // Put the JWT directly in the URL query — the backend reads `access_token`
+    // for `/hubs` paths on every request (negotiate, SSE, WS, long-polling),
+    // which is more reliable than accessTokenFactory alone on the handshake.
+    final token = (await tokenProvider()) ?? '';
+    final url = '$_hubUrl?access_token=$token';
+
     final connection = HubConnectionBuilder()
         .withUrl(
-          _hubUrl,
+          url,
           options: HttpConnectionOptions(
             accessTokenFactory: () async => (await tokenProvider()) ?? '',
+            // On web, force long-polling: Azure App Service has WebSockets off
+            // by default, and a failing WS surfaces as an uncaught error inside
+            // the web event-stream. Long-polling is plain HTTP and is robust.
+            // Mobile keeps the default (negotiates WebSockets).
+            transport: kIsWeb ? HttpTransportType.LongPolling : null,
           ),
         )
         .withAutomaticReconnect()
