@@ -1,5 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
+import 'package:Ajial/consultations/screens/clinical_record_page.dart';
+import 'package:Ajial/consultations/screens/parent_telemedicine_chat_page.dart';
+import 'package:Ajial/consultations/widgets/clinical_record_paper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class BookingDetailPage extends StatefulWidget {
@@ -18,12 +22,61 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
   bool _isCancelling = false;
   bool _isJoiningSession = false;
 
+  Timer? _chatTimer;
+  Duration _chatTimeLeft = Duration.zero;
+
   Booking get _booking => _bookingDetail ?? widget.booking;
 
   @override
   void initState() {
     super.initState();
+    _initChatTimerIfNeeded();
     _loadBookingDetails();
+  }
+
+  @override
+  void dispose() {
+    _chatTimer?.cancel();
+    super.dispose();
+  }
+
+  void _initChatTimerIfNeeded() {
+    if (_chatTimer != null || _booking.status != 'completed') return;
+
+    try {
+      final dateParts = _booking.appointmentDate.split('-');
+      final endParts = _booking.endTime.split(':');
+      if (dateParts.length == 3 && endParts.length >= 2) {
+        final year = int.parse(dateParts[0]);
+        final month = int.parse(dateParts[1]);
+        final day = int.parse(dateParts[2]);
+        final endHour = int.parse(endParts[0]);
+        final endMinute = int.parse(endParts[1]);
+        
+        final sessionEnd = DateTime(year, month, day, endHour, endMinute);
+        final chatDeadline = sessionEnd.add(const Duration(days: 3));
+        
+        _updateChatTimer(chatDeadline);
+        _chatTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+          _updateChatTimer(chatDeadline);
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _updateChatTimer(DateTime deadline) {
+    if (!mounted) return;
+    final now = DateTime.now();
+    if (now.isBefore(deadline)) {
+      setState(() {
+        _chatTimeLeft = deadline.difference(now);
+      });
+    } else {
+      _chatTimer?.cancel();
+      setState(() {
+        _chatTimeLeft = Duration.zero;
+      });
+    }
   }
 
   Future<void> _loadBookingDetails() async {
@@ -37,6 +90,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
         _bookingDetail = detail;
         _isLoading = false;
       });
+      _initChatTimerIfNeeded();
     } catch (e) {
       print('❌ Failed to load booking details: $e');
       setState(() {
@@ -247,6 +301,11 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    // الجلسة المكتملة لها شاشة خاصة (الروشتة + التشخيص + التقييم).
+    if (_booking.status == 'completed') {
+      return _buildCompletedScaffold();
+    }
+
     final isSessionNow = _isSessionNow();
     final statusColor = isSessionNow
         ? const Color(0xFF28A745)
@@ -318,14 +377,323 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
     );
   }
 
-  Widget _buildHeader() {
+  // ============================================================
+  // شاشة الجلسة المكتملة (الروشتة الطبية + التشخيص + التقييم) — صورة 7
+  // ============================================================
+
+  Widget _buildCompletedScaffold() {
+    const green = Color(0xFF28A745);
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 24),
+              _buildHeader(title: 'جلسة ${_formatArabicDate(_booking.appointmentDate)}'),
+              const SizedBox(height: 24),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      _buildBookingCard(green),
+                      const SizedBox(height: 20),
+                      _buildClinicalGrid(),
+                      const SizedBox(height: 20),
+                      _buildChatCard(),
+                      const SizedBox(height: 24),
+                      _buildCompletedBottomButtons(),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClinicalGrid() {
+    return Row(
+      children: [
+        // التشخيص الطبي (يمين في RTL)
+        Expanded(
+          child: _buildGridTile(
+            label: 'التشخيص الطبي',
+            icon: Icons.description_outlined,
+            color: const Color(0xFFBF092F),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ClinicalRecordPage(
+                  bookingId: _booking.bookingId,
+                  type: ClinicalRecordType.diagnosis,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        // الروشتة الطبية (يسار في RTL)
+        Expanded(
+          child: _buildGridTile(
+            label: 'الروشتة الطبية',
+            icon: Icons.assignment_outlined,
+            color: const Color(0xFF01A449),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ClinicalRecordPage(
+                  bookingId: _booking.bookingId,
+                  type: ClinicalRecordType.prescription,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGridTile({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: color, size: 32),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatCard() {
+    final bool isTimeout = _chatTimeLeft.inSeconds <= 0;
+    
+    String timerText = 'انتهت فترة التحدث إلى الطبيب';
+    if (!isTimeout) {
+      String days = _chatTimeLeft.inDays.toString().padLeft(2, '0');
+      String hours = (_chatTimeLeft.inHours % 24).toString().padLeft(2, '0');
+      String minutes = (_chatTimeLeft.inMinutes % 60).toString().padLeft(2, '0');
+      timerText = 'متبقي $days يوم : $hours س : $minutes ق';
+    }
+
+    return GestureDetector(
+      onTap: isTimeout ? null : () {
+        // Calculate the exact deadline again to pass to the chat page
+        final dateParts = _booking.appointmentDate.split('-');
+        final endParts = _booking.endTime.split(':');
+        DateTime deadline = DateTime.now().add(const Duration(days: 3)); // Fallback
+        if (dateParts.length == 3 && endParts.length >= 2) {
+          final year = int.parse(dateParts[0]);
+          final month = int.parse(dateParts[1]);
+          final day = int.parse(dateParts[2]);
+          final endHour = int.parse(endParts[0]);
+          final endMinute = int.parse(endParts[1]);
+          final sessionEnd = DateTime(year, month, day, endHour, endMinute);
+          deadline = sessionEnd.add(const Duration(days: 3));
+        }
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ParentTelemedicineChatPage(
+              bookingId: _booking.bookingId,
+              doctorId: _booking.specialistId,
+              doctorName: _booking.doctorName,
+              doctorImage: _booking.photoUrl.isNotEmpty ? _booking.photoUrl : 'https://via.placeholder.com/150',
+              doctorSpecialization: _booking.specialization,
+              chatDeadline: deadline,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: isTimeout 
+                    ? Colors.grey.withValues(alpha: 0.1) 
+                    : const Color(0xFF008CFF).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.chat_bubble_outline_rounded, 
+                color: isTimeout ? Colors.grey : const Color(0xFF008CFF), 
+                size: 30
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'تحدث مع الطبيب',
+              style: TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: isTimeout ? Colors.grey : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: isTimeout 
+                    ? Colors.grey.withValues(alpha: 0.08) 
+                    : const Color(0xFFBF092F).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                timerText,
+                style: TextStyle(
+                  fontFamily: 'IBM Plex Sans Arabic',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                  color: isTimeout ? Colors.grey.shade700 : const Color(0xFFBF092F),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompletedBottomButtons() {
+    return Column(
+      children: [
+        // قيم الجلسة (placeholder — صفحة التقييم لاحقاً)
+        GestureDetector(
+          onTap: () => _showComingSoon('تقييم الجلسة'),
+          child: Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFE8401), Color(0xFFFFA53D)],
+              ),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            alignment: Alignment.center,
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'قيم الجلسة واحصل على 250',
+                  style: TextStyle(
+                    fontFamily: 'IBM Plex Sans Arabic',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.star_border_rounded, color: Colors.white, size: 24),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // طلب الجلسة مرة اخرى (placeholder)
+        GestureDetector(
+          onTap: () => _showComingSoon('طلب الجلسة مرة اخرى'),
+          child: Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(color: Colors.black.withValues(alpha: 0.4)),
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              'طلب الجلسة مرة اخرى',
+              style: TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showComingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature — قريباً', style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+        backgroundColor: const Color(0xFFBF092F),
+      ),
+    );
+  }
+
+  Widget _buildHeader({String title = 'تفاصيل الحجز'}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'تفاصيل الحجز',
+          Text(
+            title,
             style: TextStyle(
               fontFamily: 'IBM Plex Sans Arabic',
               fontWeight: FontWeight.bold,

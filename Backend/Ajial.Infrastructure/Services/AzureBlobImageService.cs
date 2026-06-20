@@ -488,6 +488,36 @@ public class AzureBlobImageService : IImageService
     public Task<string> UploadBookingAttachmentAsync(IFormFile file, Guid parentId) =>
         UploadConsultationImageAsync(file, parentId, "attachments");
 
+    /// <summary>
+    /// رفع مرفق محادثة (صورة أو ملف) إلى حاوية consultation-images تحت chat/{bookingId}.
+    /// Blob path: chat/{bookingId}/{guid}.{ext} — لا يفرض التحقق من كونه صورة.
+    /// </summary>
+    public async Task<string> UploadChatAttachmentAsync(IFormFile file, Guid bookingId)
+    {
+        if (file == null || file.Length == 0)
+            throw new ArgumentException("الملف فارغ");
+
+        var containerName = _configuration["AzureStorage:ConsultationContainerName"] ?? "consultation-images";
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (string.IsNullOrEmpty(extension)) extension = ".bin";
+
+        var blobName = $"chat/{bookingId}/{Guid.NewGuid()}{extension}";
+        var blobClient = containerClient.GetBlobClient(blobName);
+
+        var headers = new BlobHttpHeaders
+        {
+            ContentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType,
+            CacheControl = "public, max-age=31536000"
+        };
+        using var stream = file.OpenReadStream();
+        await blobClient.UploadAsync(stream, new BlobUploadOptions { HttpHeaders = headers });
+
+        return blobClient.Uri.ToString();
+    }
+
     public Task<string> UploadPaymentReceiptAsync(IFormFile file, Guid parentId) =>
         UploadConsultationImageAsync(file, parentId, "receipts");
 

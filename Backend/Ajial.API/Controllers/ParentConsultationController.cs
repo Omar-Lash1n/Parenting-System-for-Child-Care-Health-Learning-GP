@@ -153,6 +153,28 @@ public class ParentConsultationController : ControllerBase
         return ToActionResult(await _service.GetSessionStatusAsync(userId, bookingId));
     }
 
+    // ── السجل الإكلينيكي (عرض الروشتة والتشخيص بعد إنهاء الجلسة) ─────────────────
+
+    /// <summary>الروشتة الطبية التي سجّلها الطبيب لهذا الحجز (بطاقة عرض مكتفية بذاتها).</summary>
+    [HttpGet("bookings/{bookingId:guid}/prescription")]
+    [ProducesResponseType(typeof(ApiResponse<ParentPrescriptionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ParentPrescriptionResponse>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPrescription(Guid bookingId)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<ParentPrescriptionResponse>();
+        return ToActionResult(await _service.GetPrescriptionAsync(userId, bookingId));
+    }
+
+    /// <summary>التشخيص الطبي الذي سجّله الطبيب لهذا الحجز (بطاقة عرض مكتفية بذاتها).</summary>
+    [HttpGet("bookings/{bookingId:guid}/diagnosis")]
+    [ProducesResponseType(typeof(ApiResponse<ParentDiagnosisResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ParentDiagnosisResponse>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDiagnosis(Guid bookingId)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<ParentDiagnosisResponse>();
+        return ToActionResult(await _service.GetDiagnosisAsync(userId, bookingId));
+    }
+
     /// <summary>المعاملات المالية لولي الأمر.</summary>
     [HttpGet("payments")]
     [ProducesResponseType(typeof(ApiResponse<List<ParentPaymentListItemResponse>>), StatusCodes.Status200OK)]

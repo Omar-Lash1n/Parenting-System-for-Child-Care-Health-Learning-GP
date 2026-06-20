@@ -41,4 +41,10 @@ public interface IImageService
     /// يعيد رابطاً يتضمن مُبطّل تخزين مؤقت (?v=timestamp) لضمان جلب أحدث نسخة.
     /// </summary>
     Task<string> UploadMedicalFileAsync(byte[] pdfBytes, Guid childId);
+
+    /// <summary>
+    /// رفع مرفق محادثة (صورة أو ملف) إلى حاوية consultation-images تحت مسار chat/{bookingId}.
+    /// لا يفرض أن يكون الملف صورة (يسمح بـ PDF/مستندات).
+    /// </summary>
+    Task<string> UploadChatAttachmentAsync(IFormFile file, Guid bookingId);
 }

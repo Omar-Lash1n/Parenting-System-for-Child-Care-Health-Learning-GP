@@ -43,9 +43,6 @@ class _SpecialistTelemedicineBookingDetailsPageState
   bool _startingSession = false;
   bool _endingSession = false;
 
-  List<Medicine> _prescriptionMedicines = [];
-  String? _diagnosis;
-
   @override
   void initState() {
     super.initState();
@@ -548,6 +545,7 @@ class _SpecialistTelemedicineBookingDetailsPageState
                                 MaterialPageRoute(
                                   builder: (context) =>
                                       SpecialistTelemedicineChatPage(
+                                    bookingId: detail.bookingId,
                                     patientName: detail.patientName,
                                     patientImage: 'images/pic.png',
                                   ),
@@ -566,22 +564,16 @@ class _SpecialistTelemedicineBookingDetailsPageState
                       iconPath: 'images/notes.png',
                       isEnabled: isCompleted,
                       onTap: isCompleted
-                          ? () async {
-                              final updatedMedicines =
-                                  await Navigator.push<List<Medicine>>(
+                          ? () {
+                              Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
                                       SpecialistTelemedicinePrescriptionPage(
-                                    initialMedicines: _prescriptionMedicines,
+                                    bookingId: widget.bookingId,
                                   ),
                                 ),
                               );
-                              if (updatedMedicines != null) {
-                                setState(() {
-                                  _prescriptionMedicines = updatedMedicines;
-                                });
-                              }
                             }
                           : null,
                     ),
@@ -591,20 +583,16 @@ class _SpecialistTelemedicineBookingDetailsPageState
                       iconPath: 'images/consultation.png',
                       isEnabled: isCompleted,
                       onTap: isCompleted
-                          ? () async {
-                              final updatedDiagnosis =
-                                  await Navigator.push<String?>(
+                          ? () {
+                              Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
                                       SpecialistTelemedicineDiagnosisPage(
-                                    initialDiagnosis: _diagnosis,
+                                    bookingId: widget.bookingId,
                                   ),
                                 ),
                               );
-                              setState(() {
-                                _diagnosis = updatedDiagnosis;
-                              });
                             }
                           : null,
                     ),

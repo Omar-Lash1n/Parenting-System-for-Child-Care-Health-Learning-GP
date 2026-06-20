@@ -32,4 +32,11 @@ public interface IConsultationService
     // ── جلسة الكشف اون لاين (Google Meet) ──
     /// <summary>حالة جلسة الكشف اون لاين لولي الأمر (العدّ التنازلي + إتاحة الانضمام).</summary>
     Task<ApiResponse<SessionStatusResponse>> GetSessionStatusAsync(Guid userId, Guid bookingId);
+
+    // ── السجل الإكلينيكي (عرض فقط بعد إنهاء الجلسة) ──
+    /// <summary>الروشتة الطبية التي سجّلها الطبيب لهذا الحجز — لعرضها لولي الأمر.</summary>
+    Task<ApiResponse<ParentPrescriptionResponse>> GetPrescriptionAsync(Guid userId, Guid bookingId);
+
+    /// <summary>التشخيص الطبي الذي سجّله الطبيب لهذا الحجز — لعرضه لولي الأمر.</summary>
+    Task<ApiResponse<ParentDiagnosisResponse>> GetDiagnosisAsync(Guid userId, Guid bookingId);
 }

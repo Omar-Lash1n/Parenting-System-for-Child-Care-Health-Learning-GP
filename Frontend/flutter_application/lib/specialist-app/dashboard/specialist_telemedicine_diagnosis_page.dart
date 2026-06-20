@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
+import 'package:Ajial/specialist-app/dashboard/models/doctor_consultation_models.dart';
+import 'package:Ajial/specialist-app/dashboard/services/doctor_consultation_api_service.dart';
 
 class SpecialistTelemedicineDiagnosisPage extends StatefulWidget {
-  final String? initialDiagnosis;
+  final String bookingId;
 
   const SpecialistTelemedicineDiagnosisPage({
     super.key,
-    required this.initialDiagnosis,
+    required this.bookingId,
   });
 
   @override
@@ -16,14 +18,20 @@ class SpecialistTelemedicineDiagnosisPage extends StatefulWidget {
 
 class _SpecialistTelemedicineDiagnosisPageState
     extends State<SpecialistTelemedicineDiagnosisPage> {
-  String? _diagnosis;
+  final DoctorConsultationApiService _api = DoctorConsultationApiService();
+
+  MedicalDiagnosis? _diagnosis;
+  bool _loading = true;
+  String? _error;
+
   bool _showForm = false;
+  bool _submitting = false;
   final TextEditingController _diagnosisController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _diagnosis = widget.initialDiagnosis;
+    _loadDiagnosis();
   }
 
   @override
@@ -32,9 +40,34 @@ class _SpecialistTelemedicineDiagnosisPageState
     super.dispose();
   }
 
+  // ============================================================
+  // ==================== Data ==================================
+  // ============================================================
+
+  Future<void> _loadDiagnosis() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final result = await _api.getDiagnosis(widget.bookingId);
+      if (!mounted) return;
+      setState(() {
+        _diagnosis = result.diagnosis;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = _cleanError(e);
+        _loading = false;
+      });
+    }
+  }
+
   void _openForm() {
     setState(() {
-      _diagnosisController.text = _diagnosis ?? '';
+      _diagnosisController.text = _diagnosis?.description ?? '';
       _showForm = true;
     });
   }
@@ -46,32 +79,73 @@ class _SpecialistTelemedicineDiagnosisPageState
     });
   }
 
-  void _submitForm() {
-    final text = _diagnosisController.text.trim();
+  Future<void> _submitForm() async {
+    if (_submitting) return;
 
+    final text = _diagnosisController.text.trim();
     if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'الرجاء إدخال التشخيص',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontFamily: specialistFont,
-                fontSize: 16,
-                fontWeight: FontWeight.w600),
-          ),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      _showSnack('الرجاء إدخال التشخيص', isError: true);
       return;
     }
 
-    setState(() {
-      _diagnosis = text;
-      _showForm = false;
-      _diagnosisController.clear();
-    });
+    setState(() => _submitting = true);
+    try {
+      final MedicalDiagnosis saved;
+      if (_diagnosis != null) {
+        saved = await _api.updateDiagnosis(widget.bookingId, text);
+      } else {
+        saved = await _api.addDiagnosis(widget.bookingId, text);
+      }
+      if (!mounted) return;
+      setState(() => _diagnosis = saved);
+      _showSnack(_diagnosis != null ? 'تم حفظ التشخيص بنجاح' : 'تم إضافة التشخيص بنجاح');
+      _closeForm();
+    } catch (e) {
+      _showSnack(_cleanError(e), isError: true);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _deleteDiagnosis() async {
+    try {
+      await _api.deleteDiagnosis(widget.bookingId);
+      if (!mounted) return;
+      setState(() => _diagnosis = null);
+      _showSnack('تم حذف التشخيص بنجاح');
+    } catch (e) {
+      _showSnack(_cleanError(e), isError: true);
+    }
+  }
+
+  String _cleanError(Object error) {
+    final text = error.toString().replaceFirst('Exception: ', '');
+    if (text.contains('SocketException') ||
+        text.contains('connection') ||
+        text.contains('Connection') ||
+        text.contains('DioException')) {
+      return 'تعذر الاتصال بالخادم، حاول مرة أخرى';
+    }
+    return text.isEmpty ? 'تعذر الاتصال بالخادم، حاول مرة أخرى' : text;
+  }
+
+  void _showSnack(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              fontFamily: specialistFont,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white),
+        ),
+        backgroundColor: isError ? Colors.red : specialistGreen,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   void _showDeleteDialog() {
@@ -149,9 +223,7 @@ class _SpecialistTelemedicineDiagnosisPageState
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.pop(context);
-                          setState(() {
-                            _diagnosis = null;
-                          });
+                          _deleteDiagnosis();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF0000), // Brighter red
@@ -266,7 +338,7 @@ class _SpecialistTelemedicineDiagnosisPageState
                     Align(
                       alignment: Alignment.centerRight,
                       child: Text(
-                        _diagnosis ?? '',
+                        _diagnosis?.description ?? '',
                         style: const TextStyle(
                           fontFamily: specialistFont,
                           fontSize: 16,
@@ -332,7 +404,7 @@ class _SpecialistTelemedicineDiagnosisPageState
             ],
           ),
           const Divider(height: 24, thickness: 0.5),
-          
+
           // Diagnosis Field
           const Align(
             alignment: Alignment.centerRight,
@@ -379,23 +451,31 @@ class _SpecialistTelemedicineDiagnosisPageState
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _submitForm,
+              onPressed: _submitting ? null : _submitForm,
               style: ElevatedButton.styleFrom(
                 backgroundColor: specialistGreen,
+                disabledBackgroundColor: specialistGreen.withValues(alpha: 0.6),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(50),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: const Text(
-                'اضف التشخيص',
-                style: TextStyle(
-                  fontFamily: specialistFont,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
+              child: _submitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2.5, color: Colors.white),
+                    )
+                  : Text(
+                      _diagnosis != null ? 'حفظ التعديل' : 'اضف التشخيص',
+                      style: const TextStyle(
+                        fontFamily: specialistFont,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
           ),
           const SizedBox(height: 12),
@@ -403,7 +483,7 @@ class _SpecialistTelemedicineDiagnosisPageState
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: _closeForm,
+              onPressed: _submitting ? null : _closeForm,
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: Colors.grey.shade400),
                 shape: RoundedRectangleBorder(
@@ -429,157 +509,193 @@ class _SpecialistTelemedicineDiagnosisPageState
 
   @override
   Widget build(BuildContext context) {
+    final hasDiagnosis = _diagnosis != null;
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, result) {
-          if (!didPop) {
-            Navigator.pop(context, _diagnosis);
-          }
-        },
-        child: Scaffold(
-          backgroundColor: const Color(0xFFF8F9FA),
-          body: SafeArea(
-            child: Stack(
-              children: [
-                // Main content
-                Column(
-                  children: [
-                    // Header
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F9FA),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // Main content
+              Column(
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                    child: Row(
+                      children: [
+                        InkWell(
+                          onTap: () => Navigator.pop(context),
+                          borderRadius: BorderRadius.circular(50),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFE8F7F0),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Image.asset(
+                              'images/back arrow.png',
+                              width: 24,
+                              height: 24,
+                              color: specialistGreen,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Text(
+                            'التشخيص الطبي',
+                            style: TextStyle(
+                              fontFamily: specialistFont,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Content area
+                  Expanded(child: _buildBody()),
+
+                  // Bottom Button Area
+                  if (!_showForm && !_loading && _error == null)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-                      child: Row(
-                        children: [
-                          InkWell(
-                            onTap: () => Navigator.pop(context, _diagnosis),
-                            borderRadius: BorderRadius.circular(50),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFE8F7F0),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Image.asset(
-                                'images/back arrow.png',
-                                width: 24,
-                                height: 24,
-                                color: specialistGreen,
-                              ),
+                      padding: const EdgeInsets.all(16.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: hasDiagnosis ? null : _openForm,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                hasDiagnosis ? Colors.green.shade300 : specialistGreen,
+                            disabledBackgroundColor:
+                                Colors.green.shade400.withValues(alpha: 0.8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(50),
                             ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          const SizedBox(width: 16),
-                          const Expanded(
-                            child: Text(
-                              'التشخيص الطبي',
-                              style: TextStyle(
-                                fontFamily: specialistFont,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Content area
-                    Expanded(
-                      child: _diagnosis == null || _diagnosis!.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image.asset(
-                                    'images/Medical diagnosis.png',
-                                    width: 140,
-                                    height: 140,
-                                    color: Colors.grey.shade500,
-                                  ),
-                                  Text(
-                                    'يبدو انه لا يتوفر تشخيص تم اضافته،\nاضغط على زر اضافة تشخيص',
-                                    style: TextStyle(
-                                      fontFamily: specialistFont,
-                                      fontSize: 14,
-                                      color: Colors.grey.shade500,
-                                      height: 1.6,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                              children: [
-                                _buildDiagnosisCard(),
-                              ],
-                            ),
-                    ),
-
-                    // Bottom Button Area
-                    if (!_showForm)
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: (_diagnosis == null || _diagnosis!.isEmpty)
-                                ? _openForm
-                                : null, // Disable when diagnosis exists
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: (_diagnosis == null || _diagnosis!.isEmpty)
-                                  ? specialistGreen
-                                  : Colors.green.shade300, // Lighter green when disabled
-                              disabledBackgroundColor: Colors.green.shade400.withValues(alpha: 0.8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(50),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                            child: Text(
-                              (_diagnosis == null || _diagnosis!.isEmpty)
-                                  ? 'اضافة تشخيص'
-                                  : 'تم اضافة تشخيص',
-                              style: const TextStyle(
-                                fontFamily: specialistFont,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
+                          child: Text(
+                            hasDiagnosis ? 'تم اضافة تشخيص' : 'اضافة تشخيص',
+                            style: const TextStyle(
+                              fontFamily: specialistFont,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
+              ),
 
-                // Form overlay (bottom sheet style)
-                if (_showForm)
-                  Positioned.fill(
-                    child: GestureDetector(
-                      onTap: _closeForm,
-                      child: Container(color: Colors.black.withValues(alpha: 0.35)),
+              // Form overlay (bottom sheet style)
+              if (_showForm)
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: _submitting ? null : _closeForm,
+                    child: Container(color: Colors.black.withValues(alpha: 0.35)),
+                  ),
+                ),
+              if (_showForm)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: () {}, // prevent dismiss on form tap
+                    child: SingleChildScrollView(
+                      child: _buildAddDiagnosisForm(),
                     ),
                   ),
-                if (_showForm)
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: GestureDetector(
-                      onTap: () {}, // prevent dismiss on form tap
-                      child: SingleChildScrollView(
-                        child: _buildAddDiagnosisForm(),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: specialistGreen),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline,
+                  size: 56, color: Colors.black.withValues(alpha: 0.3)),
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                style: TextStyle(
+                  fontFamily: specialistFont,
+                  fontSize: 15,
+                  color: Colors.black.withValues(alpha: 0.6),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: _loadDiagnosis,
+                child: const Text(
+                  'إعادة المحاولة',
+                  style: TextStyle(
+                    fontFamily: specialistFont,
+                    color: specialistGreen,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_diagnosis == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'images/Medical diagnosis.png',
+              width: 140,
+              height: 140,
+              color: Colors.grey.shade500,
+            ),
+            Text(
+              'يبدو انه لا يتوفر تشخيص تم اضافته،\nاضغط على زر اضافة تشخيص',
+              style: TextStyle(
+                fontFamily: specialistFont,
+                fontSize: 14,
+                color: Colors.grey.shade500,
+                height: 1.6,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      children: [
+        _buildDiagnosisCard(),
+      ],
     );
   }
 }

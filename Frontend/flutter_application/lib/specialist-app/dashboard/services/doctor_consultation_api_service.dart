@@ -117,6 +117,142 @@ class DoctorConsultationApiService {
   }
 
   // ============================================================
+  // ============ Prescription (الروشتة الطبية) =================
+  // ============================================================
+
+  /// GET /api/doctor/consultations/bookings/{bookingId}/prescriptions
+  Future<PrescriptionListResponse> getPrescription(String bookingId) async {
+    final response = await _dio.get(
+      '/doctor/consultations/bookings/$bookingId/prescriptions',
+      options: await _options(),
+    );
+    return _parseResponse(
+      response.data,
+      (data) => PrescriptionListResponse.fromJson(
+        Map<String, dynamic>.from(data as Map),
+      ),
+    );
+  }
+
+  /// POST /api/doctor/consultations/bookings/{bookingId}/prescriptions
+  Future<PrescriptionMedicine> addPrescriptionMedicine(
+    String bookingId, {
+    required String medicineName,
+    required String quantity,
+    required String timing,
+  }) async {
+    final response = await _dio.post(
+      '/doctor/consultations/bookings/$bookingId/prescriptions',
+      data: {
+        'medicineName': medicineName,
+        'quantity': quantity,
+        'timing': timing,
+      },
+      options: await _options(),
+    );
+    return _parseResponse(
+      response.data,
+      (data) => PrescriptionMedicine.fromJson(
+        Map<String, dynamic>.from(data as Map),
+      ),
+    );
+  }
+
+  /// PUT /api/doctor/consultations/bookings/{bookingId}/prescriptions/{medicineId}
+  Future<PrescriptionMedicine> updatePrescriptionMedicine(
+    String bookingId,
+    String medicineId, {
+    required String medicineName,
+    required String quantity,
+    required String timing,
+  }) async {
+    final response = await _dio.put(
+      '/doctor/consultations/bookings/$bookingId/prescriptions/$medicineId',
+      data: {
+        'medicineName': medicineName,
+        'quantity': quantity,
+        'timing': timing,
+      },
+      options: await _options(),
+    );
+    return _parseResponse(
+      response.data,
+      (data) => PrescriptionMedicine.fromJson(
+        Map<String, dynamic>.from(data as Map),
+      ),
+    );
+  }
+
+  /// DELETE /api/doctor/consultations/bookings/{bookingId}/prescriptions/{medicineId}
+  Future<void> deletePrescriptionMedicine(
+      String bookingId, String medicineId) async {
+    final response = await _dio.delete(
+      '/doctor/consultations/bookings/$bookingId/prescriptions/$medicineId',
+      options: await _options(),
+    );
+    _parseResponse(response.data, (data) => data == true);
+  }
+
+  // ============================================================
+  // ============ Diagnosis (التشخيص الطبي) =====================
+  // ============================================================
+
+  /// GET /api/doctor/consultations/bookings/{bookingId}/diagnosis
+  Future<DiagnosisResponse> getDiagnosis(String bookingId) async {
+    final response = await _dio.get(
+      '/doctor/consultations/bookings/$bookingId/diagnosis',
+      options: await _options(),
+    );
+    return _parseResponse(
+      response.data,
+      (data) => DiagnosisResponse.fromJson(
+        Map<String, dynamic>.from(data as Map),
+      ),
+    );
+  }
+
+  /// POST /api/doctor/consultations/bookings/{bookingId}/diagnosis
+  Future<MedicalDiagnosis> addDiagnosis(
+      String bookingId, String description) async {
+    final response = await _dio.post(
+      '/doctor/consultations/bookings/$bookingId/diagnosis',
+      data: {'description': description},
+      options: await _options(),
+    );
+    return _parseResponse(
+      response.data,
+      (data) => MedicalDiagnosis.fromJson(
+        Map<String, dynamic>.from(data as Map),
+      ),
+    );
+  }
+
+  /// PUT /api/doctor/consultations/bookings/{bookingId}/diagnosis
+  Future<MedicalDiagnosis> updateDiagnosis(
+      String bookingId, String description) async {
+    final response = await _dio.put(
+      '/doctor/consultations/bookings/$bookingId/diagnosis',
+      data: {'description': description},
+      options: await _options(),
+    );
+    return _parseResponse(
+      response.data,
+      (data) => MedicalDiagnosis.fromJson(
+        Map<String, dynamic>.from(data as Map),
+      ),
+    );
+  }
+
+  /// DELETE /api/doctor/consultations/bookings/{bookingId}/diagnosis
+  Future<void> deleteDiagnosis(String bookingId) async {
+    final response = await _dio.delete(
+      '/doctor/consultations/bookings/$bookingId/diagnosis',
+      options: await _options(),
+    );
+    _parseResponse(response.data, (data) => data == true);
+  }
+
+  // ============================================================
   // ==================== Helpers ===============================
   // ============================================================
 

@@ -29,7 +29,11 @@
       "WebSearch",
       "PowerShell(dotnet build *)",
       "Bash(python -c \"import docx; print\\('python-docx OK'\\)\")",
-      "Bash(python _gen_phase4_docx.py)"
+      "Bash(python _gen_phase4_docx.py)",
+      "Read(//e/Gradution Project Doc/Parenting-System-for-Child-Care-Health-Learning-GP/Frontend/flutter_application/**)",
+      "Bash(flutter analyze *)",
+      "Bash(xargs grep -l \"class.*Response\\\\|class.*Model\")",
+      "Bash(flutter pub *)"
     ]
   }
 }

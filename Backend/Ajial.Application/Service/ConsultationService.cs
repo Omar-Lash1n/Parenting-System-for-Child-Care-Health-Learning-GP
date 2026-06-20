@@ -849,6 +849,109 @@ public class ConsultationService : IConsultationService
         }
     }
 
+    // ── السجل الإكلينيكي (عرض فقط) ──────────────────────────────────────────────
+
+    public async Task<ApiResponse<ParentPrescriptionResponse>> GetPrescriptionAsync(Guid userId, Guid bookingId)
+    {
+        try
+        {
+            var (booking, parent, error) = await ResolveBookingAsync<ParentPrescriptionResponse>(userId, bookingId);
+            if (error != null) return error;
+
+            await AutoCompleteEndedRemoteSessionsAsync(new[] { booking! });
+
+            var response = new ParentPrescriptionResponse
+            {
+                Medicines = (await _unitOfWork.PrescriptionMedicines.FindAsync(m => m.BookingId == booking!.Id))
+                    .OrderBy(m => m.CreatedAt)
+                    .Select(m => new PrescriptionMedicineDto
+                    {
+                        Id = m.Id,
+                        MedicineName = m.MedicineName,
+                        Quantity = m.Quantity,
+                        Timing = m.Timing,
+                        CreatedAt = m.CreatedAt,
+                        UpdatedAt = m.UpdatedAt
+                    })
+                    .ToList()
+            };
+            await PopulateClinicalCardHeaderAsync(response, booking!, parent!);
+
+            return ApiResponse<ParentPrescriptionResponse>.SuccessResponse(response, "تم جلب الروشتة الطبية بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ParentPrescriptionResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    public async Task<ApiResponse<ParentDiagnosisResponse>> GetDiagnosisAsync(Guid userId, Guid bookingId)
+    {
+        try
+        {
+            var (booking, parent, error) = await ResolveBookingAsync<ParentDiagnosisResponse>(userId, bookingId);
+            if (error != null) return error;
+
+            await AutoCompleteEndedRemoteSessionsAsync(new[] { booking! });
+
+            var diagnosis = await _unitOfWork.MedicalDiagnoses.GetFirstOrDefaultAsync(d => d.BookingId == booking!.Id);
+            var response = new ParentDiagnosisResponse
+            {
+                HasDiagnosis = diagnosis != null,
+                Diagnosis = diagnosis == null ? null : new MedicalDiagnosisDto
+                {
+                    Id = diagnosis.Id,
+                    Description = diagnosis.Description,
+                    CreatedAt = diagnosis.CreatedAt,
+                    UpdatedAt = diagnosis.UpdatedAt
+                }
+            };
+            await PopulateClinicalCardHeaderAsync(response, booking!, parent!);
+
+            return ApiResponse<ParentDiagnosisResponse>.SuccessResponse(response, "تم جلب التشخيص الطبي بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<ParentDiagnosisResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    /// <summary>يملأ ترويسة بطاقة السجل الإكلينيكي (الطبيب + المريض + التاريخ) المشتركة بين الروشتة والتشخيص.</summary>
+    private async Task PopulateClinicalCardHeaderAsync(ParentClinicalCardHeader header, Booking booking, Parent parent)
+    {
+        var specialist = await _unitOfWork.Specialists.GetFirstOrDefaultAsync(s => s.Id == booking.SpecialistId, "User");
+
+        header.BookingId = booking.Id;
+        header.DoctorName = specialist?.User?.FullName ?? string.Empty;
+        header.Specialization = specialist?.Specialization ?? string.Empty;
+        header.DoctorPhotoUrl = specialist?.PersonalPhotoUrl;
+        header.AppointmentDate = booking.AppointmentDate.ToString("yyyy-MM-dd");
+        header.IsCompleted = booking.Status == BookingStatus.Completed;
+
+        if (booking.ChildId.HasValue)
+        {
+            var child = await _unitOfWork.Children.GetByIdAsync(booking.ChildId.Value);
+            header.PatientName = child?.FullName ?? string.Empty;
+            header.PatientAge = child?.Age;
+        }
+        else
+        {
+            var user = await _unitOfWork.Users.GetByIdAsync(parent.UserId);
+            header.PatientName = user?.FullName ?? string.Empty;
+            header.PatientAge = AgeFromDateOfBirth(parent.DateOfBirth);
+        }
+    }
+
+    /// <summary>يحسب السن بالسنوات من تاريخ الميلاد (null إذا كان التاريخ غير محدد).</summary>
+    private static int? AgeFromDateOfBirth(DateTime dateOfBirth)
+    {
+        if (dateOfBirth == default) return null;
+        var today = WorkingHoursHelper.EgyptNow().Date;
+        var age = today.Year - dateOfBirth.Year;
+        if (dateOfBirth.Date > today.AddYears(-age)) age--;
+        return age < 0 ? null : age;
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     /// <summary>

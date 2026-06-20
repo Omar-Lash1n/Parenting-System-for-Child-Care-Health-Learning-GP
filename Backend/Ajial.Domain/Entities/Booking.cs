@@ -82,4 +82,11 @@ public class Booking
 
     public ICollection<BookingAttachment> Attachments { get; set; } = new List<BookingAttachment>();
     public Payment? Payment { get; set; }
+
+    // ── السجل الإكلينيكي (المرحلة الخامسة) — يضيفه الطبيب بعد إنهاء الجلسة ──
+    /// <summary>أدوية الروشتة الطبية التي وصفها الطبيب لهذا الحجز.</summary>
+    public ICollection<PrescriptionMedicine> PrescriptionMedicines { get; set; } = new List<PrescriptionMedicine>();
+
+    /// <summary>التشخيص الطبي للمريض في هذا الحجز (واحد لكل حجز، أو null إذا لم يُسجَّل بعد).</summary>
+    public MedicalDiagnosis? Diagnosis { get; set; }
 }

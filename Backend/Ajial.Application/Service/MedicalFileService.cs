@@ -85,6 +85,29 @@ public class MedicalFileService : IMedicalFileService
         }
     }
 
+    public async Task<string?> RegenerateForChildAsync(Guid childId)
+    {
+        try
+        {
+            var child = await _unitOfWork.Children.GetByIdAsync(childId);
+            if (child == null) return null;
+
+            var guardian = await _unitOfWork.Parents.GetByIdAsync(child.ParentId);
+            var guardianName = guardian != null
+                ? (await _unitOfWork.Users.GetByIdAsync(guardian.UserId))?.FullName ?? "غير متوفر"
+                : "غير متوفر";
+
+            var data = await BuildMedicalFileDataAsync(child, guardianName);
+            var pdfBytes = _pdfGenerator.Generate(data);
+            return await _imageService.UploadMedicalFileAsync(pdfBytes, child.Id);
+        }
+        catch
+        {
+            // لا نُفشل عملية السجل الإكلينيكي إذا تعذّر تحديث الملف الطبي
+            return null;
+        }
+    }
+
     // ── تجميع البيانات ──
     private async Task<MedicalFileData> BuildMedicalFileDataAsync(Child child, string guardianName)
     {
@@ -143,10 +166,71 @@ public class MedicalFileService : IMedicalFileService
                 data.MainVaccines.Add(row);
         }
 
-        // السجل المرضي والتشخيصات السابقة — يُملأ في مرحلة لاحقة من ميزة الاستشارات
-        // data.Consultations يبقى فارغاً ⇒ يُعرض كقسم بحالة فارغة.
+        // السجل المرضي والتشخيصات السابقة — تشخيصات الأطباء وروشتاتهم داخل التطبيق
+        data.Consultations.AddRange(await BuildConsultationCardsAsync(child.Id));
 
         return data;
+    }
+
+    // ── تجميع بطاقات السجل المرضي (تشخيص + روشتة لكل حجز للطفل) ──
+    private async Task<List<MedicalConsultationCard>> BuildConsultationCardsAsync(Guid childId)
+    {
+        var cards = new List<MedicalConsultationCard>();
+
+        var bookings = (await _unitOfWork.Bookings.FindAsync(b => b.ChildId == childId)).ToList();
+        if (bookings.Count == 0) return cards;
+
+        var bookingIds = bookings.Select(b => b.Id).ToHashSet();
+
+        var diagnosesByBooking = (await _unitOfWork.MedicalDiagnoses.FindAsync(d => bookingIds.Contains(d.BookingId)))
+            .GroupBy(d => d.BookingId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var medicinesByBooking = (await _unitOfWork.PrescriptionMedicines.FindAsync(m => bookingIds.Contains(m.BookingId)))
+            .GroupBy(m => m.BookingId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(m => m.CreatedAt).ToList());
+
+        // أسماء الأطباء وتخصصاتهم
+        var specialistIds = bookings.Select(b => b.SpecialistId).Distinct().ToList();
+        var specialists = (await _unitOfWork.Specialists.FindAsync(s => specialistIds.Contains(s.Id)))
+            .ToDictionary(s => s.Id);
+        var userIds = specialists.Values.Select(s => s.UserId).Distinct().ToList();
+        var doctorNames = (await _unitOfWork.Users.FindAsync(u => userIds.Contains(u.Id)))
+            .ToDictionary(u => u.Id, u => u.FullName);
+
+        // أحدث الحجوزات أولاً
+        foreach (var booking in bookings.OrderByDescending(b => b.AppointmentDate).ThenByDescending(b => b.CreatedAt))
+        {
+            diagnosesByBooking.TryGetValue(booking.Id, out var diagnosis);
+            medicinesByBooking.TryGetValue(booking.Id, out var medicines);
+
+            // نعرض الحجز في السجل فقط إذا سجّل الطبيب تشخيصاً أو روشتة
+            if (diagnosis == null && (medicines == null || medicines.Count == 0)) continue;
+
+            string specialty = "—";
+            string doctorName = "غير متوفر";
+            if (specialists.TryGetValue(booking.SpecialistId, out var sp))
+            {
+                if (!string.IsNullOrWhiteSpace(sp.Specialization)) specialty = sp.Specialization;
+                if (doctorNames.TryGetValue(sp.UserId, out var name) && !string.IsNullOrWhiteSpace(name))
+                    doctorName = $"د. {name}";
+            }
+
+            var card = new MedicalConsultationCard
+            {
+                Title = $"استشارة بتاريخ {MedicalFileLabels.ArabicDate(booking.AppointmentDate)}",
+                Tag = specialty,
+                DoctorName = doctorName,
+                Diagnosis = diagnosis?.Description ?? "—",
+                Prescription = (medicines ?? new List<PrescriptionMedicine>())
+                    .Select(m => $"{m.MedicineName} — {m.Quantity} — {m.Timing}")
+                    .ToList()
+            };
+
+            cards.Add(card);
+        }
+
+        return cards;
     }
 
     private static (int years, int months, int days) CalculateExactAge(DateTime birthDate)

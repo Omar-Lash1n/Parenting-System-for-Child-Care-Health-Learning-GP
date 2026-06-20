@@ -141,6 +141,46 @@ namespace Ajial.Infrastructure.Migrations
                     b.ToTable("BookingAttachments");
                 });
 
+            modelBuilder.Entity("Ajial.Domain.Entities.ChatMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AttachmentName")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("AttachmentUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SenderRole")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SenderUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId", "CreatedAt");
+
+                    b.ToTable("ChatMessages");
+                });
+
             modelBuilder.Entity("Ajial.Domain.Entities.Child", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2996,6 +3036,34 @@ namespace Ajial.Infrastructure.Migrations
                     b.ToTable("LessonQuestionOptions");
                 });
 
+            modelBuilder.Entity("Ajial.Domain.Entities.MedicalDiagnosis", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique();
+
+                    b.ToTable("MedicalDiagnoses");
+                });
+
             modelBuilder.Entity("Ajial.Domain.Entities.Parent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3231,6 +3299,43 @@ namespace Ajial.Infrastructure.Migrations
                             Key = "InstaPayNumber",
                             Value = "01146486517"
                         });
+                });
+
+            modelBuilder.Entity("Ajial.Domain.Entities.PrescriptionMedicine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MedicineName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Quantity")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Timing")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.ToTable("PrescriptionMedicines");
                 });
 
             modelBuilder.Entity("Ajial.Domain.Entities.Prize", b =>
@@ -4085,6 +4190,17 @@ namespace Ajial.Infrastructure.Migrations
                     b.Navigation("Booking");
                 });
 
+            modelBuilder.Entity("Ajial.Domain.Entities.ChatMessage", b =>
+                {
+                    b.HasOne("Ajial.Domain.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+                });
+
             modelBuilder.Entity("Ajial.Domain.Entities.Child", b =>
                 {
                     b.HasOne("Ajial.Domain.Entities.Parent", "Parent")
@@ -4332,6 +4448,17 @@ namespace Ajial.Infrastructure.Migrations
                     b.Navigation("LessonQuestion");
                 });
 
+            modelBuilder.Entity("Ajial.Domain.Entities.MedicalDiagnosis", b =>
+                {
+                    b.HasOne("Ajial.Domain.Entities.Booking", "Booking")
+                        .WithOne("Diagnosis")
+                        .HasForeignKey("Ajial.Domain.Entities.MedicalDiagnosis", "BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+                });
+
             modelBuilder.Entity("Ajial.Domain.Entities.Parent", b =>
                 {
                     b.HasOne("Ajial.Domain.Entities.City", "City")
@@ -4396,6 +4523,17 @@ namespace Ajial.Infrastructure.Migrations
                     b.Navigation("Booking");
 
                     b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("Ajial.Domain.Entities.PrescriptionMedicine", b =>
+                {
+                    b.HasOne("Ajial.Domain.Entities.Booking", "Booking")
+                        .WithMany("PrescriptionMedicines")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
                 });
 
             modelBuilder.Entity("Ajial.Domain.Entities.Prize", b =>
@@ -4552,7 +4690,11 @@ namespace Ajial.Infrastructure.Migrations
                 {
                     b.Navigation("Attachments");
 
+                    b.Navigation("Diagnosis");
+
                     b.Navigation("Payment");
+
+                    b.Navigation("PrescriptionMedicines");
                 });
 
             modelBuilder.Entity("Ajial.Domain.Entities.Child", b =>
