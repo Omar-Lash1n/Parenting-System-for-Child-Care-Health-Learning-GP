@@ -21,6 +21,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
   bool _isLoading = true;
   String? _error;
   bool _isCancelling = false;
+  bool _isJoiningSession = false;
 
   Timer? _chatTimer;
   Duration _chatTimeLeft = Duration.zero;
@@ -169,6 +170,50 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
       setState(() { _isCancelling = false; });
     }
   }
+
+  /// استدعاء API الجلسة ثم فتح رابط Google Meet لو canJoin = true
+  Future<void> _handleJoinSession() async {
+    setState(() { _isJoiningSession = true; });
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final session = await _apiService.getSessionStatus(_booking.bookingId);
+      if (!mounted) return;
+      if (session.canJoin && session.joinUrl != null) {
+        final uri = Uri.parse(session.joinUrl!);
+        final launched = await canLaunchUrl(uri);
+        if (launched) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('لا يمكن فتح رابط الجلسة', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        // الطبيب لم يبدأ الجلسة بعد
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('الطبيب لم يبدأ الجلسة بعد، يرجى الانتظار قليلاً ثم المحاولة مجدداً', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('حدث خطأ: $e', style: const TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() { _isJoiningSession = false; });
+    }
+  }
+
 
   bool _isSessionNow() {
     if (_booking.status != 'confirmed') return false;
@@ -1029,14 +1074,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
       children: [
         if (sessionNow)
           GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('جاري بدء الجلسة والاتصال بالطبيب...', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
-                  backgroundColor: Color(0xFFBF092F),
-                ),
-              );
-            },
+            onTap: _isJoiningSession ? null : _handleJoinSession,
             child: Container(
               width: double.infinity,
               height: 50,
@@ -1045,15 +1083,21 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                 borderRadius: BorderRadius.circular(50),
               ),
               alignment: Alignment.center,
-              child: const Text(
-                'دخول الجلسة',
-                style: TextStyle(
-                  fontFamily: 'IBM Plex Sans Arabic',
-                  fontWeight: FontWeight.w500,
-                  fontSize: 18,
-                  color: Colors.white,
-                ),
-              ),
+              child: _isJoiningSession
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text(
+                      'دخول الجلسة',
+                      style: TextStyle(
+                        fontFamily: 'IBM Plex Sans Arabic',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 18,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
           )
         else

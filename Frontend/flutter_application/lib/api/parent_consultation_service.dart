@@ -626,6 +626,28 @@ class ParentConsultationService {
     }
   }
 
+  /// GET /api/parent/consultations/bookings/{bookingId}/session
+  /// Returns session status including canJoin and joinUrl (Google Meet link)
+  Future<SessionStatus> getSessionStatus(String bookingId) async {
+    final headers = await _getAuthHeaders();
+    final url = '$_apiBaseUrl/parent/consultations/bookings/$bookingId/session';
+
+    try {
+      final response = await http.get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        final data = body['data'] as Map<String, dynamic>;
+        return SessionStatus.fromJson(data);
+      } else {
+        throw Exception('Failed to get session status (${response.statusCode})');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// GET /api/parent/consultations/bookings/{bookingId}/prescription
   /// الروشتة الطبية التي سجّلها الطبيب لهذا الحجز (بطاقة عرض مكتفية بذاتها).
   Future<ParentPrescription> getPrescription(String bookingId) async {
@@ -749,6 +771,7 @@ class ParentConsultationService {
     }
   }
 }
+
 
 // ===== Additional Models =====
 
@@ -1179,6 +1202,34 @@ class PaymentTransaction {
       appointmentDate: json['appointmentDate']?.toString() ?? '',
       createdAt: json['createdAt']?.toString() ?? '',
       rejectionReason: json['rejectionReason']?.toString(),
+    );
+  }
+}
+
+// ── Session Status ─────────────────────────────────────────────────────────
+
+class SessionStatus {
+  final String bookingId;
+  final bool canJoin;
+  final String? joinUrl;
+  final bool doctorStarted;
+  final int secondsUntilStart;
+
+  SessionStatus({
+    required this.bookingId,
+    required this.canJoin,
+    this.joinUrl,
+    required this.doctorStarted,
+    required this.secondsUntilStart,
+  });
+
+  factory SessionStatus.fromJson(Map<String, dynamic> json) {
+    return SessionStatus(
+      bookingId: json['bookingId']?.toString() ?? '',
+      canJoin: json['canJoin'] ?? false,
+      joinUrl: json['joinUrl']?.toString(),
+      doctorStarted: json['doctorStarted'] ?? false,
+      secondsUntilStart: (json['secondsUntilStart'] as num?)?.toInt() ?? 0,
     );
   }
 }
