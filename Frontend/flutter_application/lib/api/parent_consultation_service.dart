@@ -744,24 +744,63 @@ class BookingInfo {
 }
 
 class ClinicInfo {
+  final String? clinicId;
   final bool isAvailable;
   final double? examinationPrice;
   final double? consultationPrice;
+  /// Raw JSON string: {"type":"fixed","from":"18:00","to":"23:56"}
+  final String? workingHoursJson;
+  /// Human-readable fallback (older API shape)
   final String? workingHoursText;
+  final String? address;
+  final String? governorateName;
 
   ClinicInfo({
+    this.clinicId,
     required this.isAvailable,
     this.examinationPrice,
     this.consultationPrice,
+    this.workingHoursJson,
     this.workingHoursText,
+    this.address,
+    this.governorateName,
   });
+
+  /// Full address string, e.g. "السيل ش 12 - أسوان"
+  String get fullAddress {
+    final parts = <String>[];
+    if (address != null && address!.isNotEmpty) parts.add(address!);
+    if (governorateName != null && governorateName!.isNotEmpty) parts.add(governorateName!);
+    return parts.join(' - ');
+  }
+
+  /// Parses workingHoursJson to readable text.
+  /// {"type":"fixed","from":"18:00","to":"23:56"} → "من 18:00 الى 23:56"
+  String get workingHoursFormatted {
+    // Prefer pre-formatted text
+    if (workingHoursText != null && workingHoursText!.isNotEmpty) {
+      return workingHoursText!;
+    }
+    if (workingHoursJson == null || workingHoursJson!.isEmpty) return 'غير متاح';
+    try {
+      final map = jsonDecode(workingHoursJson!) as Map<String, dynamic>;
+      final from = map['from']?.toString() ?? '';
+      final to   = map['to']?.toString() ?? '';
+      if (from.isNotEmpty && to.isNotEmpty) return 'من $from الى $to';
+    } catch (_) {}
+    return workingHoursJson!;
+  }
 
   factory ClinicInfo.fromJson(Map<String, dynamic> json) {
     return ClinicInfo(
-      isAvailable: json['isAvailable'] ?? false,
+      clinicId: json['clinicId']?.toString(),
+      isAvailable: json['isAvailable'] ?? true,
       examinationPrice: (json['examinationPrice'] as num?)?.toDouble(),
       consultationPrice: (json['consultationPrice'] as num?)?.toDouble(),
+      workingHoursJson: json['workingHoursJson']?.toString(),
       workingHoursText: json['workingHoursText']?.toString(),
+      address: json['address']?.toString(),
+      governorateName: json['governorateName']?.toString(),
     );
   }
 }
