@@ -11,12 +11,14 @@ class SpecialistTelemedicineChatPage extends StatefulWidget {
   final String bookingId;
   final String patientName;
   final String patientImage;
+  final DateTime chatDeadline;
 
   const SpecialistTelemedicineChatPage({
     super.key,
     required this.bookingId,
     required this.patientName,
     required this.patientImage,
+    required this.chatDeadline,
   });
 
   @override
@@ -49,7 +51,6 @@ class _SpecialistTelemedicineChatPageState
   late final ChatHubService _hub;
 
   Duration _timeLeft = Duration.zero;
-  DateTime? _deadline;
   Timer? _timer;
   Timer? _typingDebounce;
   bool _typingSent = false;
@@ -102,7 +103,6 @@ class _SpecialistTelemedicineChatPageState
             convo.participant.avatarUrl!.isNotEmpty) {
           _patientImageUrl = convo.participant.avatarUrl;
         }
-        _deadline = convo.windowClosesAt;
         for (final m in convo.messages) {
           if (_seenIds.add(m.id)) _messages.add(_map(m));
         }
@@ -142,8 +142,7 @@ class _SpecialistTelemedicineChatPageState
   }
 
   void _updateTimeLeft() {
-    final deadline = _deadline;
-    if (deadline == null) return;
+    final deadline = widget.chatDeadline;
     final now = DateTime.now();
     if (now.isBefore(deadline)) {
       setState(() => _timeLeft = deadline.difference(now));
@@ -264,9 +263,9 @@ class _SpecialistTelemedicineChatPageState
   Widget build(BuildContext context) {
     final bool isTimeout = !_canSend;
     String timerText = _windowNotice ?? 'انتهت فترة التحدث مع المريض';
-    if (_canSend && _deadline != null && _timeLeft.inSeconds > 0) {
+    if (_canSend && _timeLeft.inSeconds > 0) {
       timerText = _formatDuration(_timeLeft);
-    } else if (_canSend && _deadline == null) {
+    } else if (_canSend) {
       timerText = 'المحادثة متاحة';
     }
 
