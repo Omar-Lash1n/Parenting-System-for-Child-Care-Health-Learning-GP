@@ -80,6 +80,19 @@ public class Booking
     public DateTime? UpdatedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
 
+    // ── إلغاء الحجز (المرحلة التاسعة) — يحسبها النظام عند إلغاء ولي الأمر للحجز ──
+    /// <summary>
+    /// رسوم الإلغاء المحسوبة (10% من السعر) المخصومة وقت الإلغاء.
+    /// تُطبَّق فقط على الحجوزات المدفوعة (المؤكدة)؛ تساوي 0 للحجوزات غير المدفوعة، و null إذا لم يُلغَ الحجز.
+    /// </summary>
+    public decimal? CancellationFeeAmount { get; set; }
+
+    /// <summary>
+    /// المبلغ المسترد لولي الأمر بعد خصم رسوم الإلغاء (السعر − الرسوم).
+    /// يُسترَد يدوياً بواسطة الأدمن للرقم المُحوَّل منه. null إذا لم يُلغَ الحجز.
+    /// </summary>
+    public decimal? RefundAmount { get; set; }
+
     public ICollection<BookingAttachment> Attachments { get; set; } = new List<BookingAttachment>();
     public Payment? Payment { get; set; }
 

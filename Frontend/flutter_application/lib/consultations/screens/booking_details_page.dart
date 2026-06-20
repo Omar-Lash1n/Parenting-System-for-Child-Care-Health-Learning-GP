@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
+import 'package:Ajial/consultations/screens/cancel_booking_page.dart';
 import 'package:Ajial/consultations/screens/clinical_record_page.dart';
 import 'package:Ajial/consultations/screens/parent_telemedicine_chat_page.dart';
 import 'package:Ajial/consultations/screens/session_rating_page.dart';
@@ -118,46 +119,28 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
   }
 
   Future<void> _handleCancelBooking() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('تأكيد الإلغاء', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
-        content: const Text('هل أنت متأكد من رغبتك في إلغاء هذا الحجز؟', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('تراجع', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic', color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('إلغاء الحجز', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic', color: Color(0xFFBF092F))),
-          ),
-        ],
-      ),
-    );
+    // الحجز المدفوع (المؤكد): شاشة تفصيل المبلغ المسترد مع خصم 10% (صورة 6).
+    if (_booking.status == 'confirmed') {
+      final cancelled = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => CancelBookingPage(booking: _booking)),
+      );
+      if (cancelled == true && mounted) {
+        Navigator.pop(context, true); // العودة لقائمة الحجوزات مع إعادة التحميل
+      }
+      return;
+    }
 
-    if (confirm != true) return;
+    // الحجز غير المدفوع (انتظار الدفع / المراجعة): لا رسوم ولا مبلغ مسترد — حوار تأكيد مبسّط.
+    final confirmed = await showCancelConfirmDialog(context, withFee: false);
+    if (confirmed != true || !mounted) return;
 
     setState(() { _isCancelling = true; });
-
     try {
-      final currentBooking = _booking;
-      if (currentBooking.attachments.isNotEmpty) {
-        // We have attachments, delete them (specifically the first/receipt attachment)
-        final attachmentId = currentBooking.attachments.first.id;
-        await _apiService.deleteBookingAttachment(currentBooking.bookingId, attachmentId);
-      } else {
-        // Fallback to normal cancel booking if no attachment exists
-        await _apiService.cancelBooking(currentBooking.bookingId);
-      }
-
+      await _apiService.cancelBooking(_booking.bookingId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم إلغاء الحجز بنجاح', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
-          backgroundColor: Colors.green,
-        ),
-      );
+      await showCancelSuccessDialog(context, withRefund: false);
+      if (!mounted) return;
       Navigator.pop(context, true); // Pop back to list and trigger reload
     } catch (e) {
       if (!mounted) return;
@@ -307,6 +290,11 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
       return _buildCompletedScaffold();
     }
 
+    // الحجز الملغي له شاشة خاصة (صورة 10).
+    if (_booking.status == 'cancelled') {
+      return _buildCancelledScaffold();
+    }
+
     final isSessionNow = _isSessionNow();
     final statusColor = isSessionNow
         ? const Color(0xFF28A745)
@@ -415,6 +403,104 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
           ),
         ),
       ),
+    );
+  }
+
+  // ============================================================
+  // شاشة الحجز الملغي (صورة 10)
+  // ============================================================
+
+  Widget _buildCancelledScaffold() {
+    const red = Color(0xFFBF092F);
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 24),
+              _buildHeader(title: 'جلسة ${_formatArabicDate(_booking.appointmentDate)}'),
+              const SizedBox(height: 24),
+              Expanded(
+                child: Stack(
+                  children: [
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+                          _buildBookingCard(red),
+                          const SizedBox(height: 24),
+                          _buildInstructionsCard(),
+                          const SizedBox(height: 160),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 24,
+                      left: 0,
+                      right: 0,
+                      child: _buildCancelledBottomButtons(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCancelledBottomButtons() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: () => _showComingSoon('طلب الجلسة من جديد'),
+          child: Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFFBF092F),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              'طلب الجلسة من جديد',
+              style: TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontWeight: FontWeight.w700,
+                fontSize: 17,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: () => _showComingSoon('المساعدة في اتمام عملية الحجز'),
+          child: Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.black.withValues(alpha: 0.4)),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              'اريد المساعدة في اتمام عملية الحجز',
+              style: TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -768,27 +854,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Tag
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                height: 41,
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  _isSessionNow() ? 'الطبيب متاح الآن للبدء' : _booking.statusAr,
-                  style: TextStyle(
-                    fontFamily: 'IBM Plex Sans Arabic',
-                    fontWeight: FontWeight.w400,
-                    fontSize: 14,
-                    color: statusColor,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              // Date info
+              // Date info (يمين في RTL)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -812,17 +878,60 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                   ),
                 ],
               ),
+              // Tag (يسار في RTL)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                height: 41,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _isSessionNow()
+                      ? 'الطبيب متاح الآن للبدء'
+                      : _booking.status == 'cancelled'
+                          ? 'تم الغاء الحجز'
+                          : _booking.statusAr,
+                  style: TextStyle(
+                    fontFamily: 'IBM Plex Sans Arabic',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 14,
+                    color: statusColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ],
           ),
           const Spacer(),
           Divider(height: 1, color: const Color(0xFFD9D9D9)),
           const Spacer(),
-          // Row 2: Doctor info
+          // Row 2: Doctor info (الصورة يمين + الاسم يسارها)
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFD9D9D9)),
+                  color: Colors.white,
+                ),
+                child: _booking.photoUrl.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          _booking.photoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.grey),
+                        ),
+                      )
+                    : const Icon(Icons.person, color: Colors.grey, size: 28),
+              ),
+              const SizedBox(width: 8),
               Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     _booking.doctorName,
@@ -842,25 +951,6 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFD9D9D9)),
-                  color: Colors.white,
-                ),
-                child: _booking.photoUrl.isNotEmpty
-                    ? ClipOval(
-                        child: Image.network(
-                          _booking.photoUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.grey),
-                        ),
-                      )
-                    : const Icon(Icons.person, color: Colors.grey, size: 28),
               ),
             ],
           ),

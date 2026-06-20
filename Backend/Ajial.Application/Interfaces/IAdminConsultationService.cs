@@ -14,6 +14,10 @@ public interface IAdminConsultationService
     Task<ApiResponse<PaymentSettingsResponse>> GetPaymentSettingsAsync();
     Task<ApiResponse<PaymentSettingsResponse>> UpdatePaymentSettingsAsync(Guid adminUserId, UpdatePaymentSettingsRequest request);
 
+    // ── الحجوزات الملغاة (متابعة استرداد المبالغ يدوياً) ──
+    /// <summary>قائمة الحجوزات الملغاة مع تفاصيل الاسترداد وصورة إيصال الدفع الأصلي.</summary>
+    Task<ApiResponse<AdminCancellationListResponse>> GetCancellationsAsync(int page, int pageSize);
+
     // ── تقييمات الجلسات ──
     /// <summary>قائمة استبيانات تقييم الجلسات (فلتر اختياري بالطبيب / من أبلغ عن مشكلة).</summary>
     Task<ApiResponse<AdminRatingListResponse>> GetRatingsAsync(Guid? specialistId, bool? hadIssue, int page, int pageSize);

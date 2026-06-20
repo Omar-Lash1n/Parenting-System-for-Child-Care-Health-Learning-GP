@@ -1443,6 +1443,8 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(b => b.AppointmentDate).HasColumnType("date");
             entity.Property(b => b.Price).HasColumnType("decimal(18,2)");
+            entity.Property(b => b.CancellationFeeAmount).HasColumnType("decimal(18,2)");
+            entity.Property(b => b.RefundAmount).HasColumnType("decimal(18,2)");
             entity.Property(b => b.ComplaintDescription).HasMaxLength(2000);
             entity.Property(b => b.RejectionReason).HasMaxLength(1000);
             entity.Property(b => b.Status).IsRequired();

@@ -228,6 +228,93 @@ public class AdminConsultationService : IAdminConsultationService
         }
     }
 
+    // ── الحجوزات الملغاة (متابعة استرداد المبالغ يدوياً) ─────────────────────────
+
+    public async Task<ApiResponse<AdminCancellationListResponse>> GetCancellationsAsync(int page, int pageSize)
+    {
+        try
+        {
+            var normalizedPage = Math.Max(page, 1);
+            var normalizedSize = Math.Clamp(pageSize, 1, 100);
+
+            var cancelled = (await _unitOfWork.Bookings.FindAsync(b => b.Status == BookingStatus.Cancelled))
+                .OrderByDescending(b => b.CancelledAt ?? b.UpdatedAt ?? b.CreatedAt)
+                .ToList();
+
+            var total = cancelled.Count;
+            if (total == 0)
+                return ApiResponse<AdminCancellationListResponse>.SuccessResponse(new AdminCancellationListResponse
+                {
+                    Page = normalizedPage,
+                    PageSize = normalizedSize
+                }, "لا توجد حجوزات ملغاة");
+
+            var pageItems = cancelled.Skip((normalizedPage - 1) * normalizedSize).Take(normalizedSize).ToList();
+
+            // إيصالات الدفع الأصلية المرتبطة بكل حجز ملغى
+            var bookingIds = pageItems.Select(b => b.Id).ToHashSet();
+            var payments = (await _unitOfWork.Payments.FindAsync(p => bookingIds.Contains(p.BookingId)))
+                .ToDictionary(p => p.BookingId);
+
+            // أطباء + أولياء أمور + أطفال (تحميل مجمّع للأسماء)
+            var specialistIds = pageItems.Select(b => b.SpecialistId).ToHashSet();
+            var specialists = (await _unitOfWork.Specialists.GetAllAsync(q => q.Include(s => s.User)))
+                .Where(s => specialistIds.Contains(s.Id))
+                .ToDictionary(s => s.Id);
+
+            var parentIds = pageItems.Select(b => b.ParentId).ToHashSet();
+            var parents = (await _unitOfWork.Parents.FindAsync(p => parentIds.Contains(p.Id))).ToList();
+            var userIds = parents.Select(p => p.UserId).ToHashSet();
+            var users = (await _unitOfWork.Users.GetAllAsync()).Where(u => userIds.Contains(u.Id)).ToDictionary(u => u.Id);
+            var parentNames = parents.ToDictionary(p => p.Id, p => users.GetValueOrDefault(p.UserId)?.FullName ?? string.Empty);
+
+            var childIds = pageItems.Where(b => b.ChildId.HasValue).Select(b => b.ChildId!.Value).ToHashSet();
+            var children = childIds.Count > 0
+                ? (await _unitOfWork.Children.FindAsync(c => childIds.Contains(c.Id))).ToDictionary(c => c.Id, c => c.FullName)
+                : new Dictionary<Guid, string>();
+
+            var items = pageItems.Select(b =>
+            {
+                payments.TryGetValue(b.Id, out var pay);
+                specialists.TryGetValue(b.SpecialistId, out var sp);
+                var parentName = parentNames.GetValueOrDefault(b.ParentId, string.Empty);
+                var patientName = b.ChildId.HasValue ? children.GetValueOrDefault(b.ChildId.Value, string.Empty) : parentName;
+
+                return new AdminCancellationItemDto
+                {
+                    BookingId = b.Id,
+                    ParentName = parentName,
+                    PatientName = patientName,
+                    DoctorName = sp?.User?.FullName ?? string.Empty,
+                    ServiceTypeAr = ConsultationLabels.ServiceTypeAr(b.ServiceType),
+                    AppointmentDate = b.AppointmentDate.ToString("yyyy-MM-dd"),
+                    BasePrice = b.Price,
+                    CancellationFeePercent = ConsultationLabels.CancellationFeePercent,
+                    CancellationFeeAmount = b.CancellationFeeAmount ?? 0m,
+                    RefundAmount = b.RefundAmount ?? 0m,
+                    PaymentMethod = pay != null ? ConsultationLabels.PaymentMethodKey(pay.Method) : null,
+                    PaymentMethodAr = pay != null ? ConsultationLabels.PaymentMethodAr(pay.Method) : null,
+                    PaidAmount = pay?.Amount,
+                    ReceiptImageUrl = pay?.ReceiptImageUrl,
+                    PaymentStatusAr = pay != null ? ConsultationLabels.PaymentStatusAr(pay.Status) : null,
+                    CancelledAt = b.CancelledAt
+                };
+            }).ToList();
+
+            return ApiResponse<AdminCancellationListResponse>.SuccessResponse(new AdminCancellationListResponse
+            {
+                TotalCount = total,
+                Page = normalizedPage,
+                PageSize = normalizedSize,
+                Items = items
+            }, "تم جلب قائمة الحجوزات الملغاة بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<AdminCancellationListResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
     // ── تقييمات الجلسات ───────────────────────────────────────────────────────
 
     public async Task<ApiResponse<AdminRatingListResponse>> GetRatingsAsync(Guid? specialistId, bool? hadIssue, int page, int pageSize)

@@ -718,6 +718,21 @@ public class ConsultationService : IConsultationService
             if (booking.Status is BookingStatus.Cancelled or BookingStatus.Completed or BookingStatus.Rejected)
                 return ApiResponse<BookingDetailResponse>.FailureResponse("لا يمكن إلغاء الحجز في الحالة الحالية");
 
+            // رسوم الإلغاء (10%) تُطبَّق فقط على الحجوزات المدفوعة (المؤكدة)؛
+            // الحجوزات قيد الدفع/المراجعة لم يُؤكَّد دفعها بعد فلا رسوم ولا مبلغ مسترد.
+            var wasPaid = booking.Status == BookingStatus.Confirmed;
+            if (wasPaid)
+            {
+                var fee = Math.Round(booking.Price * ConsultationLabels.CancellationFeePercent / 100m, 2, MidpointRounding.AwayFromZero);
+                booking.CancellationFeeAmount = fee;
+                booking.RefundAmount = booking.Price - fee;
+            }
+            else
+            {
+                booking.CancellationFeeAmount = 0m;
+                booking.RefundAmount = 0m;
+            }
+
             booking.Status = BookingStatus.Cancelled;
             booking.CancelledAt = DateTime.UtcNow;
             booking.UpdatedAt = DateTime.UtcNow;
@@ -1236,6 +1251,10 @@ public class ConsultationService : IConsultationService
             MedicalFileUrl = b.MedicalFileUrl,
             CreatedAt = b.CreatedAt,
             CanCancel = b.Status is BookingStatus.PendingPayment or BookingStatus.PendingReview or BookingStatus.Confirmed,
+            CancellationFeePercent = ConsultationLabels.CancellationFeePercent,
+            CancellationFeeAmount = b.CancellationFeeAmount,
+            RefundAmount = b.RefundAmount,
+            CancelledAt = b.CancelledAt,
             Attachments = (b.Attachments ?? new List<BookingAttachment>())
                 .OrderBy(a => a.CreatedAt)
                 .Select(a => new AttachmentDto { Id = a.Id, ImageUrl = a.ImageUrl })

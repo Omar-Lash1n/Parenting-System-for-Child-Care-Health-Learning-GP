@@ -1005,6 +1005,11 @@ class Booking {
   // تقييم الجلسة (المرحلة الثامنة)
   final bool hasRated;
   final bool canRate;
+  // إلغاء الحجز (المرحلة التاسعة)
+  final int cancellationFeePercent;
+  final double? cancellationFeeAmount;
+  final double? refundAmount;
+  final String? cancelledAt;
 
   Booking({
     required this.bookingId,
@@ -1036,6 +1041,10 @@ class Booking {
     this.receiptImageUrl,
     this.hasRated = false,
     this.canRate = false,
+    this.cancellationFeePercent = 10,
+    this.cancellationFeeAmount,
+    this.refundAmount,
+    this.cancelledAt,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -1073,6 +1082,10 @@ class Booking {
       receiptImageUrl: json['receiptImageUrl']?.toString(),
       hasRated: json['hasRated'] ?? false,
       canRate: json['canRate'] ?? false,
+      cancellationFeePercent: (json['cancellationFeePercent'] as num?)?.toInt() ?? 10,
+      cancellationFeeAmount: (json['cancellationFeeAmount'] as num?)?.toDouble(),
+      refundAmount: (json['refundAmount'] as num?)?.toDouble(),
+      cancelledAt: json['cancelledAt']?.toString(),
     );
   }
 }

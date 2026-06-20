@@ -148,6 +148,19 @@ public class BookingDetailResponse
     public DateTime CreatedAt { get; set; }
     public bool CanCancel { get; set; }
 
+    // ── إلغاء الحجز (المرحلة التاسعة) ──
+    /// <summary>نسبة رسوم الإلغاء الثابتة (10%) — لعرض شاشة "رسوم الإلغاء (10%)" قبل التأكيد ولحساب المعاينة.</summary>
+    public int CancellationFeePercent { get; set; }
+
+    /// <summary>رسوم الإلغاء المخصومة فعلياً — تُملأ بعد الإلغاء فقط (null قبل الإلغاء).</summary>
+    public decimal? CancellationFeeAmount { get; set; }
+
+    /// <summary>المبلغ المسترد لولي الأمر بعد خصم الرسوم — يُملأ بعد الإلغاء فقط (null قبل الإلغاء).</summary>
+    public decimal? RefundAmount { get; set; }
+
+    /// <summary>وقت إلغاء الحجز (UTC) — null إذا لم يُلغَ.</summary>
+    public DateTime? CancelledAt { get; set; }
+
     // ── تقييم الجلسة (المرحلة الثامنة) ──
     /// <summary>هل تم تقييم هذه الجلسة من قبل.</summary>
     public bool HasRated { get; set; }

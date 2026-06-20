@@ -71,6 +71,9 @@ public static class ConsultationLabels
         _ => "غير معروف"
     };
 
+    // نسبة رسوم إلغاء الحجز (تُخصم من المبلغ المدفوع عند إلغاء ولي الأمر للحجز المؤكد)
+    public const int CancellationFeePercent = 10;
+
     // مفاتيح إعدادات الدفع
     public const string VodafoneCashKey = "VodafoneCashNumber";
     public const string InstaPayKey = "InstaPayNumber";

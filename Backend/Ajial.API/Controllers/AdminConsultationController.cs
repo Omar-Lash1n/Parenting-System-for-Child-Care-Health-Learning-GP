@@ -69,6 +69,14 @@ public class AdminConsultationController : ControllerBase
         return ToActionResult(await _service.UpdatePaymentSettingsAsync(adminUserId, request));
     }
 
+    // ── الحجوزات الملغاة ─────────────────────────────────────────────────────────
+
+    /// <summary>قائمة الحجوزات الملغاة لمتابعة استرداد المبالغ يدوياً (تتضمن صورة إيصال الدفع الأصلي وطريقة الدفع والمبلغ المسترد).</summary>
+    [HttpGet("cancellations")]
+    [ProducesResponseType(typeof(ApiResponse<AdminCancellationListResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCancellations([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        => ToActionResult(await _service.GetCancellationsAsync(page, pageSize));
+
     // ── تقييمات الجلسات ──────────────────────────────────────────────────────────
 
     /// <summary>قائمة استبيانات تقييم الجلسات (فلتر اختياري: specialistId=طبيب معيّن، hadIssue=true لمن أبلغوا عن مشكلة).</summary>

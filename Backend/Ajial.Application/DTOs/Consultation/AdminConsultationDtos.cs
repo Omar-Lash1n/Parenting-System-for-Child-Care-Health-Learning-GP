@@ -86,6 +86,59 @@ public class UpdatePaymentSettingsRequest
 }
 
 // ============================================================
+// لوحة الأدمن — الحجوزات الملغاة + متابعة استرداد المبالغ يدوياً
+// ============================================================
+
+/// <summary>قائمة الحجوزات الملغاة للوحة الأدمن (لمتابعة استرداد المبالغ يدوياً) مع ترقيم الصفحات.</summary>
+public class AdminCancellationListResponse
+{
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public List<AdminCancellationItemDto> Items { get; set; } = new();
+}
+
+/// <summary>حجز ملغى واحد كما يظهر للأدمن — يتضمن تفاصيل الاسترداد وصورة إيصال الدفع الأصلي ليتم الاسترداد يدوياً.</summary>
+public class AdminCancellationItemDto
+{
+    public Guid BookingId { get; set; }
+
+    public string ParentName { get; set; } = string.Empty;
+    public string PatientName { get; set; } = string.Empty;
+    public string DoctorName { get; set; } = string.Empty;
+    public string ServiceTypeAr { get; set; } = string.Empty;
+    public string AppointmentDate { get; set; } = string.Empty;
+
+    /// <summary>قيمة الجلسة الأساسية.</summary>
+    public decimal BasePrice { get; set; }
+
+    /// <summary>نسبة رسوم الإلغاء (10%).</summary>
+    public int CancellationFeePercent { get; set; }
+
+    /// <summary>رسوم الإلغاء المخصومة.</summary>
+    public decimal CancellationFeeAmount { get; set; }
+
+    /// <summary>المبلغ الواجب استرداده لولي الأمر يدوياً.</summary>
+    public decimal RefundAmount { get; set; }
+
+    // ── الدفع الأصلي — ليتمكن الأدمن من إعادة المبلغ للرقم المُحوَّل منه (يظهر في صورة الإيصال) ──
+    /// <summary>طريقة الدفع الأصلية (فودافون كاش / انستا باي) — null إذا لم يكن هناك دفع مرتبط.</summary>
+    public string? PaymentMethod { get; set; }
+    public string? PaymentMethodAr { get; set; }
+
+    /// <summary>المبلغ المدفوع فعلياً (من الإيصال).</summary>
+    public decimal? PaidAmount { get; set; }
+
+    /// <summary>صورة إيصال الدفع الأصلي — يحتوي على الرقم المُحوَّل منه ولي الأمر لاسترداد المبلغ إليه.</summary>
+    public string? ReceiptImageUrl { get; set; }
+
+    /// <summary>حالة الدفع الأصلي (قيد المراجعة / تم القبول / مرفوض).</summary>
+    public string? PaymentStatusAr { get; set; }
+
+    public DateTime? CancelledAt { get; set; }
+}
+
+// ============================================================
 // لوحة الأدمن — تقييمات الجلسات (تقييم الأطباء + استبيانات ولي الأمر)
 // ============================================================
 

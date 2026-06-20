@@ -155,7 +155,11 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
             ? const Color(0xFF008CFF)
             : booking.status == 'rejected'
                 ? const Color(0xFFD32F2F)
-                : const Color(0xFF8E8E93);
+                : booking.status == 'cancelled'
+                    ? const Color(0xFFBF092F)
+                    : const Color(0xFF8E8E93);
+
+    final statusText = booking.status == 'cancelled' ? 'تم الغاء الحجز' : booking.statusAr;
 
     final isCompleted = booking.status == 'completed';
 
@@ -183,27 +187,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Tag (statusAr)
-              Container(
-                width: 120,
-                height: 41,
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  booking.statusAr,
-                  style: TextStyle(
-                    fontFamily: 'IBM Plex Sans Arabic',
-                    fontWeight: FontWeight.w400,
-                    fontSize: 14,
-                    color: statusColor,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              // Date info
+              // Date info (يمين في RTL)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -227,17 +211,56 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                   ),
                 ],
               ),
+              // Tag (statusAr) (يسار في RTL)
+              Container(
+                width: 120,
+                height: 41,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  statusText,
+                  style: TextStyle(
+                    fontFamily: 'IBM Plex Sans Arabic',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 14,
+                    color: statusColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ],
           ),
           const Spacer(),
           Divider(height: 1, color: const Color(0xFFD9D9D9)),
           const Spacer(),
-          // Row 2: Doctor info
+          // Row 2: Doctor info (الصورة يمين + الاسم يسارها)
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFD9D9D9)),
+                  color: Colors.white,
+                ),
+                child: booking.photoUrl.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          booking.photoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.grey),
+                        ),
+                      )
+                    : const Icon(Icons.person, color: Colors.grey, size: 28),
+              ),
+              const SizedBox(width: 8),
               Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     booking.doctorName,
@@ -257,25 +280,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFD9D9D9)),
-                  color: Colors.white,
-                ),
-                child: booking.photoUrl.isNotEmpty
-                    ? ClipOval(
-                        child: Image.network(
-                          booking.photoUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.grey),
-                        ),
-                      )
-                    : const Icon(Icons.person, color: Colors.grey, size: 28),
               ),
             ],
           ),
