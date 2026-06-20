@@ -118,28 +118,32 @@ class _ParentPaymentsPageState extends State<ParentPaymentsPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          const Text(
-            'سجل المدفوعات',
-            style: TextStyle(
-              fontFamily: _kFont,
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
-              color: Colors.black,
-            ),
-          ),
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
               width: 38,
               height: 38,
-              decoration: BoxDecoration(
-                color: _kPrimary.withValues(alpha: 0.1),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEE2E2),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.arrow_forward_ios,
-                  color: _kPrimary, size: 18),
+              child: Image.asset(
+                'images/consultations/back_arrow_red.png',
+                width: 20,
+                height: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Text(
+            'المعاملات المالية',
+            style: TextStyle(
+              fontFamily: _kFont,
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              color: Colors.black,
             ),
           ),
         ],
@@ -226,14 +230,62 @@ class _ParentPaymentsPageState extends State<ParentPaymentsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Row 1: Status tag + Doctor info ──
+          // ── Row 1: Doctor info + Status tag ──
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Status tag
+              // Doctor avatar + name (First in RTL = Right)
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border:
+                            Border.all(color: const Color(0xFFD9D9D9)),
+                        color: Colors.white,
+                      ),
+                      child: const Icon(Icons.person,
+                          color: Colors.grey, size: 28),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            payment.doctorName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: _kFont,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Text(
+                            payment.serviceTypeAr,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: _kFont,
+                              fontSize: 14,
+                              color: Colors.black.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Status tag (Second in RTL = Left)
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -242,50 +294,11 @@ class _ParentPaymentsPageState extends State<ParentPaymentsPage> {
                   payment.statusAr,
                   style: TextStyle(
                     fontFamily: _kFont,
+                    fontWeight: FontWeight.w600,
                     fontSize: 14,
                     color: statusColor,
                   ),
                 ),
-              ),
-              // Doctor avatar + name
-              Row(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        payment.doctorName,
-                        style: const TextStyle(
-                          fontFamily: _kFont,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
-                          color: Colors.black,
-                        ),
-                      ),
-                      Text(
-                        payment.serviceTypeAr,
-                        style: TextStyle(
-                          fontFamily: _kFont,
-                          fontSize: 12,
-                          color: Colors.black.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border:
-                          Border.all(color: const Color(0xFFD9D9D9)),
-                      color: Colors.white,
-                    ),
-                    child: const Icon(Icons.person,
-                        color: Colors.grey, size: 28),
-                  ),
-                ],
               ),
             ],
           ),
@@ -320,9 +333,20 @@ class _ParentPaymentsPageState extends State<ParentPaymentsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              const Text(
+                'القيمة المدفوعة',
+                style: TextStyle(
+                  fontFamily: _kFont,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: Colors.black,
+                ),
+              ),
               // Amount + method logo
               Row(
                 children: [
+                  _buildMethodBadge(payment.method, payment.methodAr),
+                  const SizedBox(width: 8),
                   Text(
                     '${payment.amount.toStringAsFixed(0)} ج.م',
                     style: const TextStyle(
@@ -332,18 +356,7 @@ class _ParentPaymentsPageState extends State<ParentPaymentsPage> {
                       color: Colors.black,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  _buildMethodBadge(payment.method, payment.methodAr),
                 ],
-              ),
-              const Text(
-                'القيمة المدفوعة',
-                style: TextStyle(
-                  fontFamily: _kFont,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: Colors.black,
-                ),
               ),
             ],
           ),
@@ -423,21 +436,21 @@ class _ParentPaymentsPageState extends State<ParentPaymentsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${(payment.amount * 0.9).toStringAsFixed(0)} ج.م',
-                  style: const TextStyle(
-                    fontFamily: _kFont,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: Colors.black,
-                  ),
-                ),
                 const Text(
                   'المبلغ المسترد بعد خصم 10%',
                   style: TextStyle(
                     fontFamily: _kFont,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
+                    color: Colors.black,
+                  ),
+                ),
+                Text(
+                  '${(payment.amount * 0.9).toStringAsFixed(0)} ج.م',
+                  style: const TextStyle(
+                    fontFamily: _kFont,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
                     color: Colors.black,
                   ),
                 ),
@@ -454,18 +467,18 @@ class _ParentPaymentsPageState extends State<ParentPaymentsPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          value,
+          label,
           style: const TextStyle(
             fontFamily: _kFont,
-            fontWeight: FontWeight.w500,
             fontSize: 14,
             color: Colors.black,
           ),
         ),
         Text(
-          label,
+          value,
           style: const TextStyle(
             fontFamily: _kFont,
+            fontWeight: FontWeight.w600,
             fontSize: 14,
             color: Colors.black,
           ),

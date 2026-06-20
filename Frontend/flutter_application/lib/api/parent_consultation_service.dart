@@ -71,6 +71,7 @@ class ParentConsultationService {
 
   /// Helper to extract data from API response (handles both wrapped and raw responses)
   List<dynamic> _extractList(String responseBody) {
+    if (responseBody.trim().isEmpty) return [];
     final dynamic decoded = json.decode(responseBody);
     
     if (decoded is List) {
@@ -80,7 +81,12 @@ class ParentConsultationService {
       if (decoded['data'] is List) return decoded['data'];
       if (decoded['result'] is List) return decoded['result'];
       if (decoded['items'] is List) return decoded['items'];
-      // If it's a success wrapper but data isn't a list, return empty
+      if (decoded['specialties'] is List) return decoded['specialties'];
+      
+      // Fallback: look for any list in the map
+      for (var value in decoded.values) {
+        if (value is List) return value;
+      }
       return [];
     }
     return [];
@@ -103,16 +109,21 @@ class ParentConsultationService {
 
       if (response.statusCode == 200) {
         final data = _extractList(response.body);
-        return data
-            .map((item) => SpecialtyChip.fromJson(item as Map<String, dynamic>))
-            .toList();
+        return data.map((item) {
+          if (item is String) {
+            return SpecialtyChip(name: item);
+          } else if (item is Map<String, dynamic>) {
+            return SpecialtyChip.fromJson(item);
+          }
+          return SpecialtyChip(name: item.toString());
+        }).toList();
       } else {
         print('❌ Error getting specialties: ${response.statusCode} - ${response.body}');
-        throw Exception('Failed to load specialties (${response.statusCode})');
+        return []; // Fallback to empty list instead of throwing to prevent breaking the screen
       }
     } catch (e) {
       print('❌ Exception in getSpecialties: $e');
-      rethrow;
+      return []; // Fallback
     }
   }
 

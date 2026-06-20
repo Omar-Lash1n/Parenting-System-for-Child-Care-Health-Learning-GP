@@ -242,6 +242,7 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           // Back Button
           GestureDetector(
@@ -249,46 +250,18 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
             child: Container(
               width: 38,
               height: 38,
-              decoration: BoxDecoration(
-                color: const Color(0xFFBF092F).withOpacity(0.1),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEE2E2),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.arrow_forward_ios, color: Color(0xFFBF092F), size: 18),
+              child: Image.asset(
+                'images/consultations/back_arrow_red.png',
+                width: 20,
+                height: 20,
+              ),
             ),
           ),
-          const Spacer(),
-          // Doctor Name & Specialization
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.verified, color: Color(0xFF0EA5E9), size: 18),
-                  const SizedBox(width: 2),
-                  Text(
-                    widget.doctor.fullName,
-                    style: const TextStyle(
-                      fontFamily: 'IBM Plex Sans Arabic',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'طبيب ${widget.doctor.specialization}',
-                style: TextStyle(
-                  fontFamily: 'IBM Plex Sans Arabic',
-                  fontSize: 12,
-                  color: Colors.black.withOpacity(0.75),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 11),
+          const SizedBox(width: 12),
           // Doctor Photo
           Container(
             width: 42,
@@ -308,28 +281,59 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
                   )
                 : const Icon(Icons.person, color: Colors.grey, size: 24),
           ),
+          const SizedBox(width: 12),
+          // Doctor Name & Specialization
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        widget.doctor.fullName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'IBM Plex Sans Arabic',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.verified, color: Color(0xFF0EA5E9), size: 18),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'طبيب ${widget.doctor.specialization}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'IBM Plex Sans Arabic',
+                    fontSize: 12,
+                    color: Colors.black.withOpacity(0.75),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildServiceToggle() {
-    final bool remoteAvailable = _bookingInfo?.remote?.isAvailable ?? widget.doctor.hasRemote;
-    final bool clinicAvailable = _bookingInfo?.clinic?.isAvailable ?? widget.doctor.hasClinic;
+    final bool remoteAvailable = widget.doctor.hasRemote;
+    final bool clinicAvailable = widget.doctor.hasClinic;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          // Menu icon
-          Opacity(
-            opacity: 0.5,
-            child: Transform.rotate(
-              angle: 1.5708, // 90 degrees
-              child: const Icon(Icons.menu, size: 24, color: Colors.black),
-            ),
-          ),
-          const SizedBox(width: 8),
           // Toggle Container
           Expanded(
             child: Container(
@@ -342,37 +346,7 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
               ),
               child: Row(
                 children: [
-                  // Clinic Tab
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: clinicAvailable ? () {
-                        setState(() { _serviceType = 'clinic'; });
-                        _fetchSlots();
-                      } : null,
-                      child: Container(
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: _serviceType == 'clinic' ? const Color(0xFFBF092F) : Colors.white,
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'داخل العيادة',
-                          style: TextStyle(
-                            fontFamily: 'IBM Plex Sans Arabic',
-                            fontWeight: FontWeight.w500,
-                            fontSize: 16,
-                            color: _serviceType == 'clinic'
-                                ? Colors.white
-                                : clinicAvailable
-                                    ? Colors.black.withOpacity(0.5)
-                                    : Colors.black.withOpacity(0.2),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Remote Tab
+                  // Remote Tab (First in RTL = Right)
                   Expanded(
                     child: GestureDetector(
                       onTap: remoteAvailable ? () {
@@ -402,9 +376,83 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
                       ),
                     ),
                   ),
+                  // Clinic Tab (Second in RTL = Left)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: clinicAvailable ? () {
+                        setState(() { _serviceType = 'clinic'; });
+                        _fetchSlots();
+                      } : null,
+                      child: Container(
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: _serviceType == 'clinic' ? const Color(0xFFBF092F) : Colors.white,
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'داخل العيادة',
+                          style: TextStyle(
+                            fontFamily: 'IBM Plex Sans Arabic',
+                            fontWeight: FontWeight.w500,
+                            fontSize: 16,
+                            color: _serviceType == 'clinic'
+                                ? Colors.white
+                                : clinicAvailable
+                                    ? Colors.black.withOpacity(0.5)
+                                    : Colors.black.withOpacity(0.2),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
+          ),
+          const SizedBox(width: 8),
+          // Menu icon (Left)
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.black54),
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.black.withOpacity(0.1)),
+            ),
+            offset: const Offset(0, 50),
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'report',
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'الابلاغ عن مشكلة',
+                      style: TextStyle(
+                        fontFamily: 'IBM Plex Sans Arabic',
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                  ],
+                ),
+              ),
+            ],
+            onSelected: (value) {
+              if (value == 'report') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'سيتم قريباً تفعيل ميزة الإبلاغ عن مشكلة',
+                      style: TextStyle(fontFamily: 'IBM Plex Sans Arabic'),
+                    ),
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),
@@ -468,7 +516,6 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
           height: 104,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            reverse: true, // RTL
             itemCount: _weekDays.length,
             itemBuilder: (context, index) {
               final date = _weekDays[index];
@@ -560,6 +607,15 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Text(
+                _getFormattedDate(),
+                style: const TextStyle(
+                  fontFamily: 'IBM Plex Sans Arabic',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.black,
+                ),
+              ),
               if (_currentPrice != null)
                 Text(
                   '${_currentPrice!.toInt()}ج.م',
@@ -570,15 +626,6 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
                     color: Colors.black,
                   ),
                 ),
-              Text(
-                _getFormattedDate(),
-                style: const TextStyle(
-                  fontFamily: 'IBM Plex Sans Arabic',
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                  color: Colors.black,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -660,6 +707,15 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Time Range
+                Text(
+                  'من ${slot.startTime} الى ${slot.endTime}',
+                  style: const TextStyle(
+                    fontFamily: 'IBM Plex Sans Arabic',
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
+                ),
                 // Book Button
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -675,15 +731,6 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
                       fontSize: 12,
                       color: Colors.white,
                     ),
-                  ),
-                ),
-                // Time Range
-                Text(
-                  'من ${slot.startTime} الى ${slot.endTime}',
-                  style: const TextStyle(
-                    fontFamily: 'IBM Plex Sans Arabic',
-                    fontSize: 14,
-                    color: Colors.black,
                   ),
                 ),
               ],
@@ -710,20 +757,20 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _currentPrice != null ? '${_currentPrice!.toInt()}ج.م' : '--',
-                style: const TextStyle(
-                  fontFamily: 'IBM Plex Sans Arabic',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.black,
-                ),
-              ),
-              Text(
                 _serviceType == 'remote' ? 'قيمة الجلسة اون لاين' : 'قيمة الكشف',
                 style: const TextStyle(
                   fontFamily: 'IBM Plex Sans Arabic',
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
+                  color: Colors.black,
+                ),
+              ),
+              Text(
+                _currentPrice != null ? '${_currentPrice!.toInt()}ج.م' : '--',
+                style: const TextStyle(
+                  fontFamily: 'IBM Plex Sans Arabic',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                   color: Colors.black,
                 ),
               ),
@@ -736,21 +783,21 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                _sessionDuration != null ? '$_sessionDuration دقيقة' : '--',
-                style: const TextStyle(
-                  fontFamily: 'IBM Plex Sans Arabic',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.black,
-                ),
-              ),
               const Text(
                 'مدة الجلسة',
                 style: TextStyle(
                   fontFamily: 'IBM Plex Sans Arabic',
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
+                  color: Colors.black,
+                ),
+              ),
+              Text(
+                _sessionDuration != null ? '$_sessionDuration دقيقة' : '--',
+                style: const TextStyle(
+                  fontFamily: 'IBM Plex Sans Arabic',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                   color: Colors.black,
                 ),
               ),
@@ -771,7 +818,7 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
         border: Border.all(color: const Color(0xFFD9D9D9)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'معلومات الكشف',
