@@ -89,7 +89,7 @@ class _RankingPageState extends State<RankingPage> {
             ),
           ),
           GestureDetector(
-            onTap: () => Navigator.maybePop(context),
+            onTap: () => Navigator.pushReplacementNamed(context, '/home'),
             child: Container(
               width: 36,
               height: 36,

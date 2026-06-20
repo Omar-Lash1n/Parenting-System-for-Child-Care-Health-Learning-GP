@@ -5,6 +5,8 @@ import 'package:Ajial/consultations/screens/cancel_booking_page.dart';
 import 'package:Ajial/consultations/screens/clinical_record_page.dart';
 import 'package:Ajial/consultations/screens/parent_telemedicine_chat_page.dart';
 import 'package:Ajial/consultations/screens/session_rating_page.dart';
+import 'package:Ajial/consultations/screens/doctor_booking_page.dart';
+import 'package:Ajial/consultations/screens/clinic_booking_info_page.dart';
 import 'package:Ajial/consultations/widgets/clinical_record_paper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -745,9 +747,36 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
           ),
         ),
         const SizedBox(height: 12),
-        // طلب الجلسة مرة اخرى (placeholder)
+        // طلب الجلسة مرة اخرى
         GestureDetector(
-          onTap: () => _showComingSoon('طلب الجلسة مرة اخرى'),
+          onTap: () {
+            final doctor = AvailableDoctor(
+              id: _booking.specialistId,
+              fullName: _booking.doctorName,
+              specialization: _booking.specialization,
+              profileImageUrl: _booking.photoUrl,
+              hasClinic: true,
+              hasRemote: true,
+            );
+            if (_booking.serviceType == 'clinic') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ClinicBookingInfoPage(doctor: doctor),
+                ),
+              );
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DoctorBookingPage(
+                    doctor: doctor,
+                    initialServiceType: 'remote',
+                  ),
+                ),
+              );
+            }
+          },
           child: Container(
             width: double.infinity,
             height: 56,

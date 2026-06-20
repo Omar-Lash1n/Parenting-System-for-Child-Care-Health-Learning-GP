@@ -5,6 +5,7 @@ import 'package:Ajial/consultations/screens/doctor_booking_page.dart';
 import 'package:Ajial/consultations/screens/clinic_booking_info_page.dart';
 import 'package:Ajial/consultations/screens/my_bookings_page.dart';
 import 'package:Ajial/consultations/screens/parent_payments_page.dart';
+import 'package:Ajial/providers/nav_bar_provider.dart';
 
 class ParentConsultationsPage extends StatefulWidget {
   const ParentConsultationsPage({super.key});
@@ -418,10 +419,9 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                       boxShadow: _searchFocusNode.hasFocus
                           ? [
                               const BoxShadow(
-                                color: Color(0x1A000000),
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              )
+                                  color: Color(0x1A000000),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4))
                             ]
                           : [],
                     ),
@@ -483,7 +483,8 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                       constraints: const BoxConstraints(maxHeight: 250),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+                        borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(24)),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.15),
@@ -497,7 +498,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: _searchHistory.length,
                         separatorBuilder: (context, index) => Divider(
-                          height: 1, 
+                          height: 1,
                           color: Colors.black.withValues(alpha: 0.05),
                           indent: 16,
                           endIndent: 16,
@@ -507,7 +508,8 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                           return InkWell(
                             onTap: () => _selectHistoryItem(item),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
                               child: Row(
                                 children: [
                                   Expanded(
@@ -525,7 +527,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                                   const SizedBox(width: 4),
                                   Opacity(
                                     opacity: 0.5,
-                                    child: Icon(
+                                    child: const Icon(
                                       Icons.backup_outlined,
                                       size: 16,
                                       color: Colors.black,
@@ -543,6 +545,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
             ),
           ],
         ),
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
       ),
     );
   }

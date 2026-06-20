@@ -170,12 +170,11 @@ class _TasksMainPageState extends State<TasksMainPage> {
                 ),
               ),
 
-              // ── Bottom Nav ──
               const Positioned(
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: AppBottomNavBar(currentIndex: 1),
+                child: AppBottomNavBar(currentIndex: 2),
               ),
 
               // ── Spotlight overlay ──

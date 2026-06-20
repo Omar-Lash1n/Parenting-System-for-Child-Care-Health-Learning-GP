@@ -3,6 +3,7 @@ import 'package:Ajial/api/parent_consultation_service.dart';
 import 'package:Ajial/consultations/screens/booking_details_page.dart';
 import 'package:Ajial/consultations/screens/clinical_record_page.dart';
 import 'package:Ajial/consultations/widgets/clinical_record_paper.dart';
+import 'package:Ajial/providers/nav_bar_provider.dart';
 
 class MyBookingsPage extends StatefulWidget {
   const MyBookingsPage({super.key});
@@ -96,6 +97,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
             ],
           ),
         ),
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
       ),
     );
   }

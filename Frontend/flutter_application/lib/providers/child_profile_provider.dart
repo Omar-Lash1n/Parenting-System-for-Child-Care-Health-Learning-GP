@@ -89,31 +89,16 @@ class ChildProfileProvider extends ChangeNotifier {
           bgColor: Color(0x0DFE8401),
         ),
         const DashboardItem(
-          title: 'المهام',
-          icon: Icons.assignment_outlined,
-          iconColor: Color(0xFFFE8401),
-          bgColor: Color(0x0DFE8401),
-        ),
-        DashboardItem(
           title: 'المكافآت',
-          icon: _isAccountCreated ? Icons.emoji_events : Icons.lock_outline,
-          iconColor: _isAccountCreated
-              ? const Color(0xFF0EA5E9)
-              : const Color(0xFF000000),
-          bgColor: const Color(0x0D0EA5E9),
-          isLocked: !_isAccountCreated,
+          icon: Icons.emoji_events,
+          iconColor: Color(0xFF0EA5E9),
+          bgColor: Color(0x0D0EA5E9),
         ),
         const DashboardItem(
           title: 'السجل الطبي',
           icon: Icons.medical_services_outlined,
           iconColor: Color(0xFF0EA5E9),
           bgColor: Color(0x0D0EA5E9),
-        ),
-        const DashboardItem(
-          title: 'سجل النمو',
-          icon: Icons.trending_up,
-          iconColor: Color(0xFF01A449),
-          bgColor: Color(0x0D01A449),
         ),
       ];
 

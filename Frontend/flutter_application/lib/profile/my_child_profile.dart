@@ -744,11 +744,8 @@ class _MyChildProfilePageState extends State<MyChildProfilePage> {
         // Row 1: بيانات الطفل (left) | التطعيمات (right)
         _buildDashboardRow(context, items[1], items[0], provider),
         const SizedBox(height: 12),
-        // Row 2: المكافآت (left) | المهام (right)
-        _buildDashboardRow(context, items[3], items[2], provider),
-        const SizedBox(height: 12),
-        // Row 3: سجل النمو (left) | السجل الطبي (right)
-        _buildDashboardRow(context, items[5], items[4], provider),
+        // Row 2: المكافآت (left) | السجل الطبي (right)
+        _buildDashboardRow(context, items[2], items[3], provider),
       ],
     );
   }
@@ -913,7 +910,10 @@ class _MyChildProfilePageState extends State<MyChildProfilePage> {
                   );
                 }
               }
-              // Other dashboard items can be wired here
+              // --- المكافآت (Rewards) ---
+              else if (item.title == 'المكافآت') {
+                Navigator.pushNamed(context, '/prizes');
+              }
             },
       child: Opacity(
         opacity: item.isLocked ? 0.5 : 1.0,

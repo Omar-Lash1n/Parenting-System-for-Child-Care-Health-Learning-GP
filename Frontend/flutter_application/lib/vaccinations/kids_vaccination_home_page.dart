@@ -546,7 +546,7 @@ class _FeatureGrid extends StatelessWidget {
                 iconColor: _kBlue,
                 bgColor: _kBlue.withOpacity(0.05),
                 onTap: () {
-                  // TODO: navigate to consult a doctor
+                  Navigator.pushNamed(context, '/parent-consultations');
                 },
               ),
             ),

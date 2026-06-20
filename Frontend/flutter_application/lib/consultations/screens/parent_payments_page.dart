@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
+import 'package:Ajial/providers/nav_bar_provider.dart';
 
 const String _kFont = 'IBM Plex Sans Arabic';
 const Color _kPrimary = Color(0xFFBF092F);
@@ -110,6 +111,7 @@ class _ParentPaymentsPageState extends State<ParentPaymentsPage> {
             ],
           ),
         ),
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
       ),
     );
   }

@@ -40,10 +40,10 @@ class TasksWelcomePage extends StatelessWidget {
               // ── Action Buttons ──────────────────────────────────────
               _ActionButtons(
                 onNext: () {
-                  Navigator.pushReplacementNamed(context, '/tasks');
+                  Navigator.pushNamed(context, '/tasks');
                 },
                 onBack: () {
-                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(context, '/home');
                 },
               ),
 

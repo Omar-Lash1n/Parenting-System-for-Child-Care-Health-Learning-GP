@@ -1,10 +1,9 @@
-// --- login.dart (Refactored with Provider Pattern) ---
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:Ajial/providers/login_provider.dart';
 import 'package:Ajial/signup-login-pages/forgetpassword.dart';
 import 'package:Ajial/signup-login-pages/signup.dart';
+import 'package:Ajial/role_selection.dart';
 
 // --- Global Constants ---
 const Color kPrimaryColor = Color(0xFFBF092F);
@@ -323,6 +322,30 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ),
                                 ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        // ── رجوع لاختيار الدور ──
+                        Center(
+                          child: TextButton.icon(
+                            onPressed: provider.isLoading
+                                ? null
+                                : () {
+                                    Navigator.of(context).pushAndRemoveUntil(
+                                      MaterialPageRoute(
+                                        builder: (_) => const RoleSelectionScreen(),
+                                      ),
+                                      (route) => false,
+                                    );
+                                  },
+                            icon: const Icon(Icons.arrow_back_ios, size: 14, color: Colors.grey),
+                            label: const Text(
+                              'رجوع لاختيار الدور',
+                              style: TextStyle(
+                                fontFamily: kFontFamily,
+                                fontSize: 14,
+                                color: Colors.grey,
                               ),
                             ),
                           ),
