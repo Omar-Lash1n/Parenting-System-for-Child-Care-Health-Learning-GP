@@ -30,6 +30,7 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
 
   DateTime _selectedDate = DateTime.now();
   List<DateTime> _weekDays = [];
+  final ScrollController _scrollController = ScrollController();
 
   // Arabic day names
   static const _arabicDays = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -48,10 +49,29 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
 
   void _generateWeekDays() {
     final now = DateTime.now();
-    // Generate 7 days starting from today
-    _weekDays = List.generate(7, (i) => now.add(Duration(days: i)));
-    // Select today by default
-    _selectedDate = now;
+    // Generate 365 days starting from today
+    _weekDays = List.generate(365, (i) => now.add(Duration(days: i)));
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final pickedDay = DateTime(date.year, date.month, date.day);
+    final diff = pickedDay.difference(today).inDays;
+    
+    if (diff >= 0 && diff < _weekDays.length) {
+      _scrollController.animateTo(
+        diff * 68.0, // width 56 + margin 12
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   Future<void> _loadBookingData() async {
@@ -206,21 +226,33 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
                               const SizedBox(height: 16),
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Column(
-                                  children: [
-                                    // Date Picker
-                                    _buildDatePicker(),
-                                    const SizedBox(height: 16),
-                                    // Slots Card
-                                    _buildSlotsCard(),
-                                    const SizedBox(height: 16),
-                                    // Session Info Card
-                                    _buildSessionInfoCard(),
-                                    const SizedBox(height: 16),
-                                    // Consultation Details Card
-                                    _buildConsultationDetailsCard(),
-                                  ],
-                                ),
+                                child: _serviceType == 'remote'
+                                    ? Column(
+                                        children: [
+                                          // Date Picker
+                                          _buildDatePicker(),
+                                          const SizedBox(height: 16),
+                                          // Slots Card
+                                          _buildSlotsCard(),
+                                          const SizedBox(height: 16),
+                                          // Session Info Card
+                                          _buildSessionInfoCard(),
+                                          const SizedBox(height: 16),
+                                          // Consultation Details Card
+                                          _buildConsultationDetailsCard(),
+                                        ],
+                                      )
+                                    : Column(
+                                        children: [
+                                          _buildClinicAddressCard(),
+                                          const SizedBox(height: 16),
+                                          _buildWorkingHoursCard(),
+                                          const SizedBox(height: 16),
+                                          _buildClinicPriceCard(),
+                                          const SizedBox(height: 16),
+                                          _buildClinicBookingInfoCard(),
+                                        ],
+                                      ),
                               ),
                             ],
                           ),
@@ -475,12 +507,14 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
                   context: context,
                   initialDate: _selectedDate,
                   firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 60)),
+                  lastDate: DateTime.now().add(const Duration(days: 365)),
                   locale: const Locale('ar'),
                 );
                 if (picked != null) {
-                  setState(() { _selectedDate = picked; });
-                  _generateWeekDays();
+                  setState(() { 
+                    _selectedDate = picked; 
+                  });
+                  _scrollToDate(picked);
                   _fetchSlots();
                 }
               },
@@ -517,6 +551,7 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
         SizedBox(
           height: 104,
           child: ListView.builder(
+            controller: _scrollController,
             scrollDirection: Axis.horizontal,
             itemCount: _weekDays.length,
             itemBuilder: (context, index) {
@@ -854,7 +889,24 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
   Widget _buildBottomButton() {
     final priceText = _currentPrice != null ? ' ${_currentPrice!.toInt()}ج.م' : '';
     return GestureDetector(
-      onTap: _bookNearestSlot,
+      onTap: _serviceType == 'remote' 
+        ? _bookNearestSlot 
+        : () {
+            // Re-route back to ClinicBookingInfoPage or just book directly if this is what they wanted?
+            // Actually, if it's clinic, the original button went to DoctorBookingPage. But here they just want to book nearest.
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => BookingConfirmationPage(
+                  doctor: widget.doctor,
+                  serviceType: 'clinic',
+                  date: 'اقرب موعد متاح',
+                  startTime: '',
+                  endTime: '',
+                ),
+              ),
+            );
+          },
       child: Container(
         height: 50,
         decoration: BoxDecoration(
@@ -871,6 +923,131 @@ class _DoctorBookingPageState extends State<DoctorBookingPage> {
             color: Colors.white,
           ),
         ),
+      ),
+    );
+  }
+
+  // --- Clinic Layout Components ---
+  Widget _buildClinicAddressCard() {
+    final address = _bookingInfo?.clinic?.fullAddress;
+    return _buildInfoCard(
+      title: 'عنوان العيادة',
+      child: Text(
+        (address != null && address.isNotEmpty) ? address : 'لم يتم تحديد العنوان',
+        style: const TextStyle(
+          fontFamily: 'IBM Plex Sans Arabic',
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: Colors.black,
+        ),
+        textAlign: TextAlign.right,
+      ),
+    );
+  }
+
+  Widget _buildWorkingHoursCard() {
+    final hours = _bookingInfo?.clinic?.workingHoursFormatted ?? 'غير متاح';
+    return _buildInfoCard(
+      title: 'مواعيد عمل العيادة',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(50),
+        ),
+        child: Text(
+          hours,
+          style: const TextStyle(
+            fontFamily: 'IBM Plex Sans Arabic',
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: Colors.black,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClinicPriceCard() {
+    final price = _bookingInfo?.clinic?.examinationPrice ?? widget.doctor.clinicExaminationPrice;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFD9D9D9)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'قيمة الكشف داخل العيادة',
+            style: TextStyle(
+              fontFamily: 'IBM Plex Sans Arabic',
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: Colors.black,
+            ),
+          ),
+          Text(
+            price != null ? '${price.toInt()}ج.م' : 'غير محدد',
+            style: const TextStyle(
+              fontFamily: 'IBM Plex Sans Arabic',
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClinicBookingInfoCard() {
+    return _buildInfoCard(
+      title: 'معلومات الكشف',
+      child: const Text(
+        'احجز الآن و سيتم التواصل مع حضراتكم لتاكيد الحجز',
+        style: TextStyle(
+          fontFamily: 'IBM Plex Sans Arabic',
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: Colors.black,
+        ),
+        textAlign: TextAlign.right,
+      ),
+    );
+  }
+
+  Widget _buildInfoCard({required String title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFD9D9D9)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'IBM Plex Sans Arabic',
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(color: Color(0xFFD9D9D9), height: 1, thickness: 0.5),
+          const SizedBox(height: 8),
+          child,
+        ],
       ),
     );
   }
