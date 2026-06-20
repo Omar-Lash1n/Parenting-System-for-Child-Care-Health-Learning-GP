@@ -175,6 +175,27 @@ public class ParentConsultationController : ControllerBase
         return ToActionResult(await _service.GetDiagnosisAsync(userId, bookingId));
     }
 
+    // ── تقييم الجلسة (المرحلة الثامنة) ───────────────────────────────────────────
+
+    /// <summary>حالة تقييم الجلسة (هل قُيّمت + هل يمكن تقييمها الان + تفاصيل التقييم).</summary>
+    [HttpGet("bookings/{bookingId:guid}/rating")]
+    [ProducesResponseType(typeof(ApiResponse<SessionRatingResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSessionRating(Guid bookingId)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<SessionRatingResponse>();
+        return ToActionResult(await _service.GetSessionRatingAsync(userId, bookingId));
+    }
+
+    /// <summary>إرسال تقييم الجلسة (استبيان النجوم + السؤالين) ومنح ولي الأمر 250 نجمة (مرة واحدة لكل حجز).</summary>
+    [HttpPost("bookings/{bookingId:guid}/rating")]
+    [ProducesResponseType(typeof(ApiResponse<SessionRatingResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<SessionRatingResponse>), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> SubmitSessionRating(Guid bookingId, [FromBody] SubmitSessionRatingRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<SessionRatingResponse>();
+        return ToActionResult(await _service.SubmitSessionRatingAsync(userId, bookingId, request));
+    }
+
     /// <summary>المعاملات المالية لولي الأمر.</summary>
     [HttpGet("payments")]
     [ProducesResponseType(typeof(ApiResponse<List<ParentPaymentListItemResponse>>), StatusCodes.Status200OK)]

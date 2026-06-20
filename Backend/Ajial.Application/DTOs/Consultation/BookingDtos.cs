@@ -147,6 +147,13 @@ public class BookingDetailResponse
 
     public DateTime CreatedAt { get; set; }
     public bool CanCancel { get; set; }
+
+    // ── تقييم الجلسة (المرحلة الثامنة) ──
+    /// <summary>هل تم تقييم هذه الجلسة من قبل.</summary>
+    public bool HasRated { get; set; }
+
+    /// <summary>هل يمكن تقييم الجلسة الان (مكتملة ولم تُقيَّم بعد) — يتحكم في إظهار زر "قيّم الجلسة واحصل على 250".</summary>
+    public bool CanRate { get; set; }
 }
 
 /// <summary>عنصر في قائمة المعاملات المالية لولي الأمر.</summary>

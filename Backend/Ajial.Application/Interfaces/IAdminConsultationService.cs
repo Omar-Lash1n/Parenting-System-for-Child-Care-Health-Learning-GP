@@ -13,4 +13,11 @@ public interface IAdminConsultationService
 
     Task<ApiResponse<PaymentSettingsResponse>> GetPaymentSettingsAsync();
     Task<ApiResponse<PaymentSettingsResponse>> UpdatePaymentSettingsAsync(Guid adminUserId, UpdatePaymentSettingsRequest request);
+
+    // ── تقييمات الجلسات ──
+    /// <summary>قائمة استبيانات تقييم الجلسات (فلتر اختياري بالطبيب / من أبلغ عن مشكلة).</summary>
+    Task<ApiResponse<AdminRatingListResponse>> GetRatingsAsync(Guid? specialistId, bool? hadIssue, int page, int pageSize);
+
+    /// <summary>ملخص تقييمات الأطباء (متوسط + توزيع النجوم لكل طبيب).</summary>
+    Task<ApiResponse<AdminDoctorRatingSummaryResponse>> GetDoctorRatingsSummaryAsync();
 }

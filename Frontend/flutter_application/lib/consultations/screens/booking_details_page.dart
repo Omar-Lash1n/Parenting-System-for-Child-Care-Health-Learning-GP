@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
 import 'package:Ajial/consultations/screens/clinical_record_page.dart';
 import 'package:Ajial/consultations/screens/parent_telemedicine_chat_page.dart';
+import 'package:Ajial/consultations/screens/session_rating_page.dart';
 import 'package:Ajial/consultations/widgets/clinical_record_paper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -571,35 +572,43 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
   }
 
   Widget _buildCompletedBottomButtons() {
+    final bool rated = _booking.hasRated;
     return Column(
       children: [
-        // قيم الجلسة (placeholder — صفحة التقييم لاحقاً)
+        // قيم الجلسة واحصل على 250 — يظهر مرة واحدة (يصبح مُعطّلاً بعد التقييم)
         GestureDetector(
-          onTap: () => _showComingSoon('تقييم الجلسة'),
+          onTap: rated ? null : _openRatingPage,
           child: Container(
             width: double.infinity,
             height: 56,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFE8401), Color(0xFFFFA53D)],
-              ),
+              gradient: rated
+                  ? null
+                  : const LinearGradient(
+                      colors: [Color(0xFFFE8401), Color(0xFFFFA53D)],
+                    ),
+              color: rated ? const Color(0xFFE9E9E9) : null,
               borderRadius: BorderRadius.circular(50),
             ),
             alignment: Alignment.center,
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'قيم الجلسة واحصل على 250',
+                  rated ? 'تم تقييم الجلسة' : 'قيم الجلسة واحصل على 250',
                   style: TextStyle(
                     fontFamily: 'IBM Plex Sans Arabic',
                     fontWeight: FontWeight.w700,
                     fontSize: 17,
-                    color: Colors.white,
+                    color: rated ? Colors.black54 : Colors.white,
                   ),
                 ),
-                SizedBox(width: 8),
-                Icon(Icons.star_border_rounded, color: Colors.white, size: 24),
+                const SizedBox(width: 8),
+                Icon(
+                  rated ? Icons.check_circle_outline_rounded : Icons.star_border_rounded,
+                  color: rated ? Colors.black54 : Colors.white,
+                  size: 24,
+                ),
               ],
             ),
           ),
@@ -630,6 +639,22 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
         ),
       ],
     );
+  }
+
+  Future<void> _openRatingPage() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SessionRatingPage(
+          bookingId: _booking.bookingId,
+          doctorName: _booking.doctorName,
+        ),
+      ),
+    );
+    if (result == true) {
+      // أُرسل التقييم بنجاح — أعد تحميل التفاصيل كي يتحدث زر التقييم الى "تم تقييم الجلسة"
+      await _loadBookingDetails();
+    }
   }
 
   void _showComingSoon(String feature) {
