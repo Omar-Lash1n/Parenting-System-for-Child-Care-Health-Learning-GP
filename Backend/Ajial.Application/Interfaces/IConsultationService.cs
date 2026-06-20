@@ -39,4 +39,11 @@ public interface IConsultationService
 
     /// <summary>التشخيص الطبي الذي سجّله الطبيب لهذا الحجز — لعرضه لولي الأمر.</summary>
     Task<ApiResponse<ParentDiagnosisResponse>> GetDiagnosisAsync(Guid userId, Guid bookingId);
+
+    // ── تقييم الجلسة (المرحلة الثامنة) ──
+    /// <summary>حالة تقييم الجلسة (هل قُيّمت + هل يمكن تقييمها الان).</summary>
+    Task<ApiResponse<SessionRatingResponse>> GetSessionRatingAsync(Guid userId, Guid bookingId);
+
+    /// <summary>إرسال تقييم الجلسة ومنح ولي الأمر 250 نجمة (مرة واحدة لكل حجز).</summary>
+    Task<ApiResponse<SessionRatingResponse>> SubmitSessionRatingAsync(Guid userId, Guid bookingId, SubmitSessionRatingRequest request);
 }

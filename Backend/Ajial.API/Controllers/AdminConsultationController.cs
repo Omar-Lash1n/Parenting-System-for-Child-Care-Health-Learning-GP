@@ -69,6 +69,20 @@ public class AdminConsultationController : ControllerBase
         return ToActionResult(await _service.UpdatePaymentSettingsAsync(adminUserId, request));
     }
 
+    // ── تقييمات الجلسات ──────────────────────────────────────────────────────────
+
+    /// <summary>قائمة استبيانات تقييم الجلسات (فلتر اختياري: specialistId=طبيب معيّن، hadIssue=true لمن أبلغوا عن مشكلة).</summary>
+    [HttpGet("ratings")]
+    [ProducesResponseType(typeof(ApiResponse<AdminRatingListResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRatings([FromQuery] Guid? specialistId, [FromQuery] bool? hadIssue, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        => ToActionResult(await _service.GetRatingsAsync(specialistId, hadIssue, page, pageSize));
+
+    /// <summary>ملخص تقييمات الأطباء (متوسط النجوم + توزيعها لكل طبيب).</summary>
+    [HttpGet("ratings/doctors")]
+    [ProducesResponseType(typeof(ApiResponse<AdminDoctorRatingSummaryResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDoctorRatingsSummary()
+        => ToActionResult(await _service.GetDoctorRatingsSummaryAsync());
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private bool TryGetUserId(out Guid userId)

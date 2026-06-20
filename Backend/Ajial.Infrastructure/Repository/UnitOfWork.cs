@@ -54,6 +54,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<PrescriptionMedicine> PrescriptionMedicines { get; private set; } // ✅ Doctor Consultation — الروشتة الطبية
     public IRepository<MedicalDiagnosis> MedicalDiagnoses { get; private set; }          // ✅ Doctor Consultation — التشخيص الطبي
     public IRepository<ChatMessage> ChatMessages { get; private set; }                   // ✅ Consultation Chat — محادثة الاستشارة
+    public IRepository<SessionRating> SessionRatings { get; private set; }               // ✅ Session Rating — تقييم الجلسة
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -101,6 +102,7 @@ public class UnitOfWork : IUnitOfWork
         PrescriptionMedicines = new Repository<PrescriptionMedicine>(_context); // ✅ Doctor Consultation — الروشتة الطبية
         MedicalDiagnoses = new Repository<MedicalDiagnosis>(_context);          // ✅ Doctor Consultation — التشخيص الطبي
         ChatMessages = new Repository<ChatMessage>(_context);                   // ✅ Consultation Chat — محادثة الاستشارة
+        SessionRatings = new Repository<SessionRating>(_context);               // ✅ Session Rating — تقييم الجلسة
     }
 
     public async Task<int> SaveChangesAsync()

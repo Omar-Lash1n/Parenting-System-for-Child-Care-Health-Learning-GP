@@ -1,0 +1,108 @@
+:host {
+  display: block;
+}
+
+// نجوم التقييم
+.stars {
+  display: inline-flex;
+  gap: 2px;
+  white-space: nowrap;
+
+  .star {
+    color: #d8d8d8;
+    font-size: 16px;
+    line-height: 1;
+
+    &.filled {
+      color: var(--warning, #f59e0b);
+    }
+  }
+
+  &.big .star {
+    font-size: 26px;
+  }
+}
+
+.rating-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  .star.filled {
+    color: var(--warning, #f59e0b);
+  }
+
+  strong {
+    font-weight: 700;
+  }
+}
+
+// توزيع النجوم داخل جدول الأطباء
+.dist {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+
+  .dist-cell {
+    background: var(--bg-soft, #f4f4f5);
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-size: 12px;
+    color: var(--text-secondary, #555);
+    white-space: nowrap;
+  }
+}
+
+// شريط الفلاتر الفرعي (الكل / من أبلغوا عن مشكلة)
+.sub-filters {
+  margin-top: 4px;
+
+  .filter-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    color: var(--primary);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 13px;
+    font-weight: 600;
+
+    .chip-clear {
+      background: none;
+      border: none;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0;
+    }
+  }
+
+  .list-avg {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary, #555);
+  }
+}
+
+// رأس مودال التفاصيل — النجوم الكبيرة
+.detail-stars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 18px;
+
+  .detail-stars-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a1a);
+  }
+}

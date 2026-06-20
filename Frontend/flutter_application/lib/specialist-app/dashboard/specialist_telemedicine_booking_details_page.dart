@@ -540,6 +540,18 @@ class _SpecialistTelemedicineBookingDetailsPageState
                       isEnabled: isCompleted,
                       onTap: isCompleted
                           ? () {
+                              final dateParts = detail.appointmentDate.split('-');
+                              final endParts = detail.endTime.split(':');
+                              DateTime deadline = DateTime.now().add(const Duration(days: 3));
+                              if (dateParts.length >= 3 && endParts.length >= 2) {
+                                final year = int.parse(dateParts[0]);
+                                final month = int.parse(dateParts[1]);
+                                final day = int.parse(dateParts[2]);
+                                final endHour = int.parse(endParts[0]);
+                                final endMinute = int.parse(endParts[1]);
+                                deadline = DateTime(year, month, day, endHour, endMinute).add(const Duration(days: 3));
+                              }
+
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -548,6 +560,7 @@ class _SpecialistTelemedicineBookingDetailsPageState
                                     bookingId: detail.bookingId,
                                     patientName: detail.patientName,
                                     patientImage: 'images/pic.png',
+                                    chatDeadline: deadline,
                                   ),
                                 ),
                               );
