@@ -4,6 +4,7 @@ import 'package:Ajial/homepage/providers/parent_home_provider.dart';
 import 'package:Ajial/homepage/widgets/children_section.dart';
 import 'package:Ajial/homepage/widgets/current_vaccinations_section.dart';
 import 'package:Ajial/homepage/widgets/daily_question_card.dart';
+import 'package:Ajial/homepage/widgets/hardware_ad_card.dart';
 import 'package:Ajial/homepage/widgets/home_header.dart';
 import 'package:Ajial/homepage/widgets/parenting_nutrition_section.dart';
 import 'package:Ajial/homepage/widgets/quick_actions_section.dart';
@@ -106,6 +107,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 24),
                       const DailyQuestionCard(),
+                      const SizedBox(height: 24),
+                      HardwareAdCard(
+                        onOrderTap: () {
+                          // TODO: wire up the hardware order flow.
+                        },
+                      ),
                       const SizedBox(height: 24),
                       const QuickActionsSection(),
                       const SizedBox(height: 24),
