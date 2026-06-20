@@ -51,6 +51,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PaymentSetting> PaymentSettings { get; set; } = null!;            // ✅ Consultation Booking Feature
     public DbSet<PrescriptionMedicine> PrescriptionMedicines { get; set; } = null!; // ✅ Doctor Consultation — الروشتة الطبية
     public DbSet<MedicalDiagnosis> MedicalDiagnoses { get; set; } = null!;          // ✅ Doctor Consultation — التشخيص الطبي
+    public DbSet<ChatMessage> ChatMessages { get; set; } = null!;                   // ✅ Consultation Chat — محادثة الاستشارة
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -1560,6 +1561,26 @@ public class ApplicationDbContext : DbContext
 
             // تشخيص واحد لكل حجز
             entity.HasIndex(d => d.BookingId).IsUnique();
+        });
+
+        // ✅ ChatMessage Configuration — محادثة الاستشارة بين ولي الأمر والطبيب
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.SenderRole).IsRequired();
+            entity.Property(m => m.Type).IsRequired();
+            entity.Property(m => m.Content).HasMaxLength(4000);
+            entity.Property(m => m.AttachmentUrl).HasMaxLength(1000);
+            entity.Property(m => m.AttachmentName).HasMaxLength(300);
+            entity.Property(m => m.CreatedAt).IsRequired();
+
+            entity.HasOne(m => m.Booking)
+                .WithMany()
+                .HasForeignKey(m => m.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // الجلب الأساسي: رسائل حجز مرتّبة زمنياً
+            entity.HasIndex(m => new { m.BookingId, m.CreatedAt });
         });
     }
 

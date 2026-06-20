@@ -545,6 +545,7 @@ class _SpecialistTelemedicineBookingDetailsPageState
                                 MaterialPageRoute(
                                   builder: (context) =>
                                       SpecialistTelemedicineChatPage(
+                                    bookingId: detail.bookingId,
                                     patientName: detail.patientName,
                                     patientImage: 'images/pic.png',
                                   ),

@@ -18,6 +18,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   http: ^1.6.0
+  http_parser: ^4.0.2
   shared_preferences: ^2.5.3
   provider: ^6.1.2
   audioplayers: ^6.5.1
@@ -45,6 +46,7 @@ dependencies:
   printing: ^5.13.4
   gal: ^2.3.1
   open_file: ^3.5.11
+  signalr_netcore: ^1.3.7 # Real-time consultation chat (SignalR client)
 
 dependency_overrides:
   record_linux: ^1.2.1

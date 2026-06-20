@@ -1,17 +1,20 @@
 import 'dart:async';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:Ajial/api/chat_service.dart';
+import 'package:Ajial/api/specialist-services.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
 
 class SpecialistTelemedicineChatPage extends StatefulWidget {
+  final String bookingId;
   final String patientName;
   final String patientImage;
 
   const SpecialistTelemedicineChatPage({
     super.key,
+    required this.bookingId,
     required this.patientName,
     required this.patientImage,
   });
@@ -21,140 +24,213 @@ class SpecialistTelemedicineChatPage extends StatefulWidget {
       _SpecialistTelemedicineChatPageState();
 }
 
-class ChatMessage {
+/// Display model for one bubble (mapped from the backend [ChatMessageModel]).
+class _UiMessage {
   final String text;
-  final bool isDoctor;
+  final bool isDoctor; // true = doctor (me), false = patient (parent)
   final DateTime time;
-  final String? attachmentPath;
-  final String? attachmentType; // 'image' or 'file'
+  final String? attachmentUrl;
+  final String? attachmentType; // 'image' | 'file'
+  final String? fileName;
 
-  ChatMessage({
+  _UiMessage({
     required this.text,
     required this.isDoctor,
     required this.time,
-    this.attachmentPath,
+    this.attachmentUrl,
     this.attachmentType,
+    this.fileName,
   });
 }
 
 class _SpecialistTelemedicineChatPageState
     extends State<SpecialistTelemedicineChatPage> {
-  // Timer for 3 days (72 hours)
-  Duration _timeLeft = const Duration(days: 3);
+  late final ChatApiService _api;
+  late final ChatHubService _hub;
+
+  Duration _timeLeft = Duration.zero;
+  DateTime? _deadline;
   Timer? _timer;
+  Timer? _typingDebounce;
+  bool _typingSent = false;
 
   final TextEditingController _chatController = TextEditingController();
-  final List<ChatMessage> _messages = [];
+  final List<_UiMessage> _messages = [];
+  final Set<String> _seenIds = {};
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
-  bool _isTyping = false;
+
+  bool _loading = true;
+  bool _canSend = false;
+  String? _windowNotice;
+  bool _patientOnline = false;
+  bool _patientTyping = false;
+  bool _sending = false;
+  String? _patientImageUrl;
 
   @override
   void initState() {
     super.initState();
+    final specialist = SpecialistService();
+    _api = ChatApiService(specialist.getSpecialistToken);
+    _hub = ChatHubService(specialist.getSpecialistToken)
+      ..onMessage = _onIncomingMessage
+      ..onTyping = (t) {
+        if (mounted) setState(() => _patientTyping = t);
+        if (t) _scrollToBottom();
+      }
+      ..onPresence = (online) {
+        if (mounted) setState(() => _patientOnline = online);
+      }
+      ..onError = (msg) {
+        if (mounted) _showSnack(msg);
+      };
+
+    _bootstrap();
     _startTimer();
   }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_timeLeft.inSeconds > 0) {
-        setState(() {
-          _timeLeft = _timeLeft - const Duration(seconds: 1);
-        });
-      } else {
-        _timer?.cancel();
-        setState(() {}); // Trigger rebuild for timeout state
-      }
+  Future<void> _bootstrap() async {
+    try {
+      final convo = await _api.getConversation(widget.bookingId);
+      if (!mounted) return;
+      setState(() {
+        _canSend = convo.canSendMessages;
+        _windowNotice = convo.windowNotice;
+        _patientOnline = convo.participant.isOnline;
+        if (convo.participant.avatarUrl != null &&
+            convo.participant.avatarUrl!.isNotEmpty) {
+          _patientImageUrl = convo.participant.avatarUrl;
+        }
+        _deadline = convo.windowClosesAt;
+        for (final m in convo.messages) {
+          if (_seenIds.add(m.id)) _messages.add(_map(m));
+        }
+        _loading = false;
+      });
+      _scrollToBottom();
+      await _hub.connect(widget.bookingId);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showSnack('تعذّر تحميل المحادثة');
+    }
+  }
+
+  _UiMessage _map(ChatMessageModel m) => _UiMessage(
+        text: m.content ?? '',
+        isDoctor: m.senderRole == 'doctor',
+        time: m.createdAt,
+        attachmentUrl: m.attachmentUrl,
+        attachmentType: m.type == 'text' ? null : m.type,
+        fileName: m.attachmentName,
+      );
+
+  void _onIncomingMessage(ChatMessageModel m) {
+    if (!mounted) return;
+    if (!_seenIds.add(m.id)) return; // dedup by id
+    setState(() {
+      _patientTyping = false;
+      _messages.add(_map(m));
     });
+    _scrollToBottom();
+  }
+
+  void _startTimer() {
+    _updateTimeLeft();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTimeLeft());
+  }
+
+  void _updateTimeLeft() {
+    final deadline = _deadline;
+    if (deadline == null) return;
+    final now = DateTime.now();
+    if (now.isBefore(deadline)) {
+      setState(() => _timeLeft = deadline.difference(now));
+    } else {
+      _timer?.cancel();
+      setState(() {
+        _timeLeft = Duration.zero;
+        _canSend = false;
+        _windowNotice ??= 'انتهت فترة التحدث مع المريض';
+      });
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _typingDebounce?.cancel();
+    _hub.dispose();
     _chatController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleAttachmentSelection(String value) async {
-    if (value == 'camera') {
-      final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
-      if (photo != null) {
-        _sendAttachment(photo.path, 'image');
-      }
-    } else if (value == 'gallery') {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        _sendAttachment(image.path, 'image');
-      }
-    } else if (value == 'file') {
-      FilePickerResult? result = await FilePicker.pickFiles();
-      if (result != null && result.files.single.path != null) {
-        _sendAttachment(result.files.single.path!, 'file');
-      }
+  void _onInputChanged(String _) {
+    if (!_canSend) return;
+    if (!_typingSent) {
+      _typingSent = true;
+      _hub.sendTyping(true);
+    }
+    _typingDebounce?.cancel();
+    _typingDebounce = Timer(const Duration(seconds: 2), () {
+      _typingSent = false;
+      _hub.sendTyping(false);
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _chatController.text.trim();
+    if (text.isEmpty || !_canSend) return;
+    _chatController.clear();
+    _typingDebounce?.cancel();
+    _typingSent = false;
+    _hub.sendTyping(false);
+    try {
+      await _hub.sendMessage(text);
+    } catch (e) {
+      _showSnack('تعذّر إرسال الرسالة');
     }
   }
 
-  void _sendAttachment(String path, String type) {
-    setState(() {
-      _messages.add(ChatMessage(
-        text: type == 'image' ? 'تم إرفاق صورة' : 'تم إرفاق ملف',
-        isDoctor: true,
-        time: DateTime.now(),
-        attachmentPath: path,
-        attachmentType: type,
-      ));
-      _isTyping = true;
-    });
-
-    _scrollToBottom();
-
-    // Simulate patient replying to attachment
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _isTyping = false;
-          _messages.add(ChatMessage(
-            text: 'شكراً دكتور، جاري المراجعة.',
-            isDoctor: false,
-            time: DateTime.now(),
-          ));
-        });
-        _scrollToBottom();
+  Future<void> _handleAttachmentSelection(String value) async {
+    if (!_canSend) return;
+    String? path;
+    String? name;
+    if (value == 'camera') {
+      final photo = await _picker.pickImage(source: ImageSource.camera);
+      path = photo?.path;
+      name = photo?.name;
+    } else if (value == 'gallery') {
+      final image = await _picker.pickImage(source: ImageSource.gallery);
+      path = image?.path;
+      name = image?.name;
+    } else if (value == 'file') {
+      final result = await FilePicker.pickFiles();
+      if (result != null && result.files.single.path != null) {
+        path = result.files.single.path;
+        name = result.files.single.name;
       }
-    });
+    }
+    if (path == null) return;
+    final fileName = name ?? path.split('/').last.split('\\').last;
+
+    setState(() => _sending = true);
+    try {
+      await _api.sendAttachment(widget.bookingId, path, fileName);
+    } catch (e) {
+      _showSnack('تعذّر رفع المرفق');
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
-  void _sendMessage() {
-    final text = _chatController.text.trim();
-    if (text.isEmpty) return;
-
-    setState(() {
-      _messages.add(ChatMessage(
-        text: text,
-        isDoctor: true,
-        time: DateTime.now(),
-      ));
-      _chatController.clear();
-      _isTyping = true;
-    });
-
-    _scrollToBottom();
-
-    // Simulate patient typing and replying
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _isTyping = false;
-          _messages.add(ChatMessage(
-            text: 'أهلاً دكتور، نعم لاحظت احمرار بسيط في قدم يحيى يبكي قليلاً عند لمسها.',
-            isDoctor: false,
-            time: DateTime.now(),
-          ));
-        });
-        _scrollToBottom();
-      }
-    });
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg, style: const TextStyle(fontFamily: specialistFont))),
+    );
   }
 
   void _scrollToBottom() {
@@ -177,9 +253,22 @@ class _SpecialistTelemedicineChatPageState
     return '$days يوم : $hours س : $minutes د : $seconds ث';
   }
 
+  ImageProvider _patientAvatar() {
+    if (_patientImageUrl != null && _patientImageUrl!.isNotEmpty) {
+      return NetworkImage(_patientImageUrl!);
+    }
+    return AssetImage(widget.patientImage);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool isTimeout = _timeLeft.inSeconds <= 0;
+    final bool isTimeout = !_canSend;
+    String timerText = _windowNotice ?? 'انتهت فترة التحدث مع المريض';
+    if (_canSend && _deadline != null && _timeLeft.inSeconds > 0) {
+      timerText = _formatDuration(_timeLeft);
+    } else if (_canSend && _deadline == null) {
+      timerText = 'المحادثة متاحة';
+    }
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -215,13 +304,10 @@ class _SpecialistTelemedicineChatPageState
                       children: [
                         Stack(
                           children: [
-                            CircleAvatar(
-                              radius: 24,
-                              backgroundImage: AssetImage(widget.patientImage),
-                            ),
+                            CircleAvatar(radius: 24, backgroundImage: _patientAvatar()),
                             Positioned(
                               bottom: 0,
-                              right: 0, // Left in RTL visually, but 'right' in Positioned is logical right. Let's use left to make it appear on the left side of avatar.
+                              right: 0,
                               left: 0,
                               child: Align(
                                 alignment: Alignment.bottomLeft,
@@ -229,7 +315,7 @@ class _SpecialistTelemedicineChatPageState
                                   width: 14,
                                   height: 14,
                                   decoration: BoxDecoration(
-                                    color: Colors.green,
+                                    color: _patientOnline ? Colors.green : Colors.grey,
                                     shape: BoxShape.circle,
                                     border: Border.all(color: Colors.white, width: 2),
                                   ),
@@ -252,11 +338,13 @@ class _SpecialistTelemedicineChatPageState
                               ),
                             ),
                             Text(
-                              'متاح الان',
+                              _patientOnline ? 'متاح الان' : 'غير متصل',
                               style: TextStyle(
                                 fontFamily: specialistFont,
                                 fontSize: 12,
-                                color: Colors.grey.shade600,
+                                color: _patientOnline
+                                    ? Colors.green
+                                    : Colors.grey.shade600,
                               ),
                             ),
                           ],
@@ -279,15 +367,17 @@ class _SpecialistTelemedicineChatPageState
                   children: [
                     const Icon(Icons.access_time, size: 18, color: specialistGreen),
                     const SizedBox(width: 8),
-                    Text(
-                      _formatDuration(_timeLeft),
-                      style: const TextStyle(
-                        fontFamily: specialistFont,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                    Flexible(
+                      child: Text(
+                        timerText,
+                        style: const TextStyle(
+                          fontFamily: specialistFont,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                        textDirection: TextDirection.rtl,
                       ),
-                      textDirection: TextDirection.rtl, // Ensuring numbers format right
                     ),
                   ],
                 ),
@@ -295,70 +385,48 @@ class _SpecialistTelemedicineChatPageState
 
               // Messages Area
               Expanded(
-                child: _messages.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              'images/chat empty.png',
-                              width: 100,
-                              height: 100,
-                              color: Colors.grey.shade500,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'يبدو انه لا يتم التواصل بعد مع\nالمريض ${widget.patientName}',
-                              style: TextStyle(
-                                fontFamily: specialistFont,
-                                fontSize: 14,
-                                color: Colors.grey.shade500,
-                                height: 1.6,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-                        itemCount: _messages.length + (_isTyping ? 1 : 0) + 1, // +1 for date header
-                        itemBuilder: (context, index) {
-                          if (index == 0) {
-                            // Date Header
-                            return Center(
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 24),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(50),
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator(color: specialistGreen))
+                    : _messages.isEmpty && !_patientTyping
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'images/chat empty.png',
+                                  width: 100,
+                                  height: 100,
+                                  color: Colors.grey.shade500,
                                 ),
-                                child: const Text(
-                                  'اليوم, ١٤ مايو ٢٠٢٤',
+                                const SizedBox(height: 16),
+                                Text(
+                                  'يبدو انه لا يتم التواصل بعد مع\nالمريض ${widget.patientName}',
                                   style: TextStyle(
                                     fontFamily: specialistFont,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black54,
+                                    fontSize: 14,
+                                    color: Colors.grey.shade500,
+                                    height: 1.6,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
-                              ),
-                            );
-                          }
-
-                          final messageIndex = index - 1;
-                          if (messageIndex == _messages.length && _isTyping) {
-                            return _buildTypingIndicator();
-                          }
-
-                          final message = _messages[messageIndex];
-                          return message.isDoctor
-                              ? _buildDoctorMessage(message)
-                              : _buildPatientMessage(message);
-                        },
-                      ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0, vertical: 24.0),
+                            itemCount: _messages.length + (_patientTyping ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (index == _messages.length && _patientTyping) {
+                                return _buildTypingIndicator();
+                              }
+                              final message = _messages[index];
+                              return message.isDoctor
+                                  ? _buildDoctorMessage(message)
+                                  : _buildPatientMessage(message);
+                            },
+                          ),
               ),
 
               // Input Area
@@ -366,9 +434,7 @@ class _SpecialistTelemedicineChatPageState
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  border: Border(
-                    top: BorderSide(color: Colors.grey.shade200),
-                  ),
+                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
                 ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -379,12 +445,12 @@ class _SpecialistTelemedicineChatPageState
                   ),
                   child: Row(
                     children: [
-                      // Pin Button (Right in RTL, meaning first child)
                       PopupMenuButton<String>(
                         onSelected: _handleAttachmentSelection,
-                        enabled: !isTimeout,
+                        enabled: !isTimeout && !_sending,
                         offset: const Offset(0, -180),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                         color: Colors.white,
                         itemBuilder: (context) => [
                           PopupMenuItem(
@@ -392,10 +458,13 @@ class _SpecialistTelemedicineChatPageState
                             child: Row(
                               children: [
                                 const Expanded(
-                                  child: Text('التقاط صورة', style: TextStyle(fontFamily: specialistFont), textAlign: TextAlign.right),
+                                  child: Text('التقاط صورة',
+                                      style: TextStyle(fontFamily: specialistFont),
+                                      textAlign: TextAlign.right),
                                 ),
                                 const SizedBox(width: 12),
-                                Icon(Icons.camera_alt_outlined, color: Colors.grey.shade600, size: 20),
+                                Icon(Icons.camera_alt_outlined,
+                                    color: Colors.grey.shade600, size: 20),
                               ],
                             ),
                           ),
@@ -405,10 +474,13 @@ class _SpecialistTelemedicineChatPageState
                             child: Row(
                               children: [
                                 const Expanded(
-                                  child: Text('صورة من المعرض', style: TextStyle(fontFamily: specialistFont), textAlign: TextAlign.right),
+                                  child: Text('صورة من المعرض',
+                                      style: TextStyle(fontFamily: specialistFont),
+                                      textAlign: TextAlign.right),
                                 ),
                                 const SizedBox(width: 12),
-                                Icon(Icons.image_outlined, color: Colors.grey.shade600, size: 20),
+                                Icon(Icons.image_outlined,
+                                    color: Colors.grey.shade600, size: 20),
                               ],
                             ),
                           ),
@@ -418,10 +490,13 @@ class _SpecialistTelemedicineChatPageState
                             child: Row(
                               children: [
                                 const Expanded(
-                                  child: Text('تحميل ملف', style: TextStyle(fontFamily: specialistFont), textAlign: TextAlign.right),
+                                  child: Text('تحميل ملف',
+                                      style: TextStyle(fontFamily: specialistFont),
+                                      textAlign: TextAlign.right),
                                 ),
                                 const SizedBox(width: 12),
-                                Icon(Icons.insert_drive_file_outlined, color: Colors.grey.shade600, size: 20),
+                                Icon(Icons.insert_drive_file_outlined,
+                                    color: Colors.grey.shade600, size: 20),
                               ],
                             ),
                           ),
@@ -434,18 +509,23 @@ class _SpecialistTelemedicineChatPageState
                             border: Border.all(color: Colors.grey.shade300),
                           ),
                           child: Center(
-                            child: Image.asset(
-                              'images/pin.png',
-                              width: 20,
-                              height: 20,
-                              color: isTimeout ? Colors.grey.shade400 : Colors.black,
-                            ),
+                            child: _sending
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: specialistGreen),
+                                  )
+                                : Image.asset(
+                                    'images/pin.png',
+                                    width: 20,
+                                    height: 20,
+                                    color: isTimeout ? Colors.grey.shade400 : Colors.black,
+                                  ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
-                      // TextField or Timeout Text
                       Expanded(
                         child: isTimeout
                             ? const Text(
@@ -460,6 +540,7 @@ class _SpecialistTelemedicineChatPageState
                               )
                             : TextField(
                                 controller: _chatController,
+                                onChanged: _onInputChanged,
                                 decoration: InputDecoration(
                                   hintText: 'اكتب استشارتك هنا...',
                                   hintStyle: TextStyle(
@@ -473,15 +554,15 @@ class _SpecialistTelemedicineChatPageState
                                 onSubmitted: (_) => _sendMessage(),
                               ),
                       ),
-                      
-                      // Send Button (Left in RTL, meaning last child)
                       GestureDetector(
                         onTap: isTimeout ? null : _sendMessage,
                         child: Container(
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: isTimeout ? specialistGreen.withValues(alpha: 0.5) : specialistGreen,
+                            color: isTimeout
+                                ? specialistGreen.withValues(alpha: 0.5)
+                                : specialistGreen,
                             shape: BoxShape.circle,
                           ),
                           child: Center(
@@ -505,15 +586,14 @@ class _SpecialistTelemedicineChatPageState
     );
   }
 
-  Widget _buildDoctorMessage(ChatMessage message) {
+  Widget _buildDoctorMessage(_UiMessage message) {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.85,
-        ),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
         decoration: BoxDecoration(
           color: const Color(0xFFF4FBF7),
           border: Border.all(color: specialistGreen),
@@ -551,14 +631,12 @@ class _SpecialistTelemedicineChatPageState
                   ],
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMessageContent(message),
-                ),
+                Expanded(child: _buildMessageContent(message)),
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              '${message.time.hour}:${message.time.minute.toString().padLeft(2, '0')} ${message.time.hour >= 12 ? 'م' : 'ص'}',
+              _formatTime(message.time),
               style: TextStyle(
                 fontFamily: specialistFont,
                 fontSize: 11,
@@ -571,15 +649,14 @@ class _SpecialistTelemedicineChatPageState
     );
   }
 
-  Widget _buildPatientMessage(ChatMessage message) {
+  Widget _buildPatientMessage(_UiMessage message) {
     return Align(
       alignment: Alignment.centerRight,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.85,
-        ),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: const BorderRadius.only(
@@ -603,19 +680,14 @@ class _SpecialistTelemedicineChatPageState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _buildMessageContent(message),
-                ),
+                Expanded(child: _buildMessageContent(message)),
                 const SizedBox(width: 12),
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: AssetImage(widget.patientImage),
-                ),
+                CircleAvatar(radius: 20, backgroundImage: _patientAvatar()),
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              '${message.time.hour}:${message.time.minute.toString().padLeft(2, '0')} ${message.time.hour >= 12 ? 'م' : 'ص'}',
+              _formatTime(message.time),
               style: TextStyle(
                 fontFamily: specialistFont,
                 fontSize: 11,
@@ -669,63 +741,50 @@ class _SpecialistTelemedicineChatPageState
     );
   }
 
-  Widget _buildMessageContent(ChatMessage message) {
-    if (message.attachmentPath != null) {
-      if (message.attachmentType == 'image') {
-        return Column(
-          crossAxisAlignment: message.isDoctor ? CrossAxisAlignment.start : CrossAxisAlignment.end,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: kIsWeb
-                  ? Image.network(
-                      message.attachmentPath!,
-                      width: 150,
-                      height: 150,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 150,
-                          height: 150,
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.broken_image, color: Colors.grey),
-                        );
-                      },
-                    )
-                  : Image.file(
-                      File(message.attachmentPath!),
-                      width: 150,
-                      height: 150,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 150,
-                          height: 150,
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.broken_image, color: Colors.grey),
-                        );
-                      },
-                    ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message.text,
-              style: const TextStyle(
-                fontFamily: specialistFont,
-                fontSize: 14,
-                color: Colors.black87,
-                height: 1.5,
+  Widget _buildMessageContent(_UiMessage message) {
+    if (message.attachmentUrl != null && message.attachmentType == 'image') {
+      return Column(
+        crossAxisAlignment:
+            message.isDoctor ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              message.attachmentUrl!,
+              width: 150,
+              height: 150,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                width: 150,
+                height: 150,
+                color: Colors.grey.shade200,
+                child: const Icon(Icons.broken_image, color: Colors.grey),
               ),
-              textAlign: message.isDoctor ? TextAlign.right : TextAlign.left,
             ),
+          ),
+          if (message.text.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _plainText(message),
           ],
-        );
-      } else if (message.attachmentType == 'file') {
-        String fileName = message.attachmentPath!.split('/').last.split('\\').last;
-        return Column(
-          crossAxisAlignment: message.isDoctor ? CrossAxisAlignment.start : CrossAxisAlignment.end,
-          children: [
-            Container(
+        ],
+      );
+    }
+
+    if (message.attachmentUrl != null && message.attachmentType == 'file') {
+      final fileName = message.fileName ??
+          message.attachmentUrl!.split('/').last.split('?').first;
+      return Column(
+        crossAxisAlignment:
+            message.isDoctor ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+        children: [
+          GestureDetector(
+            onTap: () async {
+              final uri = Uri.parse(message.attachmentUrl!);
+              if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                _showSnack('تعذّر فتح الملف');
+              }
+            },
+            child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -747,31 +806,32 @@ class _SpecialistTelemedicineChatPageState
                 ],
               ),
             ),
+          ),
+          if (message.text.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(
-              message.text,
-              style: const TextStyle(
-                fontFamily: specialistFont,
-                fontSize: 14,
-                color: Colors.black87,
-                height: 1.5,
-              ),
-              textAlign: message.isDoctor ? TextAlign.right : TextAlign.left,
-            ),
+            _plainText(message),
           ],
-        );
-      }
+        ],
+      );
     }
-    
-    return Text(
-      message.text,
-      style: const TextStyle(
-        fontFamily: specialistFont,
-        fontSize: 14,
-        color: Colors.black87,
-        height: 1.5,
-      ),
-      textAlign: message.isDoctor ? TextAlign.right : TextAlign.left,
-    );
+
+    return _plainText(message);
+  }
+
+  Widget _plainText(_UiMessage message) => Text(
+        message.text,
+        style: const TextStyle(
+          fontFamily: specialistFont,
+          fontSize: 14,
+          color: Colors.black87,
+          height: 1.5,
+        ),
+        textAlign: message.isDoctor ? TextAlign.right : TextAlign.left,
+      );
+
+  String _formatTime(DateTime t) {
+    final hour12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
+    final period = t.hour >= 12 ? 'م' : 'ص';
+    return '$hour12:${t.minute.toString().padLeft(2, '0')} $period';
   }
 }

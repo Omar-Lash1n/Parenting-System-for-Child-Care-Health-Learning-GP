@@ -1,4 +1,6 @@
 using System.Text;
+using Ajial.API.Hubs;
+using Ajial.API.Realtime;
 using Ajial.Application.DTOs.Common;
 using Ajial.Application.Interfaces;
 using Ajial.Application.Service;
@@ -123,6 +125,12 @@ builder.Services.AddScoped<IConsultationService, ConsultationService>();        
 builder.Services.AddScoped<IAdminConsultationService, AdminConsultationService>(); // ✅ Consultation Booking (مراجعة المدفوعات - الأدمن)
 builder.Services.AddScoped<IDoctorConsultationService, DoctorConsultationService>(); // ✅ Consultation Session (بدء جلسة الكشف اون لاين - جانب الطبيب)
 builder.Services.AddScoped<IMedicalFileService, MedicalFileService>();          // ✅ Medical File (السجل الطبي - الملف الطبي الموحد للطفل)
+builder.Services.AddScoped<IChatService, ChatService>();                         // ✅ Consultation Chat (محادثة الاستشارة - المرحلة السابعة)
+builder.Services.AddScoped<IChatRealtimeNotifier, SignalRChatNotifier>();        // ✅ Consultation Chat — بثّ فوري عبر SignalR
+builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();              // ✅ Consultation Chat — تتبّع التواجد (online/offline)
+
+// ✅ SignalR — محادثة الاستشارة في الوقت الحقيقي
+builder.Services.AddSignalR();
 // ✅ Infrastructure Services
 builder.Services.AddScoped<IImageService, AzureBlobImageService>(); // ✅ NEW - Image Upload to Azure
 builder.Services.AddSingleton<IMedicalFilePdfGenerator, QuestPdfMedicalFileGenerator>(); // ✅ Medical File PDF generation (QuestPDF)
@@ -161,6 +169,18 @@ builder.Services.AddAuthentication(options =>
     // ✅ Enhanced logging for authentication
     options.Events = new JwtBearerEvents
     {
+        // ✅ SignalR: المتصفّح/العميل لا يستطيع إرسال ترويسة Authorization في مصافحة WebSocket،
+        // لذا نقرأ التوكن من query string (?access_token=...) لمسارات الـ Hub فقط.
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        },
         OnAuthenticationFailed = context =>
         {
             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
@@ -260,6 +280,9 @@ app.UseAuthentication();  // Must come before UseAuthorization
 app.UseAuthorization();
 
 app.MapControllers();
+
+// ✅ SignalR Hub — محادثة الاستشارة في الوقت الحقيقي
+app.MapHub<ChatHub>("/hubs/chat");
 
 // ✅ Log startup information
 logger = app.Services.GetRequiredService<ILogger<Program>>();

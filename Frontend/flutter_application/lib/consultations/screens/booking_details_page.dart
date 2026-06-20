@@ -494,6 +494,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
           context,
           MaterialPageRoute(
             builder: (_) => ParentTelemedicineChatPage(
+              bookingId: _booking.bookingId,
               doctorId: _booking.specialistId,
               doctorName: _booking.doctorName,
               doctorImage: _booking.photoUrl.isNotEmpty ? _booking.photoUrl : 'https://via.placeholder.com/150',
