@@ -25,6 +25,7 @@ import { ClinicsDashboardComponent } from './pages/clinics/clinics-dashboard/cli
 import { RemoteConsultationsDashboardComponent } from './pages/clinics/remote-consultations-dashboard/remote-consultations-dashboard.component';
 import { ConsultationPaymentsLayoutComponent } from './pages/consultation-payments/consultation-payments-layout/consultation-payments-layout.component';
 import { PaymentsDashboardComponent } from './pages/consultation-payments/payments-dashboard/payments-dashboard.component';
+import { CancellationsDashboardComponent } from './pages/consultation-payments/cancellations-dashboard/cancellations-dashboard.component';
 import { PaymentSettingsComponent } from './pages/consultation-payments/payment-settings/payment-settings.component';
 
 export const routes: Routes = [
@@ -96,6 +97,7 @@ export const routes: Routes = [
         children: [
             { path: '', redirectTo: 'list', pathMatch: 'full' },
             { path: 'list', component: PaymentsDashboardComponent, title: 'أجيال | مراجعة المدفوعات' },
+            { path: 'cancellations', component: CancellationsDashboardComponent, title: 'أجيال | إلغاءات الحجوزات' },
             { path: 'settings', component: PaymentSettingsComponent, title: 'أجيال | إعدادات الدفع' }
         ]
     },

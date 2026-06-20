@@ -52,6 +52,34 @@ export interface PaymentStatusChangeResponse {
   bookingStatusAr: string;
 }
 
+// ── الحجوزات الملغاة + متابعة استرداد المبالغ يدوياً ──
+
+export interface AdminCancellationItem {
+  bookingId: string;
+  parentName: string;
+  patientName: string;
+  doctorName: string;
+  serviceTypeAr: string;
+  appointmentDate: string;
+  basePrice: number;
+  cancellationFeePercent: number;
+  cancellationFeeAmount: number;
+  refundAmount: number;
+  paymentMethod: string | null;
+  paymentMethodAr: string | null;
+  paidAmount: number | null;
+  receiptImageUrl: string | null;
+  paymentStatusAr: string | null;
+  cancelledAt: string | null;
+}
+
+export interface AdminCancellationListResponse {
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  items: AdminCancellationItem[];
+}
+
 export interface PaymentSettingsResponse {
   vodafoneCashNumber: string;
   instaPayNumber: string;
