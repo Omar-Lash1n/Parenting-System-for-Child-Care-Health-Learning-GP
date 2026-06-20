@@ -72,6 +72,15 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
           search: _searchQuery.isNotEmpty ? _searchQuery : null,
           specialty: _selectedCategory == 'الكل' ? null : _selectedCategory);
 
+      // Fallback: If specialties API returned empty, extract from doctors directly
+      if (specNames.isEmpty) {
+        final uniqueSpecs = doctorList
+            .map((d) => d.specialization)
+            .where((s) => s.isNotEmpty && s != 'الكل')
+            .toSet();
+        specNames.addAll(uniqueSpecs);
+      }
+
       setState(() {
         _categories = ['الكل', ...specNames];
         _doctors = doctorList;
@@ -130,7 +139,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
       });
     }
     _searchFocusNode.unfocus();
-    _fetchDoctors();
+    // We filter locally now, so no need to call _fetchDoctors() here
   }
 
   void _selectHistoryItem(String item) {
@@ -138,19 +147,29 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
     _submitSearch(item);
   }
 
+  // Local filtering logic for doctors
+  List<AvailableDoctor> get _filteredDoctors {
+    if (_searchQuery.trim().isEmpty) return _doctors;
+    final query = _searchQuery.trim().toLowerCase();
+    return _doctors.where((d) => 
+      d.fullName.toLowerCase().contains(query) || 
+      d.specialization.toLowerCase().contains(query)
+    ).toList();
+  }
+
   Map<String, Color> _getSpecializationColors(String spec) {
-    switch (spec) {
-      case 'اسنان':
-        return {'bg': const Color(0xFFE0F2FE), 'text': const Color(0xFF0284C7)};
-      case 'باطنه':
-        return {'bg': const Color(0xFFDCFCE7), 'text': const Color(0xFF166534)};
-      case 'تغذية':
-        return {'bg': const Color(0xFFFFEDD5), 'text': const Color(0xFFC2410C)};
-      case 'تربية و سلوك':
-        return {'bg': const Color(0xFFF3E8FF), 'text': const Color(0xFF7E22CE)};
-      default:
-        return {'bg': const Color(0xFFF1F5F9), 'text': const Color(0xFF475569)};
-    }
+    final palettes = [
+      {'bg': const Color(0xFFE0F2FE), 'text': const Color(0xFF0284C7)}, // Blue
+      {'bg': const Color(0xFFDCFCE7), 'text': const Color(0xFF166534)}, // Green
+      {'bg': const Color(0xFFFFEDD5), 'text': const Color(0xFFC2410C)}, // Orange
+      {'bg': const Color(0xFFF3E8FF), 'text': const Color(0xFF7E22CE)}, // Purple
+      {'bg': const Color(0xFFFCE7F3), 'text': const Color(0xFFBE185D)}, // Pink
+      {'bg': const Color(0xFFFEF9C3), 'text': const Color(0xFFA16207)}, // Yellow
+      {'bg': const Color(0xFFE0E7FF), 'text': const Color(0xFF4338CA)}, // Indigo
+      {'bg': const Color(0xFFCCFBF1), 'text': const Color(0xFF0F766E)}, // Teal
+    ];
+    final index = spec.hashCode.abs() % palettes.length;
+    return palettes[index];
   }
 
   @override
@@ -182,11 +201,12 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
             style: TextStyle(
               fontFamily: 'IBM Plex Sans Arabic',
               color: Colors.black,
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-          centerTitle: true,
+          centerTitle: false,
+          titleSpacing: 0,
           actions: [
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_horiz, color: Colors.black),
@@ -336,7 +356,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                                 ),
                               ),
                             )
-                          : _doctors.isEmpty
+                          : _filteredDoctors.isEmpty
                               ? Center(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -369,9 +389,9 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                                 )
                               : ListView.builder(
                                   padding: const EdgeInsets.all(16.0),
-                                  itemCount: _doctors.length,
+                                  itemCount: _filteredDoctors.length,
                                   itemBuilder: (context, index) {
-                                    return _buildDoctorCard(_doctors[index]);
+                                    return _buildDoctorCard(_filteredDoctors[index]);
                                   },
                                 ),
                 ),
@@ -414,6 +434,11 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                           child: TextField(
                             controller: _searchController,
                             focusNode: _searchFocusNode,
+                            onChanged: (value) {
+                              setState(() {
+                                _searchQuery = value;
+                              });
+                            },
                             onSubmitted: _submitSearch,
                             textInputAction: TextInputAction.search,
                             style: const TextStyle(
@@ -632,7 +657,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFBF092F),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
@@ -644,7 +669,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                           : 'حجز جلسة اون لاين',
                       style: const TextStyle(
                         fontFamily: 'IBM Plex Sans Arabic',
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
@@ -668,7 +693,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                       );
                     },
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
@@ -680,7 +705,7 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                           : 'حجز كشف داخل العيادة',
                       style: const TextStyle(
                         fontFamily: 'IBM Plex Sans Arabic',
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: Colors.black,
                       ),

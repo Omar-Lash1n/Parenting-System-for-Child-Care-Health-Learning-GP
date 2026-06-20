@@ -104,27 +104,32 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          const Text(
-            'الحجوزات',
-            style: TextStyle(
-              fontFamily: 'IBM Plex Sans Arabic',
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.black,
-            ),
-          ),
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
               width: 38,
               height: 38,
-              decoration: BoxDecoration(
-                color: const Color(0xFFBF092F).withValues(alpha: 0.1),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEE2E2),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.arrow_forward_ios, color: Color(0xFFBF092F), size: 18),
+              child: Image.asset(
+                'images/consultations/back_arrow_red.png',
+                width: 20,
+                height: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Text(
+            'حجوزاتي',
+            style: TextStyle(
+              fontFamily: 'IBM Plex Sans Arabic',
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: Colors.black,
             ),
           ),
         ],
@@ -178,34 +183,14 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Row 1: Status tag + Date details
+          // Row 1: Date details + Status tag
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Tag (statusAr)
-              Container(
-                width: 120,
-                height: 41,
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  booking.statusAr,
-                  style: TextStyle(
-                    fontFamily: 'IBM Plex Sans Arabic',
-                    fontWeight: FontWeight.w400,
-                    fontSize: 14,
-                    color: statusColor,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
               // Date info
               Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     _formatArabicDate(booking.appointmentDate),
@@ -227,6 +212,26 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                   ),
                 ],
               ),
+              // Tag (statusAr)
+              Container(
+                width: 120,
+                height: 41,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  booking.statusAr,
+                  style: TextStyle(
+                    fontFamily: 'IBM Plex Sans Arabic',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: statusColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ],
           ),
           const Spacer(),
@@ -234,31 +239,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
           const Spacer(),
           // Row 2: Doctor info
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    booking.doctorName,
-                    style: const TextStyle(
-                      fontFamily: 'IBM Plex Sans Arabic',
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
-                      color: Colors.black,
-                    ),
-                  ),
-                  Text(
-                    booking.specialization,
-                    style: TextStyle(
-                      fontFamily: 'IBM Plex Sans Arabic',
-                      fontSize: 14,
-                      color: Colors.black.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 8),
               Container(
                 width: 50,
                 height: 50,
@@ -276,6 +258,35 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                         ),
                       )
                     : const Icon(Icons.person, color: Colors.grey, size: 28),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      booking.doctorName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'IBM Plex Sans Arabic',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: Colors.black,
+                      ),
+                    ),
+                    Text(
+                      booking.specialization,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'IBM Plex Sans Arabic',
+                        fontSize: 14,
+                        color: Colors.black.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

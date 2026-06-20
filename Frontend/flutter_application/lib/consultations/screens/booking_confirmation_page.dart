@@ -78,6 +78,18 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
     }
   }
 
+  int _getDurationMinutes() {
+    try {
+      final startParts = widget.startTime.split(':');
+      final endParts = widget.endTime.split(':');
+      final start = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+      final end = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
+      return end - start;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   String _getFormattedDate() {
     try {
       final parts = widget.date.split('-');
@@ -243,24 +255,12 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
   }
 
   Widget _buildHeader() {
+    final String title = widget.serviceType == 'remote'
+        ? 'تأكيد حجز جلسة اونلاين'
+        : 'تأكيد حجز داخل العيادة';
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        // Title
-        Row(
-          children: [
-            const SizedBox(width: 8),
-            const Text(
-              'تأكيد الحجز',
-              style: TextStyle(
-                fontFamily: 'IBM Plex Sans Arabic',
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.black,
-              ),
-            ),
-          ],
-        ),
         // Close Button
         GestureDetector(
           onTap: () => Navigator.pop(context),
@@ -272,6 +272,17 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.close, color: Colors.black, size: 20),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Title
+        Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'IBM Plex Sans Arabic',
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Colors.black,
           ),
         ),
       ],
@@ -294,32 +305,16 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: specialization badge + date/time
+          // Top row: date/time + duration
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Specialization Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFBF092F).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _getSpecLabel(),
-                  style: const TextStyle(
-                    fontFamily: 'IBM Plex Sans Arabic',
-                    fontSize: 14,
-                    color: Color(0xFFBF092F),
-                  ),
-                ),
-              ),
-              // Date & Time
+              // Date & Time (Right)
               Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     _getFormattedDate(),
@@ -341,6 +336,22 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                   ),
                 ],
               ),
+              // Duration Badge (Left)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFBF092F).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_getDurationMinutes()} دقيقة',
+                  style: const TextStyle(
+                    fontFamily: 'IBM Plex Sans Arabic',
+                    fontSize: 14,
+                    color: Color(0xFFBF092F),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -348,11 +359,31 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
           const SizedBox(height: 16),
           // Doctor Info Row
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
+              // Doctor Photo
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFD9D9D9)),
+                  color: Colors.white,
+                ),
+                child: widget.doctor.profileImageUrl != null
+                    ? ClipOval(
+                        child: Image.network(
+                          widget.doctor.profileImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.grey),
+                        ),
+                      )
+                    : const Icon(Icons.person, color: Colors.grey, size: 28),
+              ),
+              const SizedBox(width: 12),
               // Doctor Name & Spec
               Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     widget.doctor.fullName,
@@ -373,26 +404,6 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                   ),
                 ],
               ),
-              const SizedBox(width: 8),
-              // Doctor Photo
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFD9D9D9)),
-                  color: Colors.white,
-                ),
-                child: widget.doctor.profileImageUrl != null
-                    ? ClipOval(
-                        child: Image.network(
-                          widget.doctor.profileImageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.grey),
-                        ),
-                      )
-                    : const Icon(Icons.person, color: Colors.grey, size: 28),
-              ),
             ],
           ),
         ],
@@ -402,15 +413,20 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
 
   Widget _buildSelectPatientSection() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'تحديد المريض*',
-          style: TextStyle(
-            fontFamily: 'IBM Plex Sans Arabic',
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-            color: Colors.black,
+        RichText(
+          text: const TextSpan(
+            text: 'تحديد المريض',
+            style: TextStyle(
+              fontFamily: 'IBM Plex Sans Arabic',
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: Colors.black,
+            ),
+            children: [
+              TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
+            ],
           ),
         ),
         const SizedBox(height: 8),
@@ -418,7 +434,6 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
           height: 99,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            reverse: true,
             itemCount: _patients.length,
             separatorBuilder: (_, __) => const SizedBox(width: 16),
             itemBuilder: (context, index) {
@@ -442,30 +457,47 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                 },
                 child: Column(
                   children: [
-                    Container(
-                      width: 74,
-                      height: 74,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: isSelected
-                            ? Border.all(color: const Color(0xFFBF092F), width: 2.5)
-                            : null,
-                      ),
-                      child: ClipOval(
-                        child: patient.imageUrl != null
-                            ? Image.network(
-                                patient.imageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: const Color(0xFFF6E4D0),
-                                  child: const Icon(Icons.person, color: Colors.grey, size: 36),
-                                ),
-                              )
-                            : Container(
-                                color: const Color(0xFFF6E4D0),
-                                child: const Icon(Icons.person, color: Colors.grey, size: 36),
+                    Stack(
+                      children: [
+                        Container(
+                          width: 74,
+                          height: 74,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(color: const Color(0xFF01A449), width: 2.5)
+                                : null,
+                          ),
+                          child: ClipOval(
+                            child: patient.imageUrl != null
+                                ? Image.network(
+                                    patient.imageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      color: const Color(0xFFF6E4D0),
+                                      child: const Icon(Icons.person, color: Colors.grey, size: 36),
+                                    ),
+                                  )
+                                : Container(
+                                    color: const Color(0xFFF6E4D0),
+                                    child: const Icon(Icons.person, color: Colors.grey, size: 36),
+                                  ),
+                          ),
+                        ),
+                        if (isSelected)
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF01A449),
+                                shape: BoxShape.circle,
                               ),
-                      ),
+                              child: const Icon(Icons.check, color: Colors.white, size: 14),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     SizedBox(
@@ -495,7 +527,7 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
 
   Widget _buildComplaintSection() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'وصف الشكوى الحالية للمريض (اختياري)',
@@ -542,7 +574,7 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
 
   Widget _buildUploadImagesSection() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'إرفاق صور تحاليل أو أشعة (اختيارى)',
@@ -569,6 +601,25 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
             ),
             child: Row(
               children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Text(
+                      _attachedImage != null
+                          ? _attachedImage!.name
+                          : 'اضغط تحميل الصورة',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'IBM Plex Sans Arabic',
+                        fontSize: 13,
+                        color: _attachedImage != null
+                            ? const Color(0xFF01A449)
+                            : Colors.black.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
                   child: Container(
@@ -589,24 +640,6 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                     ),
                   ),
                 ),
-                const Spacer(),
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Text(
-                    _attachedImage != null
-                        ? _attachedImage!.name
-                        : 'اضغط تحميل الصورة',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: 'IBM Plex Sans Arabic',
-                      fontSize: 13,
-                      color: _attachedImage != null
-                          ? const Color(0xFF01A449)
-                          : Colors.black.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -617,7 +650,7 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
 
   Widget _buildUploadMedicalFileSection() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'إرفاق الملف الطبي للطفل (اختيارى)',
@@ -637,23 +670,15 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
             border: Border.all(color: Colors.black.withValues(alpha: 0.25)),
           ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Checkbox and Label (Right side)
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(right: 16),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
-                      Text(
-                        'مشاركة الملف الطبي',
-                        style: TextStyle(
-                          fontFamily: 'IBM Plex Sans Arabic',
-                          fontSize: 14,
-                          color: Colors.black.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
                       GestureDetector(
                         onTap: () {
                           // لو المريض هو الوالد أو لم يختر بعد — أظهر تنبيه
@@ -695,6 +720,15 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                           child: _shareFile
                               ? const Icon(Icons.check, color: Colors.white, size: 14)
                               : null,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'مشاركة الملف الطبي',
+                        style: TextStyle(
+                          fontFamily: 'IBM Plex Sans Arabic',
+                          fontSize: 14,
+                          color: Colors.black.withValues(alpha: 0.5),
                         ),
                       ),
                     ],
@@ -761,19 +795,6 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: const Text(
-            'أوافق على شروط الاستخدام، سياسة الإلغاء (خصم 10%)، وأقر بعلمي بأن التطبيق حلقة وصل تقنية والمسؤولية الطبية تقع بالكامل على الطبيب المعالج.',
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontFamily: 'IBM Plex Sans Arabic',
-              fontSize: 12,
-              height: 1.5,
-              color: Colors.black,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
         GestureDetector(
           onTap: () => setState(() { _agreeTerms = !_agreeTerms; }),
           child: Container(
@@ -792,6 +813,30 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                 : null,
           ),
         ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: RichText(
+            text: const TextSpan(
+              style: TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontSize: 12,
+                height: 1.5,
+                color: Colors.black,
+              ),
+              children: [
+                TextSpan(text: 'أوافق على '),
+                TextSpan(
+                  text: 'شروط الاستخدام',
+                  style: TextStyle(
+                    color: Colors.red,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+                TextSpan(text: '، سياسة الإلغاء (خصم 10%)، وأقر بعلمي بأن التطبيق حلقة وصل تقنية والمسؤولية الطبية تقع بالكامل على الطبيب المعالج.'),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -807,7 +852,7 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
         ),
         alignment: Alignment.center,
         child: const Text(
-          'تأكيد الحجز',
+          'الانتقال للدفع',
           style: TextStyle(
             fontFamily: 'IBM Plex Sans Arabic',
             fontWeight: FontWeight.w500,

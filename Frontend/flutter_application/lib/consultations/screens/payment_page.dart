@@ -136,23 +136,10 @@ class _PaymentPageState extends State<PaymentPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
+                  Image.asset(
+                    'images/check.png',
                     width: 65,
                     height: 65,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFBF092F).withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFBF092F), width: 6),
-                      ),
-                      child: const Icon(Icons.check, color: Color(0xFFBF092F), size: 24),
-                    ),
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -234,45 +221,27 @@ class _PaymentPageState extends State<PaymentPage> {
               ? const Center(child: CircularProgressIndicator(color: Color(0xFFBF092F)))
               : _error != null
                   ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red, fontFamily: 'IBM Plex Sans Arabic')))
-                  : Stack(
-                      children: [
-                        SingleChildScrollView(
-                          padding: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const SizedBox(height: 8),
-                              _buildHeader(),
-                              const SizedBox(height: 24),
-                              _buildPriceSummary(),
-                              const SizedBox(height: 24),
-                              _buildPaymentMethodsSection(),
-                              const SizedBox(height: 24),
-                              _buildUploadReceiptSection(),
-                              const SizedBox(height: 24),
-                              _buildWarningsSection(),
-                            ],
-                          ),
-                        ),
-                        // Bottom Buttons
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            color: Colors.white,
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildConfirmButton(),
-                                const SizedBox(height: 12),
-                                _buildBackButton(),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.only(bottom: 40, left: 16, right: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: 8),
+                          _buildHeader(),
+                          const SizedBox(height: 24),
+                          _buildPriceSummary(),
+                          const SizedBox(height: 24),
+                          _buildPaymentMethodsSection(),
+                          const SizedBox(height: 24),
+                          _buildUploadReceiptSection(),
+                          const SizedBox(height: 24),
+                          _buildWarningsSection(),
+                          const SizedBox(height: 32),
+                          _buildConfirmButton(),
+                          const SizedBox(height: 12),
+                          _buildBackButton(),
+                        ],
+                      ),
                     ),
         ),
       ),
@@ -281,17 +250,8 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Widget _buildHeader() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        Text(
-          'حجز جلسة $_sessionTypeLabel',
-          style: const TextStyle(
-            fontFamily: 'IBM Plex Sans Arabic',
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: Colors.black,
-          ),
-        ),
         GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
@@ -302,6 +262,16 @@ class _PaymentPageState extends State<PaymentPage> {
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.close, color: Colors.black, size: 20),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          'حجز جلسة $_sessionTypeLabel',
+          style: const TextStyle(
+            fontFamily: 'IBM Plex Sans Arabic',
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Colors.black,
           ),
         ),
       ],
@@ -459,58 +429,154 @@ class _PaymentPageState extends State<PaymentPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'إرفاق صورة فاتورة التحويل*',
-          style: TextStyle(
-            fontFamily: 'IBM Plex Sans Arabic',
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
+        RichText(
+          text: const TextSpan(
+            text: 'إرفاق صورة فاتورة التحويل',
+            style: TextStyle(
+              fontFamily: 'IBM Plex Sans Arabic',
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: Colors.black,
+            ),
+            children: [
+              TextSpan(text: '*', style: TextStyle(color: Colors.red)),
+            ],
           ),
         ),
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap: _pickReceiptImage,
-          child: Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.black.withValues(alpha: 0.25)),
-              borderRadius: BorderRadius.circular(50),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.black.withValues(alpha: 0.5)),
-                    borderRadius: BorderRadius.circular(50),
-                  ),
-                  child: const Text(
-                    'تحميل صورة',
-                    style: TextStyle(
-                      fontFamily: 'IBM Plex Sans Arabic',
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
+        Container(
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.black.withValues(alpha: 0.25)),
+            borderRadius: BorderRadius.circular(50),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: _receiptImage == null ? _pickReceiptImage : null,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Text(
+                      _receiptImage != null ? 'تم تحميل الصورة' : 'اضغط تحميل الصورة',
+                      style: TextStyle(
+                        fontFamily: 'IBM Plex Sans Arabic',
+                        fontSize: 14,
+                        color: _receiptImage != null ? const Color(0xFF01A449) : Colors.black.withValues(alpha: 0.5),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    _receiptImage != null ? _receiptImage!.name : 'اضغط تحميل الصورة',
-                    style: TextStyle(
-                      fontFamily: 'IBM Plex Sans Arabic',
-                      fontSize: 14,
-                      color: _receiptImage != null ? Colors.black : Colors.black.withValues(alpha: 0.5),
+              ),
+              if (_receiptImage != null) ...[
+                // Edit Button
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: GestureDetector(
+                    onTap: _pickReceiptImage,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFBF092F),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: const Text(
+                        'تعديل',
+                        style: TextStyle(
+                          fontFamily: 'IBM Plex Sans Arabic',
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                // Open Button
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => Dialog(
+                          backgroundColor: Colors.transparent,
+                          child: Stack(
+                            alignment: Alignment.topRight,
+                            children: [
+                              FutureBuilder(
+                                future: _receiptImage!.readAsBytes(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasData) {
+                                    return ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.memory(snapshot.data!),
+                                    );
+                                  }
+                                  return const Padding(
+                                    padding: EdgeInsets.all(32.0),
+                                    child: CircularProgressIndicator(color: Color(0xFFBF092F)),
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white, shadows: [Shadow(blurRadius: 10, color: Colors.black)]),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: Colors.black.withValues(alpha: 0.5)),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: const Text(
+                        'فتح',
+                        style: TextStyle(
+                          fontFamily: 'IBM Plex Sans Arabic',
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // Upload Button
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: GestureDetector(
+                    onTap: _pickReceiptImage,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: Colors.black.withValues(alpha: 0.5)),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: const Text(
+                        'تحميل صورة',
+                        style: TextStyle(
+                          fontFamily: 'IBM Plex Sans Arabic',
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
-            ),
+            ],
           ),
         ),
       ],
@@ -533,7 +599,7 @@ class _PaymentPageState extends State<PaymentPage> {
               'إرشادات هامة قبل بدء الحجز',
               style: TextStyle(
                 fontFamily: 'IBM Plex Sans Arabic',
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
             ),
@@ -553,13 +619,14 @@ class _PaymentPageState extends State<PaymentPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.security, color: Color(0xFFBF092F), size: 20),
+        const Icon(Icons.verified_user_outlined, color: Color(0xFFBF092F), size: 20),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
             style: const TextStyle(
               fontFamily: 'IBM Plex Sans Arabic',
+              fontWeight: FontWeight.w500,
               fontSize: 14,
               height: 1.5,
             ),
