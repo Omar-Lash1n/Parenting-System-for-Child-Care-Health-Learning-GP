@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
 import 'package:Ajial/consultations/screens/clinical_record_page.dart';
+import 'package:Ajial/consultations/screens/parent_telemedicine_chat_page.dart';
 import 'package:Ajial/consultations/widgets/clinical_record_paper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -19,12 +21,61 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
   String? _error;
   bool _isCancelling = false;
 
+  Timer? _chatTimer;
+  Duration _chatTimeLeft = Duration.zero;
+
   Booking get _booking => _bookingDetail ?? widget.booking;
 
   @override
   void initState() {
     super.initState();
+    _initChatTimerIfNeeded();
     _loadBookingDetails();
+  }
+
+  @override
+  void dispose() {
+    _chatTimer?.cancel();
+    super.dispose();
+  }
+
+  void _initChatTimerIfNeeded() {
+    if (_chatTimer != null || _booking.status != 'completed') return;
+
+    try {
+      final dateParts = _booking.appointmentDate.split('-');
+      final endParts = _booking.endTime.split(':');
+      if (dateParts.length == 3 && endParts.length >= 2) {
+        final year = int.parse(dateParts[0]);
+        final month = int.parse(dateParts[1]);
+        final day = int.parse(dateParts[2]);
+        final endHour = int.parse(endParts[0]);
+        final endMinute = int.parse(endParts[1]);
+        
+        final sessionEnd = DateTime(year, month, day, endHour, endMinute);
+        final chatDeadline = sessionEnd.add(const Duration(days: 3));
+        
+        _updateChatTimer(chatDeadline);
+        _chatTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+          _updateChatTimer(chatDeadline);
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _updateChatTimer(DateTime deadline) {
+    if (!mounted) return;
+    final now = DateTime.now();
+    if (now.isBefore(deadline)) {
+      setState(() {
+        _chatTimeLeft = deadline.difference(now);
+      });
+    } else {
+      _chatTimer?.cancel();
+      setState(() {
+        _chatTimeLeft = Duration.zero;
+      });
+    }
   }
 
   Future<void> _loadBookingDetails() async {
@@ -38,6 +89,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
         _bookingDetail = detail;
         _isLoading = false;
       });
+      _initChatTimerIfNeeded();
     } catch (e) {
       print('❌ Failed to load booking details: $e');
       setState(() {
@@ -412,59 +464,107 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
   }
 
   Widget _buildChatCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: const Color(0xFF008CFF).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
+    final bool isTimeout = _chatTimeLeft.inSeconds <= 0;
+    
+    String timerText = 'انتهت فترة التحدث إلى الطبيب';
+    if (!isTimeout) {
+      String days = _chatTimeLeft.inDays.toString().padLeft(2, '0');
+      String hours = (_chatTimeLeft.inHours % 24).toString().padLeft(2, '0');
+      String minutes = (_chatTimeLeft.inMinutes % 60).toString().padLeft(2, '0');
+      timerText = 'متبقي $days يوم : $hours س : $minutes ق';
+    }
+
+    return GestureDetector(
+      onTap: isTimeout ? null : () {
+        // Calculate the exact deadline again to pass to the chat page
+        final dateParts = _booking.appointmentDate.split('-');
+        final endParts = _booking.endTime.split(':');
+        DateTime deadline = DateTime.now().add(const Duration(days: 3)); // Fallback
+        if (dateParts.length == 3 && endParts.length >= 2) {
+          final year = int.parse(dateParts[0]);
+          final month = int.parse(dateParts[1]);
+          final day = int.parse(dateParts[2]);
+          final endHour = int.parse(endParts[0]);
+          final endMinute = int.parse(endParts[1]);
+          final sessionEnd = DateTime(year, month, day, endHour, endMinute);
+          deadline = sessionEnd.add(const Duration(days: 3));
+        }
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ParentTelemedicineChatPage(
+              doctorId: _booking.specialistId,
+              doctorName: _booking.doctorName,
+              doctorImage: _booking.photoUrl.isNotEmpty ? _booking.photoUrl : 'https://via.placeholder.com/150',
+              doctorSpecialization: _booking.specialization,
+              chatDeadline: deadline,
             ),
-            child: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF008CFF), size: 30),
           ),
-          const SizedBox(height: 14),
-          const Text(
-            'تحدث مع الطبيب',
-            style: TextStyle(
-              fontFamily: 'IBM Plex Sans Arabic',
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-              color: Colors.black,
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFBF092F).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              'متبقي 02 يوم : 24 س : 24 ق',
-              style: TextStyle(
-                fontFamily: 'IBM Plex Sans Arabic',
-                fontWeight: FontWeight.w500,
-                fontSize: 13,
-                color: Color(0xFFBF092F),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: isTimeout 
+                    ? Colors.grey.withValues(alpha: 0.1) 
+                    : const Color(0xFF008CFF).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.chat_bubble_outline_rounded, 
+                color: isTimeout ? Colors.grey : const Color(0xFF008CFF), 
+                size: 30
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Text(
+              'تحدث مع الطبيب',
+              style: TextStyle(
+                fontFamily: 'IBM Plex Sans Arabic',
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: isTimeout ? Colors.grey : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: isTimeout 
+                    ? Colors.grey.withValues(alpha: 0.08) 
+                    : const Color(0xFFBF092F).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                timerText,
+                style: TextStyle(
+                  fontFamily: 'IBM Plex Sans Arabic',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                  color: isTimeout ? Colors.grey.shade700 : const Color(0xFFBF092F),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
