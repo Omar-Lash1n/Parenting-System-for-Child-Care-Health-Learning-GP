@@ -870,9 +870,28 @@ class ClinicInfo {
     if (workingHoursJson == null || workingHoursJson!.isEmpty) return 'غير متاح';
     try {
       final map = jsonDecode(workingHoursJson!) as Map<String, dynamic>;
-      final from = map['from']?.toString() ?? '';
-      final to   = map['to']?.toString() ?? '';
-      if (from.isNotEmpty && to.isNotEmpty) return 'من $from الى $to';
+      final type = map['type'];
+      
+      if (type == 'specific') {
+        final periods = map['periods'] as List?;
+        if (periods != null && periods.isNotEmpty) {
+          final lines = periods.map((p) {
+            final day = p['day']?.toString() ?? '';
+            final from = p['from']?.toString() ?? '';
+            final to = p['to']?.toString() ?? '';
+            // If the day already says "من ... الى ...", just don't prefix with "يوم"
+            if (day.contains('الى')) {
+              return '$day : من $from الى $to';
+            }
+            return 'يوم $day : من $from الى $to';
+          }).toList();
+          return lines.join('\n');
+        }
+      } else {
+        final from = map['from']?.toString() ?? '';
+        final to   = map['to']?.toString() ?? '';
+        if (from.isNotEmpty && to.isNotEmpty) return 'من $from الى $to';
+      }
     } catch (_) {}
     return workingHoursJson!;
   }
