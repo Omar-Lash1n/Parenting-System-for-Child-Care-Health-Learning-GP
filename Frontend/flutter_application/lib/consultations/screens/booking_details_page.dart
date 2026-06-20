@@ -830,27 +830,24 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Image.asset(
+              'images/back_arrow_red.png',
+              width: 38,
+              height: 38,
+            ),
+          ),
+          const SizedBox(width: 16),
           Text(
             title,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'IBM Plex Sans Arabic',
               fontWeight: FontWeight.bold,
               fontSize: 16,
               color: Colors.black,
-            ),
-          ),
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: const Color(0xFFBF092F).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.arrow_forward_ios, color: Color(0xFFBF092F), size: 18),
             ),
           ),
         ],

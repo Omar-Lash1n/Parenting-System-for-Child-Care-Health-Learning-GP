@@ -53,6 +53,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<MedicalDiagnosis> MedicalDiagnoses { get; set; } = null!;          // ✅ Doctor Consultation — التشخيص الطبي
     public DbSet<ChatMessage> ChatMessages { get; set; } = null!;                   // ✅ Consultation Chat — محادثة الاستشارة
     public DbSet<SessionRating> SessionRatings { get; set; } = null!;               // ✅ Session Rating — تقييم الجلسة
+    public DbSet<ProblemReport> ProblemReports { get; set; } = null!;               // ✅ Problem Report — الإبلاغ عن مشكلة
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -1606,6 +1607,38 @@ public class ApplicationDbContext : DbContext
 
             // تقييم واحد لكل حجز
             entity.HasIndex(r => r.BookingId).IsUnique();
+        });
+
+        // ✅ ProblemReport Configuration — الإبلاغ عن مشكلة (بلاغ ولي الأمر عن طبيب)
+        modelBuilder.Entity<ProblemReport>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Category).IsRequired();
+            entity.Property(r => r.Status).IsRequired();
+            entity.Property(r => r.Description).HasMaxLength(2000);
+            entity.Property(r => r.AdminNote).HasMaxLength(2000);
+            entity.Property(r => r.CreatedAt).IsRequired();
+
+            entity.HasOne(r => r.Parent)
+                .WithMany()
+                .HasForeignKey(r => r.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(r => r.Specialist)
+                .WithMany()
+                .HasForeignKey(r => r.SpecialistId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // الحجز اختياري — لا تتأثر البلاغات بحذف الحجز
+            entity.HasOne(r => r.Booking)
+                .WithMany()
+                .HasForeignKey(r => r.BookingId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // فلاتر لوحة الأدمن: حسب الطبيب، الحالة، أو زمنياً
+            entity.HasIndex(r => r.SpecialistId);
+            entity.HasIndex(r => r.Status);
+            entity.HasIndex(r => r.CreatedAt);
         });
     }
 

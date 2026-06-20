@@ -46,4 +46,11 @@ public interface IConsultationService
 
     /// <summary>إرسال تقييم الجلسة ومنح ولي الأمر 250 نجمة (مرة واحدة لكل حجز).</summary>
     Task<ApiResponse<SessionRatingResponse>> SubmitSessionRatingAsync(Guid userId, Guid bookingId, SubmitSessionRatingRequest request);
+
+    // ── الإبلاغ عن مشكلة ──
+    /// <summary>خيارات نوع المشكلة الرئيسية لقائمة الاختيار.</summary>
+    Task<ApiResponse<List<ProblemCategoryOption>>> GetProblemCategoriesAsync();
+
+    /// <summary>إرسال بلاغ عن مشكلة تخص طبيباً (مع ربط اختياري بجلسة محددة).</summary>
+    Task<ApiResponse<ProblemReportResponse>> SubmitProblemReportAsync(Guid userId, Guid specialistId, SubmitProblemReportRequest request);
 }

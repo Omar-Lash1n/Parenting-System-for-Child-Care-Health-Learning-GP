@@ -97,3 +97,20 @@ public enum PaymentStatus
     Approved = 1, // تم القبول
     Rejected = 2  // مرفوض
 }
+
+// ── الإبلاغ عن مشكلة (ولي الأمر يبلّغ عن مشكلة تخص طبيباً) ──
+
+public enum ProblemReportCategory
+{
+    UnprofessionalConduct = 1, // سلوك غير مهني أو غير لائق
+    IncorrectDoctorInfo = 2,   // معلومات الطبيب/العيادة غير صحيحة
+    DoctorNoShow = 3,          // عدم حضور الطبيب في موعد الجلسة
+    Other = 4                  // سبب اخر
+}
+
+public enum ProblemReportStatus
+{
+    New = 0,         // بلاغ جديد لم يُراجع بعد
+    UnderReview = 1, // قيد المراجعة من الأدمن
+    Resolved = 2     // تم حل البلاغ
+}

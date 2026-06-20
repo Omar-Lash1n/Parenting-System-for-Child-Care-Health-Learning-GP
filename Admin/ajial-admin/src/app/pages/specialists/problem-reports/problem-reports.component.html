@@ -1,0 +1,165 @@
+<!-- Header -->
+<header class="page-header">
+    <div class="header-text">
+        <h1>بلاغات المشاكل</h1>
+        <p>بلاغات أولياء الأمور عن مشاكل تخص الأطباء (سلوك، معلومات غير صحيحة، عدم حضور...)</p>
+    </div>
+    <div class="header-actions">
+        <div class="stats-card">
+            <span class="stats-number">{{ totalCount }}</span>
+            <span class="stats-label">إجمالي البلاغات</span>
+        </div>
+        <div class="stats-card rejected">
+            <span class="stats-number">{{ newCount }}</span>
+            <span class="stats-label">بلاغات جديدة</span>
+        </div>
+    </div>
+</header>
+
+<!-- Status filter -->
+<div class="filters-bar">
+    <div class="filter-tabs">
+        <button class="filter-tab" [class.active]="statusFilter === -1" (click)="setStatusFilter(-1)">الكل</button>
+        <button class="filter-tab" [class.active]="statusFilter === 0" (click)="setStatusFilter(0)">جديد</button>
+        <button class="filter-tab" [class.active]="statusFilter === 1" (click)="setStatusFilter(1)">قيد المراجعة</button>
+        <button class="filter-tab" [class.active]="statusFilter === 2" (click)="setStatusFilter(2)">تم الحل</button>
+    </div>
+    <button class="btn btn-outline" (click)="fetch()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        تحديث
+    </button>
+</div>
+
+<!-- Table -->
+<div class="table-container" *ngIf="!hasError">
+    <div class="loading" *ngIf="isLoading">
+        <div class="spinner"></div>
+        <p>جارٍ التحميل...</p>
+    </div>
+
+    <table class="data-table" *ngIf="!isLoading && reports.length > 0">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>الطبيب</th>
+                <th>ولي الأمر</th>
+                <th>نوع المشكلة</th>
+                <th>التاريخ</th>
+                <th>الحالة</th>
+                <th>إجراء</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let r of reports; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td>{{ r.doctorName || '—' }}</td>
+                <td>{{ r.parentName || '—' }}</td>
+                <td>{{ r.categoryAr || '—' }}</td>
+                <td>{{ formatDate(r.createdAt) }}</td>
+                <td><span class="status-badge" [ngClass]="statusClass(r.statusValue)">{{ r.statusAr }}</span></td>
+                <td><button class="btn btn-sm btn-outline" (click)="openDetail(r)">عرض / معالجة</button></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="empty-state" *ngIf="!isLoading && reports.length === 0">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <p>لا توجد بلاغات لعرضها</p>
+    </div>
+</div>
+
+<!-- Error State -->
+<div class="error-state-container" *ngIf="hasError">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <h3>فشل الاتصال بالسيرفر</h3>
+    <p>تعذّر تحميل البيانات. تأكد من اتصالك بالإنترنت وحاول لاحقاً.</p>
+    <button class="btn btn-outline" (click)="fetch()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        إعادة المحاولة
+    </button>
+</div>
+
+<!-- Detail + status update modal -->
+<div class="modal-overlay" [class.active]="isDetailModalActive" (click)="closeDetail()">
+    <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>تفاصيل البلاغ</h2>
+            <button class="modal-close" (click)="closeDetail()">&times;</button>
+        </div>
+        <div class="modal-body" *ngIf="selected">
+            <div class="detail-grid">
+                <div class="detail-field">
+                    <span class="detail-label">الطبيب</span>
+                    <span class="detail-value">{{ selected.doctorName || '—' }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">التخصص</span>
+                    <span class="detail-value">{{ selected.specialization || '—' }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">ولي الأمر (المُبلِّغ)</span>
+                    <span class="detail-value">{{ selected.parentName || '—' }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">نوع المشكلة</span>
+                    <span class="detail-value">{{ selected.categoryAr }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">الجلسة المرتبطة</span>
+                    <span class="detail-value">{{ selected.bookingId ? (selected.serviceTypeAr || 'جلسة') : 'غير مرتبط بجلسة' }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">تاريخ الموعد</span>
+                    <span class="detail-value">{{ selected.appointmentDate || '—' }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">تاريخ البلاغ</span>
+                    <span class="detail-value">{{ formatDateTime(selected.createdAt) }}</span>
+                </div>
+                <div class="detail-field">
+                    <span class="detail-label">آخر مراجعة</span>
+                    <span class="detail-value">{{ formatDateTime(selected.reviewedAt) }}</span>
+                </div>
+                <div class="detail-field" style="grid-column: span 2">
+                    <span class="detail-label">وصف المشكلة</span>
+                    <span class="detail-value">{{ selected.description || 'لم يكتب ولي الأمر وصفاً' }}</span>
+                </div>
+            </div>
+
+            <!-- معالجة البلاغ -->
+            <div class="resolve-box">
+                <h3>معالجة البلاغ</h3>
+                <div class="form-row">
+                    <label>الحالة</label>
+                    <select class="form-control" [(ngModel)]="editStatus">
+                        <option [ngValue]="0">جديد</option>
+                        <option [ngValue]="1">قيد المراجعة</option>
+                        <option [ngValue]="2">تم الحل</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>ملاحظة الأدمن (اختياري)</label>
+                    <textarea class="form-control" rows="3" [(ngModel)]="editNote" placeholder="اكتب ملاحظة داخلية عن إجراء المعالجة..."></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" (click)="closeDetail()">إغلاق</button>
+            <button class="btn btn-primary" (click)="saveStatus()" [disabled]="isSaving">
+                {{ isSaving ? 'جارٍ الحفظ...' : 'حفظ الحالة' }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" [class.show]="showToast" [ngClass]="toastType" *ngIf="showToast">
+    {{ toastMessage }}
+</div>

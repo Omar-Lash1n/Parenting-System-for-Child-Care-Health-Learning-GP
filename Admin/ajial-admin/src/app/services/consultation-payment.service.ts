@@ -7,7 +7,8 @@ import {
   AdminPaymentDetail,
   PaymentStatusChangeResponse,
   PaymentSettingsResponse,
-  UpdatePaymentSettingsRequest
+  UpdatePaymentSettingsRequest,
+  AdminCancellationListResponse
 } from '../models/consultation-payment.model';
 
 @Injectable({ providedIn: 'root' })
@@ -33,6 +34,11 @@ export class ConsultationPaymentService {
 
   rejectPayment(id: string, reason: string): Observable<ConsultationApiResponse<PaymentStatusChangeResponse>> {
     return this.http.post<ConsultationApiResponse<PaymentStatusChangeResponse>>(`${this.base}/payments/${id}/reject`, { reason });
+  }
+
+  getCancellations(page = 1, pageSize = 100): Observable<ConsultationApiResponse<AdminCancellationListResponse>> {
+    const params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    return this.http.get<ConsultationApiResponse<AdminCancellationListResponse>>(`${this.base}/cancellations`, { params });
   }
 
   getPaymentSettings(): Observable<ConsultationApiResponse<PaymentSettingsResponse>> {

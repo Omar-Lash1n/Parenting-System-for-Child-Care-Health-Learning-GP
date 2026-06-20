@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:Ajial/consultations/widgets/consultation_onboarding_dialog.dart';
 import 'package:Ajial/api/parent_consultation_service.dart';
 import 'package:Ajial/consultations/screens/doctor_booking_page.dart';
-import 'package:Ajial/consultations/screens/clinic_booking_info_page.dart';
 import 'package:Ajial/consultations/screens/my_bookings_page.dart';
 import 'package:Ajial/consultations/screens/parent_payments_page.dart';
 import 'package:Ajial/providers/nav_bar_provider.dart';
@@ -689,8 +688,9 @@ class _ParentConsultationsPageState extends State<ParentConsultationsPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ClinicBookingInfoPage(
+                          builder: (context) => DoctorBookingPage(
                             doctor: doctor,
+                            initialServiceType: 'clinic',
                           ),
                         ),
                       );

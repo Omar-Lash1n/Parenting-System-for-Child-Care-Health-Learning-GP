@@ -486,6 +486,155 @@ public class AdminConsultationService : IAdminConsultationService
         }).ToList();
     }
 
+    // ── بلاغات المشاكل (الإبلاغ عن مشكلة) ───────────────────────────────────────
+
+    public async Task<ApiResponse<AdminProblemReportListResponse>> GetProblemReportsAsync(Guid? specialistId, int? status, int? category, int page, int pageSize)
+    {
+        try
+        {
+            var normalizedPage = Math.Max(page, 1);
+            var normalizedSize = Math.Clamp(pageSize, 1, 100);
+
+            var reports = (await _unitOfWork.ProblemReports.GetAllAsync()).AsEnumerable();
+
+            if (specialistId.HasValue)
+                reports = reports.Where(r => r.SpecialistId == specialistId.Value);
+
+            if (status.HasValue)
+            {
+                if (!Enum.IsDefined(typeof(ProblemReportStatus), status.Value))
+                    return ApiResponse<AdminProblemReportListResponse>.FailureResponse("حالة غير صحيحة");
+                reports = reports.Where(r => (int)r.Status == status.Value);
+            }
+
+            if (category.HasValue)
+            {
+                if (!Enum.IsDefined(typeof(ProblemReportCategory), category.Value))
+                    return ApiResponse<AdminProblemReportListResponse>.FailureResponse("نوع مشكلة غير صحيح");
+                reports = reports.Where(r => (int)r.Category == category.Value);
+            }
+
+            var ordered = reports.OrderByDescending(r => r.CreatedAt).ToList();
+            var total = ordered.Count;
+            var newCount = ordered.Count(r => r.Status == ProblemReportStatus.New);
+            var pageItems = ordered.Skip((normalizedPage - 1) * normalizedSize).Take(normalizedSize).ToList();
+
+            var items = await BuildProblemReportItemsAsync(pageItems);
+
+            return ApiResponse<AdminProblemReportListResponse>.SuccessResponse(new AdminProblemReportListResponse
+            {
+                TotalCount = total,
+                Page = normalizedPage,
+                PageSize = normalizedSize,
+                NewCount = newCount,
+                Items = items
+            }, "تم جلب بلاغات المشاكل بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<AdminProblemReportListResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    public async Task<ApiResponse<AdminProblemReportItemDto>> GetProblemReportDetailAsync(Guid reportId)
+    {
+        try
+        {
+            var report = await _unitOfWork.ProblemReports.GetByIdAsync(reportId);
+            if (report == null)
+                return ApiResponse<AdminProblemReportItemDto>.FailureResponse("لم يتم العثور على البلاغ");
+
+            var items = await BuildProblemReportItemsAsync(new List<ProblemReport> { report });
+            return ApiResponse<AdminProblemReportItemDto>.SuccessResponse(items[0], "تم جلب تفاصيل البلاغ بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<AdminProblemReportItemDto>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    public async Task<ApiResponse<AdminProblemReportItemDto>> UpdateProblemReportStatusAsync(Guid reportId, Guid adminUserId, UpdateProblemReportStatusRequest request)
+    {
+        try
+        {
+            if (!Enum.IsDefined(typeof(ProblemReportStatus), request.Status))
+                return ApiResponse<AdminProblemReportItemDto>.FailureResponse("حالة غير صحيحة");
+
+            var report = await _unitOfWork.ProblemReports.GetByIdAsync(reportId);
+            if (report == null)
+                return ApiResponse<AdminProblemReportItemDto>.FailureResponse("لم يتم العثور على البلاغ");
+
+            report.Status = (ProblemReportStatus)request.Status;
+            report.AdminNote = string.IsNullOrWhiteSpace(request.AdminNote) ? null : request.AdminNote.Trim();
+            report.ReviewedAt = DateTime.UtcNow;
+            report.ReviewedByUserId = adminUserId;
+            await _unitOfWork.ProblemReports.UpdateAsync(report);
+            await _unitOfWork.SaveChangesAsync();
+
+            var items = await BuildProblemReportItemsAsync(new List<ProblemReport> { report });
+            return ApiResponse<AdminProblemReportItemDto>.SuccessResponse(items[0], "تم تحديث حالة البلاغ بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<AdminProblemReportItemDto>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
+    /// <summary>يحوّل قائمة بلاغات الى DTOs مع أسماء الطبيب/ولي الأمر وتفاصيل الجلسة المرتبطة (تحميل مجمّع).</summary>
+    private async Task<List<AdminProblemReportItemDto>> BuildProblemReportItemsAsync(List<ProblemReport> reports)
+    {
+        if (reports.Count == 0) return new List<AdminProblemReportItemDto>();
+
+        // أطباء
+        var specialistIds = reports.Select(r => r.SpecialistId).ToHashSet();
+        var specialists = (await _unitOfWork.Specialists.GetAllAsync(q => q.Include(s => s.User)))
+            .Where(s => specialistIds.Contains(s.Id))
+            .ToDictionary(s => s.Id);
+
+        // أسماء أولياء الأمور
+        var parentIds = reports.Select(r => r.ParentId).ToHashSet();
+        var parents = (await _unitOfWork.Parents.FindAsync(p => parentIds.Contains(p.Id))).ToList();
+        var userIds = parents.Select(p => p.UserId).ToHashSet();
+        var users = (await _unitOfWork.Users.GetAllAsync()).Where(u => userIds.Contains(u.Id)).ToDictionary(u => u.Id);
+        var parentNames = parents.ToDictionary(p => p.Id, p => users.GetValueOrDefault(p.UserId)?.FullName ?? string.Empty);
+
+        // الحجوزات المرتبطة (اختياري)
+        var bookingIds = reports.Where(r => r.BookingId.HasValue).Select(r => r.BookingId!.Value).ToHashSet();
+        var bookings = bookingIds.Count > 0
+            ? (await _unitOfWork.Bookings.FindAsync(b => bookingIds.Contains(b.Id))).ToDictionary(b => b.Id)
+            : new Dictionary<Guid, Booking>();
+
+        return reports.Select(r =>
+        {
+            specialists.TryGetValue(r.SpecialistId, out var sp);
+            Booking? b = r.BookingId.HasValue && bookings.TryGetValue(r.BookingId.Value, out var bk) ? bk : null;
+
+            return new AdminProblemReportItemDto
+            {
+                ReportId = r.Id,
+                SpecialistId = r.SpecialistId,
+                DoctorName = sp?.User?.FullName ?? string.Empty,
+                Specialization = sp?.Specialization ?? string.Empty,
+                DoctorPhotoUrl = sp?.PersonalPhotoUrl,
+                ParentId = r.ParentId,
+                ParentName = parentNames.GetValueOrDefault(r.ParentId, string.Empty),
+                BookingId = r.BookingId,
+                ServiceTypeAr = b != null ? ConsultationLabels.ServiceTypeAr(b.ServiceType) : null,
+                AppointmentDate = b != null ? b.AppointmentDate.ToString("yyyy-MM-dd") : null,
+                Category = (int)r.Category,
+                CategoryKey = ConsultationLabels.ProblemCategoryKey(r.Category),
+                CategoryAr = ConsultationLabels.ProblemCategoryAr(r.Category),
+                Description = r.Description,
+                StatusValue = (int)r.Status,
+                Status = ConsultationLabels.ProblemStatusKey(r.Status),
+                StatusAr = ConsultationLabels.ProblemStatusAr(r.Status),
+                AdminNote = r.AdminNote,
+                ReviewedAt = r.ReviewedAt,
+                CreatedAt = r.CreatedAt
+            };
+        }).ToList();
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private async Task UpsertSettingAsync(string key, string value, Guid adminUserId)

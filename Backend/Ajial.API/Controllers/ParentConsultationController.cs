@@ -196,6 +196,24 @@ public class ParentConsultationController : ControllerBase
         return ToActionResult(await _service.SubmitSessionRatingAsync(userId, bookingId, request));
     }
 
+    // ── الإبلاغ عن مشكلة ─────────────────────────────────────────────────────────
+
+    /// <summary>أنواع المشكلة الرئيسية لقائمة الاختيار في شاشة الإبلاغ.</summary>
+    [HttpGet("problem-categories")]
+    [ProducesResponseType(typeof(ApiResponse<List<ProblemCategoryOption>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetProblemCategories()
+        => ToActionResult(await _service.GetProblemCategoriesAsync());
+
+    /// <summary>إرسال بلاغ عن مشكلة تخص طبيباً (نوع المشكلة + وصف اختياري + ربط اختياري بحجز).</summary>
+    [HttpPost("doctors/{specialistId:guid}/problem-reports")]
+    [ProducesResponseType(typeof(ApiResponse<ProblemReportResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ProblemReportResponse>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SubmitProblemReport(Guid specialistId, [FromBody] SubmitProblemReportRequest request)
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<ProblemReportResponse>();
+        return ToActionResult(await _service.SubmitProblemReportAsync(userId, specialistId, request));
+    }
+
     /// <summary>المعاملات المالية لولي الأمر.</summary>
     [HttpGet("payments")]
     [ProducesResponseType(typeof(ApiResponse<List<ParentPaymentListItemResponse>>), StatusCodes.Status200OK)]

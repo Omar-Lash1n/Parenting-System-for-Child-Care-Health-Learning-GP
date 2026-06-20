@@ -71,6 +71,41 @@ public static class ConsultationLabels
         _ => "غير معروف"
     };
 
+    // ── الإبلاغ عن مشكلة ──
+    public static string ProblemCategoryKey(ProblemReportCategory c) => c switch
+    {
+        ProblemReportCategory.UnprofessionalConduct => "unprofessional_conduct",
+        ProblemReportCategory.IncorrectDoctorInfo => "incorrect_doctor_info",
+        ProblemReportCategory.DoctorNoShow => "doctor_no_show",
+        ProblemReportCategory.Other => "other",
+        _ => "unknown"
+    };
+
+    public static string ProblemCategoryAr(ProblemReportCategory c) => c switch
+    {
+        ProblemReportCategory.UnprofessionalConduct => "سلوك غير مهني أو غير لائق",
+        ProblemReportCategory.IncorrectDoctorInfo => "معلومات الطبيب/العيادة غير صحيحة",
+        ProblemReportCategory.DoctorNoShow => "عدم حضور الطبيب في موعد الجلسة",
+        ProblemReportCategory.Other => "سبب اخر",
+        _ => "غير معروف"
+    };
+
+    public static string ProblemStatusKey(ProblemReportStatus s) => s switch
+    {
+        ProblemReportStatus.New => "new",
+        ProblemReportStatus.UnderReview => "under_review",
+        ProblemReportStatus.Resolved => "resolved",
+        _ => "unknown"
+    };
+
+    public static string ProblemStatusAr(ProblemReportStatus s) => s switch
+    {
+        ProblemReportStatus.New => "جديد",
+        ProblemReportStatus.UnderReview => "قيد المراجعة",
+        ProblemReportStatus.Resolved => "تم الحل",
+        _ => "غير معروف"
+    };
+
     // نسبة رسوم إلغاء الحجز (تُخصم من المبلغ المدفوع عند إلغاء ولي الأمر للحجز المؤكد)
     public const int CancellationFeePercent = 10;
 
