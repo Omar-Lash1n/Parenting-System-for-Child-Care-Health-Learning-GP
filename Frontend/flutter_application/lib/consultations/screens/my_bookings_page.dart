@@ -79,25 +79,52 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator(color: Color(0xFFBF092F)))
-                    : _error != null
-                        ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red, fontFamily: 'IBM Plex Sans Arabic')))
-                        : _bookings.isEmpty
-                            ? const Center(
-                                child: Text('لا توجد حجوزات حتى الآن',
-                                    style: TextStyle(fontFamily: 'IBM Plex Sans Arabic', fontSize: 16)))
-                            : ListView.separated(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                itemCount: _bookings.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 16),
-                                itemBuilder: (context, index) {
-                                  return _buildBookingCard(_bookings[index]);
-                                },
-                              ),
+                    : RefreshIndicator(
+                        color: const Color(0xFFBF092F),
+                        onRefresh: _loadBookings,
+                        child: _error != null
+                            ? _buildRefreshableMessage(
+                                Text(_error!,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(color: Colors.red, fontFamily: 'IBM Plex Sans Arabic')),
+                              )
+                            : _bookings.isEmpty
+                                ? _buildRefreshableMessage(
+                                    const Text('لا توجد حجوزات حتى الآن',
+                                        style: TextStyle(fontFamily: 'IBM Plex Sans Arabic', fontSize: 16)),
+                                  )
+                                : ListView.separated(
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    itemCount: _bookings.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                                    itemBuilder: (context, index) {
+                                      return _buildBookingCard(_bookings[index]);
+                                    },
+                                  ),
+                      ),
               ),
             ],
           ),
         ),
         bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
+      ),
+    );
+  }
+
+  /// Wraps a short message so it stays vertically centered yet remains
+  /// scrollable — letting pull-to-refresh work even on empty/error states.
+  Widget _buildRefreshableMessage(Widget child) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Center(child: child),
+          ),
+        ),
       ),
     );
   }

@@ -60,11 +60,15 @@ class _SpecialistTelemedicineBookingDetailsPageState
   // ==================== Data loading ==========================
   // ============================================================
 
-  Future<void> _loadDetail() async {
-    setState(() {
-      _loading = true;
+  Future<void> _loadDetail({bool showLoader = true}) async {
+    if (showLoader) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    } else {
       _error = null;
-    });
+    }
     try {
       final detail = await _api.getBookingDetail(widget.bookingId);
       if (!mounted) return;
@@ -430,9 +434,13 @@ class _SpecialistTelemedicineBookingDetailsPageState
       children: [
         const SizedBox(height: 8),
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Column(
+          child: RefreshIndicator(
+            color: specialistGreen,
+            onRefresh: () => _loadDetail(showLoader: false),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
               children: [
                 // Info Card
                 Container(
@@ -613,6 +621,7 @@ class _SpecialistTelemedicineBookingDetailsPageState
                 ),
                 const SizedBox(height: 16),
               ],
+            ),
             ),
           ),
         ),

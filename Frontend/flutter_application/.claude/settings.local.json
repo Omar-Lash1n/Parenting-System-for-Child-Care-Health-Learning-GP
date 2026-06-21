@@ -10,7 +10,15 @@
       "Bash(New-Item -ItemType Directory -Force \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Frontend\\\\flutter_application\\\\lib\\\\ranking\\\\models\")",
       "Bash(New-Item -ItemType Directory -Force \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Frontend\\\\flutter_application\\\\lib\\\\ranking\\\\repositories\")",
       "Bash(New-Item -ItemType Directory -Force \"E:\\\\Gradution Project Doc\\\\Parenting-System-for-Child-Care-Health-Learning-GP\\\\Frontend\\\\flutter_application\\\\lib\\\\ranking\\\\providers\")",
-      "Bash(flutter analyze *)"
+      "Bash(flutter analyze *)",
+      "Bash(flutter --version)",
+      "Bash(dart --version)",
+      "Bash(flutter build *)",
+      "Bash(cat settings.gradle)",
+      "Bash(cat settings.gradle.kts)",
+      "Bash(cat build.gradle)",
+      "Bash(cat build.gradle.kts)",
+      "PowerShell(flutter analyze *)"
     ]
   }
 }

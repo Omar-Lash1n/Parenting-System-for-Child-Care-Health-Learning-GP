@@ -875,11 +875,14 @@ class _MyChildProfilePageState extends State<MyChildProfilePage> {
                   Navigator.of(context).pop(); // dismiss loading
 
                   if (success) {
-                    // Open the PDF URL in the browser
+                    // Open the PDF URL in the browser. Launch directly instead
+                    // of pre-checking with canLaunchUrl — on Android 11+ the
+                    // precheck returns false due to package visibility, which
+                    // wrongly blocked the file from opening on the parent side.
                     final uri = Uri.parse(urlOrError);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    } else {
+                    final opened =
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    if (!opened) {
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(

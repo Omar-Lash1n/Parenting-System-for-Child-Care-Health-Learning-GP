@@ -137,10 +137,12 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
   /// فتح رابط الملف الطبي في المتصفح أو تطبيق خارجي
   Future<void> _openMedicalFile() async {
     if (_medicalFileUrl == null) return;
+    // Launch directly instead of pre-checking with canLaunchUrl — on Android
+    // 11+ the precheck returns false due to package visibility, which wrongly
+    // blocked the file from opening.
     final uri = Uri.parse(_medicalFileUrl!);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

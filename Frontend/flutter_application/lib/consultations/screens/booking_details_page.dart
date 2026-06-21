@@ -163,11 +163,12 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
       final session = await _apiService.getSessionStatus(_booking.bookingId);
       if (!mounted) return;
       if (session.canJoin && session.joinUrl != null) {
+        // Launch directly instead of pre-checking with canLaunchUrl — on
+        // Android 11+ the precheck returns false due to package visibility,
+        // which wrongly blocked the meeting link from opening.
         final uri = Uri.parse(session.joinUrl!);
-        final launched = await canLaunchUrl(uri);
-        if (launched) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } else {
+        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (!launched) {
           messenger.showSnackBar(
             const SnackBar(
               content: Text('لا يمكن فتح رابط الجلسة', style: TextStyle(fontFamily: 'IBM Plex Sans Arabic')),
@@ -338,16 +339,21 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                             )
                           : Stack(
                               children: [
-                                SingleChildScrollView(
-                                  child: Column(
-                                    children: [
-                                      _buildBookingCard(statusColor),
-                                      const SizedBox(height: 24),
-                                      _buildRejectionCard(),
-                                      _buildMedicalFileCard(),
-                                      if (_booking.status != 'rejected') _buildInstructionsCard(),
-                                      const SizedBox(height: 140),
-                                    ],
+                                RefreshIndicator(
+                                  color: const Color(0xFFBF092F),
+                                  onRefresh: _loadBookingDetails,
+                                  child: SingleChildScrollView(
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    child: Column(
+                                      children: [
+                                        _buildBookingCard(statusColor),
+                                        const SizedBox(height: 24),
+                                        _buildRejectionCard(),
+                                        _buildMedicalFileCard(),
+                                        if (_booking.status != 'rejected') _buildInstructionsCard(),
+                                        const SizedBox(height: 140),
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 Positioned(
@@ -384,19 +390,24 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
               _buildHeader(title: 'جلسة ${_formatArabicDate(_booking.appointmentDate)}'),
               const SizedBox(height: 24),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      _buildBookingCard(green),
-                      const SizedBox(height: 20),
-                      _buildClinicalGrid(),
-                      const SizedBox(height: 20),
-                      _buildChatCard(),
-                      const SizedBox(height: 24),
-                      _buildCompletedBottomButtons(),
-                      const SizedBox(height: 16),
-                    ],
+                child: RefreshIndicator(
+                  color: green,
+                  onRefresh: _loadBookingDetails,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        _buildBookingCard(green),
+                        const SizedBox(height: 20),
+                        _buildClinicalGrid(),
+                        const SizedBox(height: 20),
+                        _buildChatCard(),
+                        const SizedBox(height: 24),
+                        _buildCompletedBottomButtons(),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -426,15 +437,20 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
               Expanded(
                 child: Stack(
                   children: [
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          _buildBookingCard(red),
-                          const SizedBox(height: 24),
-                          _buildInstructionsCard(),
-                          const SizedBox(height: 160),
-                        ],
+                    RefreshIndicator(
+                      color: red,
+                      onRefresh: _loadBookingDetails,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          children: [
+                            _buildBookingCard(red),
+                            const SizedBox(height: 24),
+                            _buildInstructionsCard(),
+                            const SizedBox(height: 160),
+                          ],
+                        ),
                       ),
                     ),
                     Positioned(
@@ -1039,10 +1055,13 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
           // Open file button
           GestureDetector(
             onTap: () async {
+              // Launch directly instead of pre-checking with canLaunchUrl — on
+              // Android 11+ the precheck returns false due to package
+              // visibility, which wrongly blocked the file from opening.
               final uri = Uri.parse(url);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              } else {
+              final opened =
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+              if (!opened) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(

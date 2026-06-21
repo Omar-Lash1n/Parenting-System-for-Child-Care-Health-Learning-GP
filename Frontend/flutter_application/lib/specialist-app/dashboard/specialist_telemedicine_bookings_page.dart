@@ -57,12 +57,16 @@ class _SpecialistTelemedicineBookingsPageState
   String _formatMonthKey(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}';
 
-  Future<void> _loadSlots() async {
+  Future<void> _loadSlots({bool showLoader = true}) async {
     final requestedDate = _selectedDate;
-    setState(() {
-      _loadingSlots = true;
+    if (showLoader) {
+      setState(() {
+        _loadingSlots = true;
+        _slotsError = null;
+      });
+    } else {
       _slotsError = null;
-    });
+    }
     try {
       final result = await _api.getSlots(_formatDateKey(requestedDate));
       // Ignore stale responses if the user moved to another day meanwhile.
@@ -102,6 +106,16 @@ class _SpecialistTelemedicineBookingsPageState
     setState(() => _selectedDate = date);
     _loadSlots();
     _loadCalendar();
+  }
+
+  /// Pull-to-refresh: re-fetch the selected day's slots and the month's
+  /// booked-day dots. Skips the centered loader so the refresh spinner shows.
+  Future<void> _onRefresh() async {
+    _loadedCalendarMonth = null; // force the calendar to re-fetch
+    await Future.wait([
+      _loadSlots(showLoader: false),
+      _loadCalendar(),
+    ]);
   }
 
   String _cleanError(Object error) {
@@ -458,9 +472,17 @@ class _SpecialistTelemedicineBookingsPageState
       );
     }
 
+    return RefreshIndicator(
+      color: specialistGreen,
+      onRefresh: _onRefresh,
+      child: _buildBodyContent(),
+    );
+  }
+
+  Widget _buildBodyContent() {
     if (_slotsError != null) {
-      return Center(
-        child: Padding(
+      return _scrollableCenter(
+        Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -496,8 +518,8 @@ class _SpecialistTelemedicineBookingsPageState
     }
 
     if (_slots.isEmpty) {
-      return Center(
-        child: Column(
+      return _scrollableCenter(
+        Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
@@ -524,6 +546,7 @@ class _SpecialistTelemedicineBookingsPageState
     }
 
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       itemCount: _slots.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -552,6 +575,20 @@ class _SpecialistTelemedicineBookingsPageState
           ),
         );
       },
+    );
+  }
+
+  /// Centers a message while staying scrollable, so pull-to-refresh works on
+  /// the empty/error states (which have no inherently scrollable content).
+  Widget _scrollableCenter(Widget child) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(child: child),
+        ),
+      ),
     );
   }
 }
