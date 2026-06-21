@@ -50,6 +50,8 @@ import 'package:Ajial/vaccinations/additional_vaccination_survey_page.dart';
 import 'package:Ajial/vaccinations/vaccination_success_page.dart';
 import 'package:Ajial/vaccinations/kids_vaccination_home_page.dart';
 import 'package:Ajial/vaccinations/vaccination_dashboard_page.dart';
+import 'package:Ajial/vaccinations/vaccination_schedule_page.dart';
+import 'package:Ajial/vaccinations/vaccination_summary_page.dart';
 import 'package:Ajial/family/family_page.dart';
 import 'package:Ajial/providers/tasks_provider.dart';
 import 'package:Ajial/tasks/tasks_welcome_page.dart';
@@ -266,6 +268,8 @@ class AjialApp extends StatelessWidget {
         '/vaccination-success': (context) => const VaccinationSuccessPage(),
         '/kids-vaccination-home': (context) => const KidsVaccinationHomePage(),
         '/vaccination-dashboard': (context) => const VaccinationDashboardPage(),
+        '/vaccination-schedule': (context) => const VaccinationSchedulePage(),
+        '/vaccination-summary': (context) => const VaccinationSummaryPage(),
         '/family': (context) => const FamilyPage(),
         '/tasks-welcome': (context) => const TasksWelcomePage(),
         '/tasks': (context) => const TasksMainPage(),

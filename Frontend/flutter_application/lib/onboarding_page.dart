@@ -123,31 +123,50 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
+  // التنقل بالسحب الأفقي. في تخطيط RTL: السحب لليسار (سرعة سالبة) ينتقل
+  // للصفحة التالية، والسحب لليمين (سرعة موجبة) يعود للصفحة السابقة.
+  void _handleHorizontalSwipe(DragEndDetails details) {
+    final double velocity = details.primaryVelocity ?? 0;
+    const double threshold = 250; // تجاهل السحبات الخفيفة العرضية
+
+    if (velocity < -threshold) {
+      _goToNextPage();
+    } else if (velocity > threshold) {
+      _goToPreviousPage();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     ColoredTitle currentTitleData =
         onboardingData[_currentPage]["title"] as ColoredTitle;
 
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 600), // مدة تأثير التلاشي
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          ); // تأثير التلاشي
-        },
-        child: OnboardingPage(
-          // يجب أن يكون لكل صفحة مفتاح فريد لكي يعمل AnimatedSwitcher بشكل صحيح
-          key: ValueKey<int>(_currentPage),
-          titleData: currentTitleData,
-          description: onboardingData[_currentPage]["description"]!,
-          imagePath: onboardingData[_currentPage]["imagePath"]!,
-          currentPage: _currentPage,
-          totalPages: onboardingData.length,
-          onNext: _goToNextPage,
-          onSkip: _skipToLastPage,
-          onBack: _goToPreviousPage,
+      // يسمح بالتنقل بين الصفحات عبر السحب بالإصبع (وليس فقط زر "التالي").
+      // التخطيط من اليمين لليسار: السحب لليسار = الصفحة التالية، لليمين = السابقة.
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragEnd: _handleHorizontalSwipe,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 600), // مدة تأثير التلاشي
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            ); // تأثير التلاشي
+          },
+          child: OnboardingPage(
+            // يجب أن يكون لكل صفحة مفتاح فريد لكي يعمل AnimatedSwitcher بشكل صحيح
+            key: ValueKey<int>(_currentPage),
+            titleData: currentTitleData,
+            description: onboardingData[_currentPage]["description"]!,
+            imagePath: onboardingData[_currentPage]["imagePath"]!,
+            currentPage: _currentPage,
+            totalPages: onboardingData.length,
+            onNext: _goToNextPage,
+            onSkip: _skipToLastPage,
+            onBack: _goToPreviousPage,
+          ),
         ),
       ),
     );
@@ -382,21 +401,26 @@ class OnboardingPage extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: screenHeight * 0.03),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(totalPages, (index) {
-                        bool isActive = index == (totalPages - 1 - currentPage);
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          height: 10,
-                          width: isActive ? 24 : 10,
-                          decoration: BoxDecoration(
-                            color: isActive ? mainRed : Colors.pink[100],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        );
-                      }).reversed.toList(),
+                    // المؤشر يبدأ من أقصى اليسار في الصفحة الأولى ويتحرك لليمين
+                    // مع التقدّم — لذلك نفرض اتجاه LTR على صف النقاط فقط.
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(totalPages, (index) {
+                          bool isActive = index == currentPage;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            height: 10,
+                            width: isActive ? 24 : 10,
+                            decoration: BoxDecoration(
+                              color: isActive ? mainRed : Colors.pink[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                     SizedBox(height: screenHeight * 0.02),
                     Padding(

@@ -23,6 +23,19 @@ public class DoctorConsultationController : ControllerBase
         _service = service;
     }
 
+    /// <summary>
+    /// الملف الشخصي للطبيب المُسجَّل دخوله: البيانات الأساسية، مستندات التوثيق،
+    /// ملخص الخدمات المتاحة (عيادة / كشف عن بعد)، وإحصائيات الحجوزات والتقييم.
+    /// </summary>
+    [HttpGet("profile")]
+    [ProducesResponseType(typeof(ApiResponse<DoctorOwnProfileResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<DoctorOwnProfileResponse>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMyProfile()
+    {
+        if (!TryGetUserId(out var userId)) return UnauthorizedResponse<DoctorOwnProfileResponse>();
+        return ToActionResult(await _service.GetMyProfileAsync(userId));
+    }
+
     /// <summary>مواعيد يوم محدد للطبيب مع حالة كل موعد (محجوز/متاح). الصيغة: yyyy-MM-dd.</summary>
     [HttpGet("slots")]
     [ProducesResponseType(typeof(ApiResponse<DoctorDaySlotsResponse>), StatusCodes.Status200OK)]

@@ -34,6 +34,95 @@ public class DoctorConsultationService : IDoctorConsultationService
         _medicalFileService = medicalFileService;
     }
 
+    // ── الملف الشخصي للطبيب ──────────────────────────────────────────────────────
+
+    public async Task<ApiResponse<DoctorOwnProfileResponse>> GetMyProfileAsync(Guid userId)
+    {
+        try
+        {
+            var (specialist, error) = await ResolveSpecialistAsync<DoctorOwnProfileResponse>(userId);
+            if (error != null) return error;
+
+            var user = await _unitOfWork.Users.GetByIdAsync(specialist!.UserId);
+
+            var clinic = await GetApprovedClinicAsync(specialist.Id);
+            var remote = await GetApprovedRemoteAsync(specialist.Id);
+
+            string? governorateName = clinic?.GovernorateId != null
+                ? (await _unitOfWork.Cities.GetByIdAsync(clinic.GovernorateId.Value))?.NameAr
+                : null;
+
+            // كل حجوزات الطبيب لحساب الإحصائيات والتقييم
+            var bookings = (await _unitOfWork.Bookings.FindAsync(b => b.SpecialistId == specialist.Id)).ToList();
+            var bookingIds = bookings.Select(b => b.Id).ToHashSet();
+
+            var ratings = bookingIds.Count == 0
+                ? new List<SessionRating>()
+                : (await _unitOfWork.SessionRatings.FindAsync(r => bookingIds.Contains(r.BookingId))).ToList();
+
+            var response = new DoctorOwnProfileResponse
+            {
+                SpecialistId = specialist.Id,
+                FullName = user?.FullName ?? string.Empty,
+                Username = user?.Username ?? string.Empty,
+                Email = user?.Email ?? string.Empty,
+                IsEmailVerified = user?.IsEmailVerified ?? false,
+                Phone = specialist.Phone,
+                Specialization = specialist.Specialization,
+                PracticeLicenseNumber = specialist.PracticeLicenseNumber,
+                PersonalPhotoUrl = string.IsNullOrEmpty(specialist.PersonalPhotoUrl) ? null : specialist.PersonalPhotoUrl,
+                Status = specialist.Status.ToString().ToLowerInvariant(),
+                StatusAr = SpecialistStatusAr(specialist.Status),
+                RejectionReason = specialist.Status == SpecialistStatus.Rejected ? specialist.RejectionReason : null,
+                CreatedAt = specialist.CreatedAt,
+                Documents = new DoctorVerificationDocuments
+                {
+                    IdFrontImageUrl = NullIfEmpty(specialist.IdFrontImageUrl),
+                    IdBackImageUrl = NullIfEmpty(specialist.IdBackImageUrl),
+                    SpecializationCertificateImageUrl = NullIfEmpty(specialist.SpecializationCertificateImageUrl),
+                    PracticeLicenseImageUrl = NullIfEmpty(specialist.PracticeLicenseImageUrl),
+                    UnionCardImageUrl = NullIfEmpty(specialist.UnionCardImageUrl),
+                    PersonalPhotoUrl = NullIfEmpty(specialist.PersonalPhotoUrl)
+                },
+                Services = new DoctorServicesSummary
+                {
+                    HasClinic = clinic != null,
+                    HasRemote = remote != null,
+                    Clinic = clinic == null ? null : new DoctorClinicSummary
+                    {
+                        ClinicId = clinic.Id,
+                        Name = clinic.Name,
+                        Address = clinic.Address,
+                        GovernorateName = governorateName,
+                        ExaminationPrice = clinic.ExaminationPrice,
+                        ConsultationPrice = clinic.ConsultationPrice
+                    },
+                    Remote = remote == null ? null : new DoctorRemoteSummary
+                    {
+                        ConsultationId = remote.Id,
+                        SessionPrice = remote.SessionPrice,
+                        SessionDurationMinutes = remote.SessionDurationMinutes,
+                        WaitingPeriodMinutes = remote.WaitingPeriodMinutes
+                    }
+                },
+                Stats = new DoctorProfileStats
+                {
+                    TotalBookings = bookings.Count,
+                    UpcomingBookings = bookings.Count(b => b.Status == BookingStatus.Confirmed),
+                    CompletedSessions = bookings.Count(b => b.Status == BookingStatus.Completed),
+                    RatingsCount = ratings.Count,
+                    AverageRating = ratings.Count == 0 ? 0 : Math.Round(ratings.Average(r => r.Rating), 1)
+                }
+            };
+
+            return ApiResponse<DoctorOwnProfileResponse>.SuccessResponse(response, "تم جلب الملف الشخصي بنجاح");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<DoctorOwnProfileResponse>.FailureResponse("حدث خطأ في الخادم", new List<string> { ex.Message });
+        }
+    }
+
     // ── المواعيد المحجوزة (شاشة مواعيد اليوم + تقويم الشهر) ──────────────────────
 
     public async Task<ApiResponse<DoctorDaySlotsResponse>> GetDaySlotsAsync(Guid userId, string date)
@@ -633,6 +722,23 @@ public class DoctorConsultationService : IDoctorConsultationService
     private async Task<RemoteConsultation?> GetApprovedRemoteAsync(Guid specialistId) =>
         (await _unitOfWork.RemoteConsultations.FindAsync(r => r.SpecialistId == specialistId && r.Status == RemoteConsultationStatus.Approved))
             .OrderBy(r => r.CreatedAt).FirstOrDefault();
+
+    private async Task<Clinic?> GetApprovedClinicAsync(Guid specialistId) =>
+        (await _unitOfWork.Clinics.FindAsync(c => c.SpecialistId == specialistId && c.Status == ClinicStatus.Approved))
+            .OrderBy(c => c.CreatedAt).FirstOrDefault();
+
+    private static string? NullIfEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    /// <summary>تسمية حالة حساب الطبيب بالعربية.</summary>
+    private static string SpecialistStatusAr(SpecialistStatus status) => status switch
+    {
+        SpecialistStatus.Draft => "مسودة",
+        SpecialistStatus.Pending => "قيد المراجعة",
+        SpecialistStatus.Approved => "تمت الموافقة",
+        SpecialistStatus.Rejected => "مرفوض",
+        SpecialistStatus.Cancelled => "ملغي",
+        _ => status.ToString()
+    };
 
     /// <summary>
     /// يُكمِل تلقائياً جلسات الكشف اون لاين المؤكدة التي انتهى وقتها (الحالة → مكتملة) ويحفظ التغيير،

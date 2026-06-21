@@ -10,6 +10,12 @@ namespace Ajial.Application.Interfaces;
 /// </summary>
 public interface IDoctorConsultationService
 {
+    /// <summary>
+    /// الملف الشخصي للطبيب كما يراه الطبيب نفسه: البيانات الأساسية، مستندات التوثيق،
+    /// ملخص الخدمات المتاحة، وإحصائيات الحجوزات والتقييم.
+    /// </summary>
+    Task<ApiResponse<DoctorOwnProfileResponse>> GetMyProfileAsync(Guid userId);
+
     /// <summary>مواعيد يوم محدد للطبيب مع حالة كل موعد (محجوز/متاح) ومعرّف الحجز للمحجوز.</summary>
     Task<ApiResponse<DoctorDaySlotsResponse>> GetDaySlotsAsync(Guid userId, string date);
 

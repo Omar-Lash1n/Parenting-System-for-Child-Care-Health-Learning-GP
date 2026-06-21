@@ -123,3 +123,103 @@ public class DoctorSessionStatusResponse
     /// <summary>رابط الانضمام لـ Google Meet — يُملأ فقط أثناء جلسة قائمة (بدأت ولم تنتهِ).</summary>
     public string? JoinUrl { get; set; }
 }
+
+// ============================================================
+// الملف الشخصي للطبيب (كما يراه الطبيب نفسه)
+// البيانات الأساسية + مستندات التوثيق + ملخص الخدمات + الإحصائيات.
+// ============================================================
+
+/// <summary>
+/// الملف الشخصي الكامل للطبيب كما يراه الطبيب نفسه: البيانات الأساسية، مستندات التوثيق،
+/// ملخص الخدمات المتاحة (عيادة / كشف عن بعد)، وإحصائيات الحجوزات والتقييم.
+/// </summary>
+public class DoctorOwnProfileResponse
+{
+    // ── البيانات الأساسية ──
+    public Guid SpecialistId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public bool IsEmailVerified { get; set; }
+    public string Phone { get; set; } = string.Empty;
+    public string Specialization { get; set; } = string.Empty;
+    public string PracticeLicenseNumber { get; set; } = string.Empty;
+    public string? PersonalPhotoUrl { get; set; }
+
+    /// <summary>مفتاح حالة حساب الطبيب (draft / pending / approved / rejected / cancelled).</summary>
+    public string Status { get; set; } = string.Empty;
+
+    /// <summary>تسمية حالة الحساب بالعربية.</summary>
+    public string StatusAr { get; set; } = string.Empty;
+
+    /// <summary>سبب الرفض — يُملأ فقط عندما تكون الحالة مرفوضة.</summary>
+    public string? RejectionReason { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    // ── مستندات التوثيق ──
+    public DoctorVerificationDocuments Documents { get; set; } = new();
+
+    // ── ملخص الخدمات ──
+    public DoctorServicesSummary Services { get; set; } = new();
+
+    // ── الإحصائيات ──
+    public DoctorProfileStats Stats { get; set; } = new();
+}
+
+/// <summary>روابط مستندات التوثيق الستة التي رفعها الطبيب عند التسجيل.</summary>
+public class DoctorVerificationDocuments
+{
+    public string? IdFrontImageUrl { get; set; }
+    public string? IdBackImageUrl { get; set; }
+    public string? SpecializationCertificateImageUrl { get; set; }
+    public string? PracticeLicenseImageUrl { get; set; }
+    public string? UnionCardImageUrl { get; set; }
+    public string? PersonalPhotoUrl { get; set; }
+}
+
+/// <summary>ملخص الخدمات المقبولة للطبيب (عيادة و/أو كشف عن بعد).</summary>
+public class DoctorServicesSummary
+{
+    public bool HasClinic { get; set; }
+    public bool HasRemote { get; set; }
+    public DoctorClinicSummary? Clinic { get; set; }
+    public DoctorRemoteSummary? Remote { get; set; }
+}
+
+public class DoctorClinicSummary
+{
+    public Guid ClinicId { get; set; }
+    public string? Name { get; set; }
+    public string? Address { get; set; }
+    public string? GovernorateName { get; set; }
+    public decimal? ExaminationPrice { get; set; }
+    public decimal? ConsultationPrice { get; set; }
+}
+
+public class DoctorRemoteSummary
+{
+    public Guid ConsultationId { get; set; }
+    public decimal? SessionPrice { get; set; }
+    public int? SessionDurationMinutes { get; set; }
+    public int? WaitingPeriodMinutes { get; set; }
+}
+
+/// <summary>إحصائيات سريعة لملف الطبيب — عدد الحجوزات، الجلسات المكتملة، ومتوسط التقييم.</summary>
+public class DoctorProfileStats
+{
+    /// <summary>إجمالي حجوزات الطبيب (كل الحالات).</summary>
+    public int TotalBookings { get; set; }
+
+    /// <summary>عدد الحجوزات المؤكَّدة القادمة (لم تكتمل بعد).</summary>
+    public int UpcomingBookings { get; set; }
+
+    /// <summary>عدد الجلسات/الحجوزات المكتملة.</summary>
+    public int CompletedSessions { get; set; }
+
+    /// <summary>عدد التقييمات التي حصل عليها الطبيب.</summary>
+    public int RatingsCount { get; set; }
+
+    /// <summary>متوسط التقييم بالنجوم (0 إذا لم يُقيَّم بعد).</summary>
+    public double AverageRating { get; set; }
+}

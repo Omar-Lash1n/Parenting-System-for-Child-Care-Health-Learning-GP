@@ -402,6 +402,231 @@ class DiagnosisResponse {
 }
 
 // ============================================================
+// ============ Doctor profile (الملف الشخصي) =================
+// ============================================================
+
+/// GET /api/doctor/consultations/profile — the logged-in doctor's own profile.
+class DoctorProfile {
+  final String specialistId;
+  final String fullName;
+  final String username;
+  final String email;
+  final bool isEmailVerified;
+  final String phone;
+  final String specialization;
+  final String practiceLicenseNumber;
+  final String? personalPhotoUrl;
+
+  /// Lowercase status key from the backend (approved / pending / rejected ...).
+  final String status;
+  final String statusAr;
+  final String? rejectionReason;
+  final DateTime? createdAt;
+
+  final DoctorVerificationDocuments documents;
+  final DoctorServicesSummary services;
+  final DoctorProfileStats stats;
+
+  const DoctorProfile({
+    required this.specialistId,
+    required this.fullName,
+    required this.username,
+    required this.email,
+    required this.isEmailVerified,
+    required this.phone,
+    required this.specialization,
+    required this.practiceLicenseNumber,
+    this.personalPhotoUrl,
+    required this.status,
+    required this.statusAr,
+    this.rejectionReason,
+    this.createdAt,
+    required this.documents,
+    required this.services,
+    required this.stats,
+  });
+
+  /// PascalCase status so it matches [StatusBadge]'s color logic
+  /// (e.g. "approved" -> "Approved").
+  String get statusPascal {
+    if (status.isEmpty) return status;
+    return '${status[0].toUpperCase()}${status.substring(1)}';
+  }
+
+  factory DoctorProfile.fromJson(Map<String, dynamic> json) {
+    final docs = _read(json, 'documents');
+    final services = _read(json, 'services');
+    final stats = _read(json, 'stats');
+    return DoctorProfile(
+      specialistId: _read(json, 'specialistId').toString(),
+      fullName: _read(json, 'fullName').toString(),
+      username: _read(json, 'username').toString(),
+      email: _read(json, 'email').toString(),
+      isEmailVerified: _read(json, 'isEmailVerified') == true,
+      phone: _read(json, 'phone').toString(),
+      specialization: _read(json, 'specialization').toString(),
+      practiceLicenseNumber: _read(json, 'practiceLicenseNumber').toString(),
+      personalPhotoUrl: _nullableString(_read(json, 'personalPhotoUrl')),
+      status: _read(json, 'status').toString(),
+      statusAr: _read(json, 'statusAr').toString(),
+      rejectionReason: _nullableString(_read(json, 'rejectionReason')),
+      createdAt: _parseDate(_read(json, 'createdAt')),
+      documents: docs is Map
+          ? DoctorVerificationDocuments.fromJson(Map<String, dynamic>.from(docs))
+          : const DoctorVerificationDocuments(),
+      services: services is Map
+          ? DoctorServicesSummary.fromJson(Map<String, dynamic>.from(services))
+          : const DoctorServicesSummary(),
+      stats: stats is Map
+          ? DoctorProfileStats.fromJson(Map<String, dynamic>.from(stats))
+          : const DoctorProfileStats(),
+    );
+  }
+}
+
+/// The six verification document URLs the doctor uploaded at registration.
+class DoctorVerificationDocuments {
+  final String? idFrontImageUrl;
+  final String? idBackImageUrl;
+  final String? specializationCertificateImageUrl;
+  final String? practiceLicenseImageUrl;
+  final String? unionCardImageUrl;
+  final String? personalPhotoUrl;
+
+  const DoctorVerificationDocuments({
+    this.idFrontImageUrl,
+    this.idBackImageUrl,
+    this.specializationCertificateImageUrl,
+    this.practiceLicenseImageUrl,
+    this.unionCardImageUrl,
+    this.personalPhotoUrl,
+  });
+
+  factory DoctorVerificationDocuments.fromJson(Map<String, dynamic> json) {
+    return DoctorVerificationDocuments(
+      idFrontImageUrl: _nullableString(_read(json, 'idFrontImageUrl')),
+      idBackImageUrl: _nullableString(_read(json, 'idBackImageUrl')),
+      specializationCertificateImageUrl:
+          _nullableString(_read(json, 'specializationCertificateImageUrl')),
+      practiceLicenseImageUrl:
+          _nullableString(_read(json, 'practiceLicenseImageUrl')),
+      unionCardImageUrl: _nullableString(_read(json, 'unionCardImageUrl')),
+      personalPhotoUrl: _nullableString(_read(json, 'personalPhotoUrl')),
+    );
+  }
+}
+
+/// The doctor's approved services (clinic and/or remote consultation).
+class DoctorServicesSummary {
+  final bool hasClinic;
+  final bool hasRemote;
+  final DoctorClinicSummary? clinic;
+  final DoctorRemoteSummary? remote;
+
+  const DoctorServicesSummary({
+    this.hasClinic = false,
+    this.hasRemote = false,
+    this.clinic,
+    this.remote,
+  });
+
+  factory DoctorServicesSummary.fromJson(Map<String, dynamic> json) {
+    final clinic = _read(json, 'clinic');
+    final remote = _read(json, 'remote');
+    return DoctorServicesSummary(
+      hasClinic: _read(json, 'hasClinic') == true,
+      hasRemote: _read(json, 'hasRemote') == true,
+      clinic: clinic is Map
+          ? DoctorClinicSummary.fromJson(Map<String, dynamic>.from(clinic))
+          : null,
+      remote: remote is Map
+          ? DoctorRemoteSummary.fromJson(Map<String, dynamic>.from(remote))
+          : null,
+    );
+  }
+}
+
+class DoctorClinicSummary {
+  final String clinicId;
+  final String? name;
+  final String? address;
+  final String? governorateName;
+  final double? examinationPrice;
+  final double? consultationPrice;
+
+  const DoctorClinicSummary({
+    required this.clinicId,
+    this.name,
+    this.address,
+    this.governorateName,
+    this.examinationPrice,
+    this.consultationPrice,
+  });
+
+  factory DoctorClinicSummary.fromJson(Map<String, dynamic> json) {
+    return DoctorClinicSummary(
+      clinicId: _read(json, 'clinicId').toString(),
+      name: _nullableString(_read(json, 'name')),
+      address: _nullableString(_read(json, 'address')),
+      governorateName: _nullableString(_read(json, 'governorateName')),
+      examinationPrice: _parseDouble(_read(json, 'examinationPrice')),
+      consultationPrice: _parseDouble(_read(json, 'consultationPrice')),
+    );
+  }
+}
+
+class DoctorRemoteSummary {
+  final String consultationId;
+  final double? sessionPrice;
+  final int? sessionDurationMinutes;
+  final int? waitingPeriodMinutes;
+
+  const DoctorRemoteSummary({
+    required this.consultationId,
+    this.sessionPrice,
+    this.sessionDurationMinutes,
+    this.waitingPeriodMinutes,
+  });
+
+  factory DoctorRemoteSummary.fromJson(Map<String, dynamic> json) {
+    return DoctorRemoteSummary(
+      consultationId: _read(json, 'consultationId').toString(),
+      sessionPrice: _parseDouble(_read(json, 'sessionPrice')),
+      sessionDurationMinutes:
+          _parseInt(_read(json, 'sessionDurationMinutes')),
+      waitingPeriodMinutes: _parseInt(_read(json, 'waitingPeriodMinutes')),
+    );
+  }
+}
+
+/// Quick stats shown on the doctor's profile.
+class DoctorProfileStats {
+  final int totalBookings;
+  final int upcomingBookings;
+  final int completedSessions;
+  final int ratingsCount;
+  final double averageRating;
+
+  const DoctorProfileStats({
+    this.totalBookings = 0,
+    this.upcomingBookings = 0,
+    this.completedSessions = 0,
+    this.ratingsCount = 0,
+    this.averageRating = 0,
+  });
+
+  factory DoctorProfileStats.fromJson(Map<String, dynamic> json) {
+    return DoctorProfileStats(
+      totalBookings: _parseInt(_read(json, 'totalBookings')) ?? 0,
+      upcomingBookings: _parseInt(_read(json, 'upcomingBookings')) ?? 0,
+      completedSessions: _parseInt(_read(json, 'completedSessions')) ?? 0,
+      ratingsCount: _parseInt(_read(json, 'ratingsCount')) ?? 0,
+      averageRating: _parseDouble(_read(json, 'averageRating')) ?? 0,
+    );
+  }
+}
+
+// ============================================================
 // ==================== Helpers ===============================
 // ============================================================
 

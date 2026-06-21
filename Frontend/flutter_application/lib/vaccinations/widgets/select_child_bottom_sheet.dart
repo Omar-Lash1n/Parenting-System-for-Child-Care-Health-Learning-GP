@@ -24,8 +24,16 @@ const String _kFont = 'IBM Plex Sans Arabic';
 
 /// Shows the "اختر الطفل" modal bottom sheet.
 ///
+/// [actionLabel] is the confirm-button text (defaults to the survey flow).
+/// When [appendChildName] is true, the selected child's name is appended
+/// (e.g. "... ل أحمد"); set it to false to keep the label fixed.
+///
 /// Returns the selected [ChildModel] or `null` if dismissed.
-Future<ChildModel?> showSelectChildSheet(BuildContext context) {
+Future<ChildModel?> showSelectChildSheet(
+  BuildContext context, {
+  String actionLabel = 'اعادة استبيان التطعيم',
+  bool appendChildName = true,
+}) {
   // Make sure children are loaded
   final familyProvider = context.read<FamilyProvider>();
   if (familyProvider.status == FamilyStatus.initial) {
@@ -36,7 +44,10 @@ Future<ChildModel?> showSelectChildSheet(BuildContext context) {
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => const _SelectChildSheet(),
+    builder: (_) => _SelectChildSheet(
+      actionLabel: actionLabel,
+      appendChildName: appendChildName,
+    ),
   );
 }
 
@@ -44,7 +55,13 @@ Future<ChildModel?> showSelectChildSheet(BuildContext context) {
 // _SelectChildSheet — The sheet content
 // ─────────────────────────────────────────────
 class _SelectChildSheet extends StatefulWidget {
-  const _SelectChildSheet();
+  final String actionLabel;
+  final bool appendChildName;
+
+  const _SelectChildSheet({
+    required this.actionLabel,
+    required this.appendChildName,
+  });
 
   @override
   State<_SelectChildSheet> createState() => _SelectChildSheetState();
@@ -231,8 +248,10 @@ class _SelectChildSheetState extends State<_SelectChildSheet> {
   Widget _buildCTA(BuildContext context, FamilyProvider provider) {
     final hasSelection = _selectedChild != null;
     final buttonLabel = hasSelection
-        ? 'اعادة استبيان التطعيم ل ${_selectedChild!.fullName}'
-        : (provider.hasChildren ? 'اعادة استبيان التطعيم' : 'اضف طفلك');
+        ? (widget.appendChildName
+            ? '${widget.actionLabel} ل ${_selectedChild!.fullName}'
+            : widget.actionLabel)
+        : (provider.hasChildren ? widget.actionLabel : 'اضف طفلك');
     return SizedBox(
       width: double.infinity,
       height: 50,

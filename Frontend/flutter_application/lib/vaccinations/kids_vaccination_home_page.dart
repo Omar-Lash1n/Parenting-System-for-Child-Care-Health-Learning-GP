@@ -528,8 +528,23 @@ class _FeatureGrid extends StatelessWidget {
                 imagePath: 'images/medical file.png',
                 iconColor: _kPrimary,
                 bgColor: _kPrimary.withOpacity(0.05),
-                onTap: () {
-                  // TODO: navigate to vaccination summary
+                onTap: () async {
+                  final selectedChild = await showSelectChildSheet(
+                    context,
+                    actionLabel: 'عرض ملخص التطعيمات',
+                    appendChildName: false,
+                  );
+                  if (selectedChild != null && context.mounted) {
+                    Navigator.pushNamed(
+                      context,
+                      '/vaccination-summary',
+                      arguments: {
+                        'childId': selectedChild.childId,
+                        'childName': selectedChild.fullName,
+                        'childProfileImageUrl': selectedChild.photoUrl,
+                      },
+                    );
+                  }
                 },
               ),
             ),
@@ -558,7 +573,7 @@ class _FeatureGrid extends StatelessWidget {
                 iconColor: _kGreen,
                 bgColor: _kGreen.withOpacity(0.05),
                 onTap: () {
-                  // TODO: navigate to vaccination schedule
+                  Navigator.pushNamed(context, '/vaccination-schedule');
                 },
               ),
             ),

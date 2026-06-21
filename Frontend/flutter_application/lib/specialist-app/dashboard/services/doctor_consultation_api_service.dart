@@ -30,6 +30,20 @@ class DoctorConsultationApiService {
               ),
             );
 
+  /// GET /api/doctor/consultations/profile
+  Future<DoctorProfile> getMyProfile() async {
+    final response = await _dio.get(
+      '/doctor/consultations/profile',
+      options: await _options(),
+    );
+    return _parseResponse(
+      response.data,
+      (data) => DoctorProfile.fromJson(
+        Map<String, dynamic>.from(data as Map),
+      ),
+    );
+  }
+
   /// GET /api/doctor/consultations/slots?date=yyyy-MM-dd
   Future<DoctorSlotsResponse> getSlots(String date) async {
     final response = await _dio.get(
