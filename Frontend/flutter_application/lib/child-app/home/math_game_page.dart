@@ -196,6 +196,7 @@ class _MathGamePageState extends State<MathGamePage> {
   int? _selectedChoice; // the choice the child tapped (for feedback colors)
   bool _locked = false; // lock input while feedback is showing
   bool _showWin = false;
+  bool _welcomePlayed = false;
 
   ChildHomeProvider? _provider;
 
@@ -206,6 +207,11 @@ class _MathGamePageState extends State<MathGamePage> {
       _provider = context.read<ChildHomeProvider>();
     } catch (_) {
       _provider = null;
+    }
+
+    if (!_welcomePlayed) {
+      _welcomePlayed = true;
+      _playSound('assets/sounds/WelcomeMathGame.mp3');
     }
   }
 

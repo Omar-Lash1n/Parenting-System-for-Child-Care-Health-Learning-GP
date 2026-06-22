@@ -75,6 +75,7 @@ class _MemoryGamePageState extends State<MemoryGamePage>
   int _moves = 0;
   int _matchedPairs = 0;
   bool _showWin = false;
+  bool _welcomePlayed = false;
 
   ChildHomeProvider? _provider;
 
@@ -98,6 +99,11 @@ class _MemoryGamePageState extends State<MemoryGamePage>
       _provider = context.read<ChildHomeProvider>();
     } catch (_) {
       _provider = null;
+    }
+
+    if (!_welcomePlayed) {
+      _welcomePlayed = true;
+      _playSound('assets/sounds/WelcomeMemoryGame.mp3');
     }
   }
 
@@ -181,7 +187,7 @@ class _MemoryGamePageState extends State<MemoryGamePage>
       });
     } else {
       // No match → flip both back after a short pause.
-      _playSound('assets/sounds/error_wrong_fruits.mp3');
+      _playSound('assets/sounds/TryAgain.mp3');
       Future.delayed(const Duration(milliseconds: 850), () {
         if (!mounted) return;
         setState(() {

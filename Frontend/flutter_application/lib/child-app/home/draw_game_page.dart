@@ -171,6 +171,7 @@ class _DrawGamePageState extends State<DrawGamePage>
   bool _checking = false; // guard against double taps while validating
   bool _showTryAgain = false; // gentle "try again" banner
   int _tryAgainToken = 0; // cancels stale banner auto-hides
+  bool _welcomePlayed = false;
 
   ChildHomeProvider? _provider;
 
@@ -214,6 +215,11 @@ class _DrawGamePageState extends State<DrawGamePage>
       _provider = context.read<ChildHomeProvider>();
     } catch (_) {
       _provider = null;
+    }
+
+    if (!_welcomePlayed) {
+      _welcomePlayed = true;
+      _playSound('assets/sounds/WelcomeDrawGame.mp3');
     }
   }
 
@@ -274,7 +280,7 @@ class _DrawGamePageState extends State<DrawGamePage>
     if (_checking) return;
     // Nothing drawn yet — gently nudge instead of celebrating an empty page.
     if (_strokes.isEmpty) {
-      _playSound('assets/sounds/error_empty.mp3');
+      _playSound('assets/sounds/TryAgain.mp3');
       _flashTryAgain();
       return;
     }
@@ -292,7 +298,7 @@ class _DrawGamePageState extends State<DrawGamePage>
       });
     } else {
       // Drawing doesn't match the target → encourage another try.
-      _playSound('assets/sounds/error_incomplete.mp3');
+      _playSound('assets/sounds/TryAgain.mp3');
       _flashTryAgain();
     }
   }
