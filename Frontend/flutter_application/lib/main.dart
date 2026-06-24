@@ -161,6 +161,11 @@ void main() async {
     // Register the device FCM token with our backend
     unawaited(VaccinationReminderService.registerDeviceToken());
 
+    // Re-register whenever FCM rotates the token, so the backend stays current
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+      VaccinationReminderService.registerDeviceToken();
+    });
+
     // Handle notifications when the app is in the background/terminated
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 

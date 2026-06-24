@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "543424069722",
-    "project_id": "ajial-973b5",
-    "storage_bucket": "ajial-973b5.firebasestorage.app"
+    "project_number": "860429978658",
+    "project_id": "ajial-app",
+    "storage_bucket": "ajial-app.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:543424069722:android:6668242e8b871af59fd863",
+        "mobilesdk_app_id": "1:860429978658:android:929b52adce004dc9994e7b",
         "android_client_info": {
           "package_name": "com.example.flutter_application"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyA8nthKvs6jq0ajDH1_XJaIbxVShlDyoPs"
+          "current_key": "AIzaSyC_h0cZooTQsVQX130oNV0wrJ3J45D5bMk"
         }
       ],
       "services": {
