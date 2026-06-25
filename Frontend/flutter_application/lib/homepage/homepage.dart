@@ -109,9 +109,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       const DailyQuestionCard(),
                       const SizedBox(height: 24),
                       HardwareAdCard(
-                        onOrderTap: () {
-                          // TODO: wire up the hardware order flow.
-                        },
+                        onOrderTap: () =>
+                            Navigator.pushNamed(context, '/tracking/entry'),
                       ),
                       const SizedBox(height: 24),
                       const QuickActionsSection(),

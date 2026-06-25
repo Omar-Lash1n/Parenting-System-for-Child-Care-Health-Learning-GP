@@ -74,6 +74,13 @@ import 'package:Ajial/ranking/ranking_page.dart';
 import 'package:Ajial/specialist-app/dashboard/providers/clinic_remote_provider.dart';
 import 'package:Ajial/consultations/screens/parent_consultations_page.dart';
 import 'package:Ajial/consultations/screens/parent_payments_page.dart';
+import 'package:Ajial/tracking/providers/tracking_provider.dart';
+import 'package:Ajial/tracking/screens/live_map_screen.dart';
+import 'package:Ajial/tracking/screens/device_card_screen.dart';
+import 'package:Ajial/tracking/screens/tracking_entry_screen.dart';
+import 'package:Ajial/tracking/screens/buy_device_screen.dart';
+import 'package:Ajial/tracking/screens/add_device_screen.dart';
+import 'package:Ajial/tracking/screens/device_settings_screen.dart';
 
 // Background handler is only supported on mobile (Android/iOS), not on web.
 @pragma('vm:entry-point')
@@ -218,6 +225,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LessonProvider()),
         ChangeNotifierProvider(create: (_) => RankingProvider()),
         ChangeNotifierProvider(create: (_) => ClinicRemoteProvider()),
+        ChangeNotifierProvider(create: (_) => TrackingProvider()),
       ],
       child: const AjialApp(),
     ),
@@ -250,7 +258,7 @@ class AjialApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
 
-      initialRoute: '/splash', // (يمكنك تغيير هذه الصفحة الافتراضية حسب الحاجة)
+      initialRoute: '/splash',
       routes: {
         '/splash': (context) => SplashScreen(),
         '/login': (context) => const LoginScreen(),
@@ -288,6 +296,12 @@ class AjialApp extends StatelessWidget {
         '/ranking': (context) => const RankingPage(),
         '/parent-consultations': (context) => const ParentConsultationsPage(),
         '/parent-payments': (context) => const ParentPaymentsPage(),
+        '/tracking/live-map': (context) => const LiveMapScreen(),
+        '/tracking/device-card': (context) => const DeviceCardScreen(),
+        '/tracking/entry': (context) => const TrackingEntryScreen(),
+        '/tracking/buy-device': (context) => const BuyDeviceScreen(),
+        '/tracking/add-device': (context) => const AddDeviceScreen(),
+        '/tracking/settings': (context) => const DeviceSettingsScreen(),
       },
     );
   }
