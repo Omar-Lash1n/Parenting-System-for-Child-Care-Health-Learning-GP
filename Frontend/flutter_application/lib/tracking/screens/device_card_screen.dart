@@ -92,7 +92,7 @@ class _DeviceCardScreenState extends State<DeviceCardScreen> {
   }
 
   void _onAddDevice() {
-    Navigator.of(context).push(
+    Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const AddDeviceScreen()),
     );
   }
