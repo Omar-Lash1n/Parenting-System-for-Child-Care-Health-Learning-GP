@@ -19,29 +19,55 @@ class VaccinationReminderService {
       final token = await _getToken();
       if (token == null) return;
 
-      final deviceToken = await FirebaseMessaging.instance.getToken();
-      if (deviceToken == null) return;
-      
-      print('📱 FCM Device Token: $deviceToken');
-
-      final url = Uri.parse('$_apiBaseUrl/VaccinationReminder/device-token');
-      final response = await http.post(
-        url,
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({"deviceToken": deviceToken}),
-      );
-
-      if (response.statusCode == 200) {
-        print('✅ Device token registered successfully on the backend');
-      } else {
-        print('⚠️ Failed to register device token: ${response.statusCode}');
+      // One-time: drop any stale token left over from the OLD Firebase project,
+      // so getToken() mints a fresh one under the NEW project.
+      final prefs = await SharedPreferences.getInstance();
+      if (!(prefs.getBool('fcm_migrated_new_project') ?? false)) {
+        try {
+          await FirebaseMessaging.instance.deleteToken();
+        } catch (_) {/* ignore */}
+        await prefs.setBool('fcm_migrated_new_project', true);
       }
+
+      // getToken can transiently fail with SERVICE_NOT_AVAILABLE — retry with backoff.
+      String? deviceToken;
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        try {
+          deviceToken = await FirebaseMessaging.instance.getToken();
+          if (deviceToken != null) break;
+        } catch (e) {
+          print('⚠️ getToken attempt $attempt failed: $e');
+          if (attempt < 3) await Future.delayed(Duration(seconds: 2 * attempt));
+        }
+      }
+      if (deviceToken == null) {
+        print('❌ Could not obtain FCM token after retries');
+        return;
+      }
+
+      print('📱 FCM Device Token: $deviceToken');
+      await _postDeviceToken(token, deviceToken);
     } catch (e) {
       print('❌ Error registering device token: $e');
+    }
+  }
+
+  static Future<void> _postDeviceToken(String authToken, String deviceToken) async {
+    final url = Uri.parse('$_apiBaseUrl/VaccinationReminder/device-token');
+    final response = await http.post(
+      url,
+      headers: {
+        'accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $authToken',
+      },
+      body: jsonEncode({"deviceToken": deviceToken}),
+    );
+
+    if (response.statusCode == 200) {
+      print('✅ Device token registered successfully on the backend');
+    } else {
+      print('⚠️ Failed to register device token: ${response.statusCode} ${response.body}');
     }
   }
 
