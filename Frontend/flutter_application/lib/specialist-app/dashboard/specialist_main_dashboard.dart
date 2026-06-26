@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/providers/specialist_application_provider.dart';
 import 'package:Ajial/specialist-app/application-tracking/widgets/specialist_application_widgets.dart';
 import 'package:Ajial/specialist-app/dashboard/widgets/dashboard_card.dart';
-import 'package:Ajial/specialist-app/dashboard/specialist_clinics_page.dart';
+import 'package:Ajial/specialist-app/dashboard/specialist_clinic_data_page.dart';
 import 'package:Ajial/specialist-app/dashboard/specialist_telemedicine_page.dart';
 
 class SpecialistMainDashboard extends StatelessWidget {
@@ -36,7 +36,7 @@ class SpecialistMainDashboard extends StatelessWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const SpecialistClinicsPage(),
+                            builder: (_) => const SpecialistClinicDataPage(),
                           ),
                         );
                       },
