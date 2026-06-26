@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../providers/nav_bar_provider.dart';
 import '../models/live_location.dart';
 import '../models/tracker_device.dart';
 import '../providers/tracking_provider.dart';
@@ -105,7 +106,9 @@ class _DeviceCardScreenState extends State<DeviceCardScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.grey.shade50,
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
         body: SafeArea(
+          bottom: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -140,10 +143,11 @@ class _DeviceCardScreenState extends State<DeviceCardScreen> {
               height: 44,
               decoration: const BoxDecoration(
                   color: _kPinkLight, shape: BoxShape.circle),
-              child: const Icon(Icons.arrow_forward, color: _kRed, size: 22),
+              child: const Icon(Icons.arrow_forward,
+                  color: _kRed, size: 22, textDirection: TextDirection.ltr),
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 16),
           const Text(
             'تتبع الطفل',
             style: TextStyle(
@@ -152,6 +156,7 @@ class _DeviceCardScreenState extends State<DeviceCardScreen> {
               fontFamily: _kFont,
             ),
           ),
+          const Spacer(),
         ],
       ),
     );
@@ -203,8 +208,7 @@ class _DeviceCardScreenState extends State<DeviceCardScreen> {
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: _kRed,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
               ),
               onPressed: _onAddDevice,
               child: const Text(
@@ -352,11 +356,61 @@ class _DeviceCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Location icon circle + online indicator dot
+          Stack(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: const BoxDecoration(
+                    color: _kPinkLight, shape: BoxShape.circle),
+                child: const Icon(Icons.location_on, color: _kRed, size: 28),
+              ),
+              Positioned(
+                bottom: 2,
+                left: 2,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: isOnline ? Colors.green : Colors.grey.shade400,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          // Label + SIM (right-aligned in RTL)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: _kFont,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                sim,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.black54,
+                  fontFamily: _kFont,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
           // 3-dot context menu
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.black54, size: 22),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 4,
             onSelected: (value) {
               if (value == 'settings') onSettingsTap();
@@ -381,57 +435,6 @@ class _DeviceCard extends StatelessWidget {
                 icon: Icons.delete_outline,
                 label: 'حذف القطعة',
                 color: _kRed,
-              ),
-            ],
-          ),
-          const Spacer(),
-          // Label + SIM (right-aligned in RTL)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: _kFont,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                sim,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.black54,
-                  fontFamily: _kFont,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          // Location icon circle + online indicator dot
-          Stack(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: const BoxDecoration(
-                    color: _kPinkLight, shape: BoxShape.circle),
-                child: const Icon(Icons.location_on, color: _kRed, size: 28),
-              ),
-              Positioned(
-                bottom: 2,
-                left: 2,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: isOnline ? Colors.green : Colors.grey.shade400,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                ),
               ),
             ],
           ),
@@ -504,18 +507,20 @@ class _DeviceCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          Transform.scale(
-            scale: 0.85,
-            child: Switch(
-              value: gpsEnabled,
-              onChanged: (_) => onToggleGps(),
-              activeThumbColor: Colors.white,
-              activeTrackColor: _kRed,
-              inactiveThumbColor: Colors.white,
-              inactiveTrackColor: Colors.grey.shade300,
-            ),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+                color: _kPinkLight, shape: BoxShape.circle),
+            child: const Icon(Icons.location_on, color: _kRed, size: 22),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 10),
+          const Text(
+            'تشغيل/ايقاف gps',
+            style: TextStyle(
+                fontSize: 14, fontFamily: _kFont, color: Colors.black87),
+          ),
+          const Spacer(),
           GestureDetector(
             onTap: onIntervalTap,
             child: Container(
@@ -541,19 +546,17 @@ class _DeviceCard extends StatelessWidget {
               ),
             ),
           ),
-          const Spacer(),
-          const Text(
-            'تشغيل/ايقاف gps',
-            style: TextStyle(
-                fontSize: 14, fontFamily: _kFont, color: Colors.black87),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-                color: _kPinkLight, shape: BoxShape.circle),
-            child: const Icon(Icons.location_on, color: _kRed, size: 22),
+          const SizedBox(width: 4),
+          Transform.scale(
+            scale: 0.85,
+            child: Switch(
+              value: gpsEnabled,
+              onChanged: (_) => onToggleGps(),
+              activeThumbColor: Colors.white,
+              activeTrackColor: _kRed,
+              inactiveThumbColor: Colors.white,
+              inactiveTrackColor: Colors.grey.shade300,
+            ),
           ),
         ],
       ),
@@ -571,7 +574,7 @@ class _DeviceCard extends StatelessWidget {
           side: BorderSide(
               color: gpsEnabled ? _kRed : Colors.grey.shade300, width: 1.5),
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           foregroundColor:
               gpsEnabled ? _kRed : Colors.grey.shade400,
         ),
@@ -613,9 +616,17 @@ class _StatBox extends StatelessWidget {
       ),
       child: Row(
         children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+                color: _kPinkLight, shape: BoxShape.circle),
+            child: Icon(icon, color: _kRed, size: 20),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
@@ -636,14 +647,6 @@ class _StatBox extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-                color: _kPinkLight, shape: BoxShape.circle),
-            child: Icon(icon, color: _kRed, size: 20),
           ),
         ],
       ),

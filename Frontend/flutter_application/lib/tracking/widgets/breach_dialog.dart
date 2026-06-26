@@ -35,7 +35,7 @@ class _BreachDialog extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -105,8 +105,7 @@ class _BreachDialog extends StatelessWidget {
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.black26),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onPressed: () {
@@ -129,8 +128,7 @@ class _BreachDialog extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _kRed,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         elevation: 0,
                       ),

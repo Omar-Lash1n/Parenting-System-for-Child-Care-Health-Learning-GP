@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../providers/nav_bar_provider.dart';
 import 'add_device_screen.dart';
 
 const Color _kRed = Color(0xFFBF092F);
@@ -23,7 +24,9 @@ class BuyDeviceScreen extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.grey.shade50,
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
         body: SafeArea(
+          bottom: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -51,8 +54,9 @@ class BuyDeviceScreen extends StatelessWidget {
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _kRed,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                      elevation: 0,
                     ),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
@@ -89,15 +93,17 @@ class BuyDeviceScreen extends StatelessWidget {
               height: 44,
               decoration: const BoxDecoration(
                   color: _kPinkLight, shape: BoxShape.circle),
-              child: const Icon(Icons.arrow_forward, color: _kRed, size: 22),
+              child: const Icon(Icons.arrow_forward,
+                  color: _kRed, size: 22, textDirection: TextDirection.ltr),
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 16),
           const Text(
             'شراء قطعة التتبع',
             style: TextStyle(
                 fontSize: 20, fontWeight: FontWeight.bold, fontFamily: _kFont),
           ),
+          const Spacer(),
         ],
       ),
     );
@@ -123,11 +129,11 @@ class BuyDeviceScreen extends StatelessWidget {
                 alignment: Alignment.center,
                 children: [
                   Container(
-                    width: 120,
-                    height: 120,
+                    width: 240,
+                    height: 160,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withAlpha(20),
@@ -135,8 +141,14 @@ class BuyDeviceScreen extends StatelessWidget {
                         )
                       ],
                     ),
-                    child: const Icon(Icons.watch_rounded,
-                        size: 64, color: Color(0xFF888888)),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.asset(
+                      'images/qbit.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                         return const Icon(Icons.watch_rounded, size: 64, color: Color(0xFF888888));
+                      },
+                    ),
                   ),
                   Positioned(
                     bottom: 16,
@@ -166,7 +178,28 @@ class BuyDeviceScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start, // Align to right in RTL
+                  children: const [
+                    Text(
+                      'قطعة QBIT للتتبع',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: _kFont),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'قطعة ذكية لتتبع الطفل',
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.black54,
+                          fontFamily: _kFont),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end, // Align to left in RTL
                   children: const [
                     Text(
                       '2500ج.م',
@@ -189,27 +222,6 @@ class BuyDeviceScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const Spacer(),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: const [
-                    Text(
-                      'قطعة QBIT للتتبع',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: _kFont),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'قطعة ذكية لتتبع الطفل',
-                      style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.black54,
-                          fontFamily: _kFont),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -228,7 +240,7 @@ class BuyDeviceScreen extends StatelessWidget {
             color: Colors.grey.shade300, style: BorderStyle.solid),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
           Text(
             'وصف القطعة',
@@ -262,7 +274,7 @@ class BuyDeviceScreen extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'مميزات القطعة',
@@ -276,14 +288,14 @@ class BuyDeviceScreen extends StatelessWidget {
             (f) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
+                  const Icon(Icons.check_circle_outline,
+                      color: _kRed, size: 20),
+                  const SizedBox(width: 10),
                   Text(f,
                       style: const TextStyle(
                           fontSize: 13, fontFamily: _kFont)),
-                  const SizedBox(width: 10),
-                  const Icon(Icons.check_circle_outline,
-                      color: _kRed, size: 20),
                 ],
               ),
             ),

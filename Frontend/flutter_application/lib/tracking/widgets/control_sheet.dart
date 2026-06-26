@@ -125,8 +125,7 @@ class _ControlSheet extends StatelessWidget {
               trailing: OutlinedButton(
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.black26),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 ),

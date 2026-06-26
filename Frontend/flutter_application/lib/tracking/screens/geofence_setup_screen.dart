@@ -98,8 +98,7 @@ class _GeofenceSetupScreenState extends State<GeofenceSetupScreen> {
           builder: (ctx) => Directionality(
             textDirection: TextDirection.rtl,
             child: AlertDialog(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: const Text('الجهاز خارج النطاق',
                   style: TextStyle(
                       fontFamily: _kFont, fontWeight: FontWeight.bold)),
@@ -116,8 +115,7 @@ class _GeofenceSetupScreenState extends State<GeofenceSetupScreen> {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _kRed,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                   ),
                   onPressed: () => Navigator.of(ctx).pop(true),
                   child: const Text('استمرار',
@@ -198,10 +196,10 @@ class _GeofenceSetupScreenState extends State<GeofenceSetupScreen> {
                         decoration: const BoxDecoration(
                             color: Colors.white, shape: BoxShape.circle),
                         child: const Icon(Icons.arrow_forward,
-                            color: _kRed, size: 22),
+                            color: _kRed, size: 22, textDirection: TextDirection.ltr),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 16),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 8),
@@ -224,7 +222,6 @@ class _GeofenceSetupScreenState extends State<GeofenceSetupScreen> {
                       ),
                     ),
                     const Spacer(),
-                    const SizedBox(width: 44),
                   ],
                 ),
               ),
@@ -281,8 +278,7 @@ class _GeofenceSetupScreenState extends State<GeofenceSetupScreen> {
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: Colors.grey.shade300),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                           padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                         onPressed: _useDeviceLocation,
@@ -358,8 +354,7 @@ class _GeofenceSetupScreenState extends State<GeofenceSetupScreen> {
                           backgroundColor: _center != null
                               ? _kRed
                               : Colors.grey.shade300,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                           elevation: 0,
                         ),
                         onPressed: _center != null ? _onConfirm : null,

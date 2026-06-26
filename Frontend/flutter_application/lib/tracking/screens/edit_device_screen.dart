@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../providers/nav_bar_provider.dart';
 import '../models/tracker_device.dart';
 import '../providers/tracking_provider.dart';
 
@@ -94,7 +95,9 @@ class _EditDeviceScreenState extends State<EditDeviceScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.grey.shade50,
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
         body: SafeArea(
+          bottom: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -125,11 +128,11 @@ class _EditDeviceScreenState extends State<EditDeviceScreen> {
               height: 44,
               decoration: const BoxDecoration(
                   color: _kPinkLight, shape: BoxShape.circle),
-              child:
-                  const Icon(Icons.arrow_forward, color: _kRed, size: 22),
+              child: const Icon(Icons.arrow_forward,
+                  color: _kRed, size: 22, textDirection: TextDirection.ltr),
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 16),
           const Text(
             'تحديث قطعة التتبع',
             style: TextStyle(
@@ -137,6 +140,7 @@ class _EditDeviceScreenState extends State<EditDeviceScreen> {
                 fontWeight: FontWeight.bold,
                 fontFamily: _kFont),
           ),
+          const Spacer(),
         ],
       ),
     );
@@ -271,8 +275,7 @@ class _EditDeviceScreenState extends State<EditDeviceScreen> {
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: _kRed,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
               ),
               onPressed: _step == 0 ? _toStep1 : _saveDevice,
               child: Text(
@@ -293,8 +296,7 @@ class _EditDeviceScreenState extends State<EditDeviceScreen> {
               child: OutlinedButton(
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.grey.shade300),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                 ),
                 onPressed: () => setState(() => _step = 0),
                 child: const Text(
@@ -337,7 +339,7 @@ class _EditField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,

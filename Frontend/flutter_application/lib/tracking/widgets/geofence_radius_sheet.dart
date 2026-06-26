@@ -153,8 +153,7 @@ class _GeofenceRadiusSheetState extends State<_GeofenceRadiusSheet> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _kRed,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                   elevation: 0,
                 ),
                 onPressed: () {

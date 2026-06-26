@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../providers/nav_bar_provider.dart';
 import '../providers/tracking_provider.dart';
 import '../screens/geofence_setup_screen.dart';
 import '../widgets/delete_device_dialog.dart';
@@ -167,8 +168,7 @@ class _LocationUpdateSheetState extends State<_LocationUpdateSheet> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _kRed,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                   elevation: 0,
                 ),
                 onPressed: () {
@@ -254,7 +254,9 @@ class DeviceSettingsScreen extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.grey.shade50,
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
         body: SafeArea(
+          bottom: false,
           child: Consumer<TrackingProvider>(
             builder: (_, prov, __) {
               final sim = prov.activeDevice?.sim ?? '';
@@ -298,10 +300,11 @@ class DeviceSettingsScreen extends StatelessWidget {
               height: 44,
               decoration: const BoxDecoration(
                   color: _kPinkLight, shape: BoxShape.circle),
-              child: const Icon(Icons.arrow_forward, color: _kRed, size: 22),
+              child: const Icon(Icons.arrow_forward,
+                  color: _kRed, size: 22, textDirection: TextDirection.ltr),
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 16),
           const Text(
             'اعدادات القطعة',
             style: TextStyle(
@@ -310,6 +313,7 @@ class DeviceSettingsScreen extends StatelessWidget {
               fontFamily: _kFont,
             ),
           ),
+          const Spacer(),
         ],
       ),
     );
@@ -425,8 +429,7 @@ class DeviceSettingsScreen extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: _kRed),
               foregroundColor: _kRed,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             onPressed: () => _callChild(sim),
@@ -450,8 +453,7 @@ class DeviceSettingsScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: _kRed,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
               elevation: 0,
             ),
             onPressed: () => _onDeleteTap(context, prov),
@@ -474,8 +476,7 @@ class DeviceSettingsScreen extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: _kRed),
               foregroundColor: _kRed,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
             ),
             onPressed: () => _onFactoryResetTap(context, prov),
             child: const Text(
@@ -528,9 +529,15 @@ class _SettingsRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          // Controls on the left in RTL
-          trailing,
-          const Spacer(),
+          // Icon circle on the right in RTL
+          Container(
+            width: 42,
+            height: 42,
+            decoration: const BoxDecoration(
+                color: _kPinkLight, shape: BoxShape.circle),
+            child: Icon(icon, color: _kRed, size: 22),
+          ),
+          const SizedBox(width: 12),
           // Label
           Text(
             label,
@@ -540,15 +547,9 @@ class _SettingsRow extends StatelessWidget {
               color: Colors.black87,
             ),
           ),
-          const SizedBox(width: 12),
-          // Icon circle on the right in RTL
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-                color: _kPinkLight, shape: BoxShape.circle),
-            child: Icon(icon, color: _kRed, size: 22),
-          ),
+          const Spacer(),
+          // Controls on the left in RTL
+          trailing,
         ],
       ),
     );

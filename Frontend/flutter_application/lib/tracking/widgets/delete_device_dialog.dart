@@ -16,7 +16,7 @@ Future<void> showDeleteDeviceDialog(
       textDirection: TextDirection.rtl,
       child: Dialog(
         shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -78,8 +78,7 @@ Future<void> showDeleteDeviceDialog(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: Colors.grey.shade300),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                         ),
                         onPressed: () => Navigator.of(ctx).pop(),
                         child: const Text(
@@ -100,8 +99,7 @@ Future<void> showDeleteDeviceDialog(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _kRed,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                         ),
                         onPressed: () {
                           Navigator.of(ctx).pop();

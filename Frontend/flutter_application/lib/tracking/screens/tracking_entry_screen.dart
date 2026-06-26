@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../providers/nav_bar_provider.dart';
 import '../providers/tracking_provider.dart';
 
 const Color _kRed = Color(0xFFBF092F);
@@ -35,7 +36,9 @@ class _TrackingEntryScreenState extends State<TrackingEntryScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.grey.shade50,
+        bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
         body: SafeArea(
+          bottom: false,
           child: Stack(
             children: [
               Column(
@@ -92,10 +95,11 @@ class _TrackingEntryScreenState extends State<TrackingEntryScreen> {
               height: 44,
               decoration: const BoxDecoration(
                   color: _kPinkLight, shape: BoxShape.circle),
-              child: const Icon(Icons.arrow_forward, color: _kRed, size: 22),
+              child: const Icon(Icons.arrow_forward,
+                  color: _kRed, size: 22, textDirection: TextDirection.ltr),
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 16),
           const Text(
             'تتبع الطفل',
             style: TextStyle(
@@ -104,6 +108,7 @@ class _TrackingEntryScreenState extends State<TrackingEntryScreen> {
               fontFamily: _kFont,
             ),
           ),
+          const Spacer(),
         ],
       ),
     );

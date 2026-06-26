@@ -22,7 +22,7 @@ class _PowerOnDialog extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
